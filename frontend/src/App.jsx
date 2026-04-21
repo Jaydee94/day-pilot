@@ -46,7 +46,7 @@ function App() {
         <header className="app-header">
           <div className="app-header__inner">
             <div className="app-header__brand">
-              <div className="app-header__logo">✈️</div>
+              <img src="/favicon.svg" alt="DayPilot logo" className="app-header__logo" />
               <h1 className="app-header__title">
                 DayPilot
                 <span className="app-header__tagline"> your daily co-pilot</span>

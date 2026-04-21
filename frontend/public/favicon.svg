@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#4F8EF7"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+  <!-- Paper airplane pointing upper-right -->
+  <path d="M50 14 L10 54 L36 44 Z" fill="white"/>
+  <path d="M36 44 L28 58 L10 54 Z" fill="rgba(255,255,255,0.6)"/>
+  <line x1="50" y1="14" x2="36" y2="44" stroke="rgba(255,255,255,0.3)" stroke-width="1.5" stroke-linecap="round"/>
+</svg>
