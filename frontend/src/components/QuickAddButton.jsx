@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useState } from 'react'
 import './QuickAddButton.css'
 
@@ -34,7 +35,7 @@ export default function QuickAddButton() {
             <p className="quick-add-modal__hint">
               Use voice commands or connect Google Calendar to add events.
               See the{' '}
-              <a href="/settings">Settings</a> page for setup instructions.
+              <Link to="/settings">Settings</Link> page for setup instructions.
             </p>
           </div>
         </div>

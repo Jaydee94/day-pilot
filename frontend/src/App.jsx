@@ -87,7 +87,7 @@ function App() {
           {summary && (
             <Routes>
               <Route path="/" element={<Navigate to="/today" replace />} />
-              <Route path="/today" element={<TodayPage summary={summary} onRefresh={fetchSummary} />} />
+              <Route path="/today" element={<TodayPage summary={summary} />} />
               <Route path="/calendar" element={<CalendarPage events={summary.events || []} />} />
               <Route path="/tasks" element={<TasksPage todos={summary.todos || []} />} />
               <Route path="/settings" element={<SettingsPage />} />
