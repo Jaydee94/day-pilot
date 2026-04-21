@@ -213,6 +213,39 @@ def fetch_google_birthdays() -> List[Birthday]:
         return []
 
 
+def add_google_task(
+    title: str,
+    due: Optional[datetime] = None,
+) -> Optional[TodoItem]:
+    """Add a task to the default Google Tasks list."""
+    try:
+        _, creds = _get_google_service()
+        service = gapi_build("tasks", "v1", credentials=creds)
+        task_lists = service.tasklists().list().execute()
+        items = task_lists.get("items", [])
+        if not items:
+            logger.error("No Google Task lists found")
+            return None
+        default_list_id = items[0]["id"]
+
+        body: dict = {"title": title}
+        if due:
+            # Google Tasks API requires RFC 3339 timestamp
+            body["due"] = due.isoformat()
+
+        created = service.tasks().insert(tasklist=default_list_id, body=body).execute()
+        return TodoItem(
+            id=created["id"],
+            title=created.get("title", title),
+            due=due,
+            completed=False,
+            source="google",
+        )
+    except Exception as exc:
+        logger.error("Failed to add Google task: %s", exc)
+        return None
+
+
 def add_google_event(
     title: str,
     start: datetime,

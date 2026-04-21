@@ -4,28 +4,26 @@
   <img src="frontend/public/logo.svg" alt="DayPilot Logo" width="300" />
 </p>
 
-A modular, containerised **AI-powered daily planner** for your home server.
+> **Your calm, intelligent daily co-pilot for family life.**
 
-Day Pilot syncs your Google and Apple calendars, fetches the weather, surfaces
-birthdays and open to-dos, and then asks an LLM to write a crisp morning
-briefing — delivered as a push notification to every device subscribed to your
-ntfy topic and displayed on a lightweight React dashboard.
+DayPilot is a self-hosted, AI-powered family planning system that runs on your home server. Every morning it merges your Google and Apple calendars, fetches the weather, surfaces birthdays and open to-dos, and asks an AI to write a friendly morning briefing — delivered as a push notification to every device in the family and displayed on a beautiful React dashboard.
 
 ---
 
-## Features
+## ✨ Features
 
 | Feature | Details |
 |---|---|
 | 📅 **Calendar sync** | Google Calendar + Apple iCloud Calendar (CalDAV) |
 | ✅ **To-do sync** | Google Tasks |
-| 🌤 **Weather** | OpenWeatherMap current conditions |
+| 🌤 **Weather intelligence** | OpenWeatherMap — influences AI advice, not just displayed |
 | 🎂 **Birthdays** | Extracted from Google Contacts |
-| 🤖 **AI summary** | OpenAI GPT (configurable model) — narrative + top-3 priorities |
+| 🤖 **AI briefing** | OpenAI GPT — narrative morning summary + top-3 priorities |
 | 🔔 **Push notifications** | ntfy.sh (self-hosted or cloud) — all subscribed devices |
+| ⚡ **Quick capture** | Floating + button — add events or tasks in 2 taps |
 | 🗣 **Voice control** | Siri Shortcuts / Google Assistant webhook to add events |
-| 📊 **Dashboard** | React SPA — dark theme, responsive |
-| ⏰ **Scheduler** | APScheduler cron job at your chosen time every morning |
+| 📊 **Dashboard** | React SPA — mobile-first, dark mode, responsive |
+| ⏰ **Scheduler** | Cron job at your chosen time every morning |
 | 🐳 **Docker Compose** | One-command deploy on any home server |
 
 ---
@@ -106,7 +104,7 @@ All settings live in `.env` (copy from `.env.example`).
 5. On first run the backend will log an authorisation URL — open it in a
    browser to grant access; the token is saved to `./data/google_token.json`
 
-### Apple Calendar (iCloud CalDAV)
+### Apple Calendar (iCloud)
 
 1. Sign in to [appleid.apple.com](https://appleid.apple.com/) and generate an
    **App-Specific Password**
@@ -168,11 +166,26 @@ Full interactive docs at `http://localhost:8000/docs` (Swagger UI).
 | POST | `/api/summary/push` | Send push notification now |
 | POST | `/api/pipeline/run` | Run full daily pipeline manually |
 | GET | `/api/events` | Today's calendar events |
+| POST | `/api/events` | Create a calendar event |
 | GET | `/api/todos` | Open to-dos |
+| POST | `/api/todos` | Create a task |
 | GET | `/api/weather` | Current weather |
 | GET | `/api/birthdays` | Today's birthdays |
 | GET | `/api/status` | Integration health status |
 | POST | `/api/voice/command` | Add event via voice webhook |
+
+---
+
+## Documentation
+
+📚 **[Full documentation in /docs](docs/README.md)** — written for non-technical family members.
+
+| Guide | Description |
+|---|---|
+| [Getting Started](docs/getting-started.md) | Step-by-step setup guide |
+| [Daily Usage](docs/daily-usage.md) | How to use the dashboard every day |
+| [Features Explained](docs/features.md) | What each feature does |
+| [Troubleshooting](docs/troubleshooting.md) | Fixes for common problems |
 
 ---
 
@@ -212,6 +225,12 @@ day-pilot/
 ├── docker-compose.yml
 ├── .env.example
 ├── data/                          # Google tokens & credentials (git-ignored)
+├── docs/                          # User-friendly documentation
+│   ├── README.md                  # Documentation index
+│   ├── getting-started.md         # Setup guide
+│   ├── daily-usage.md             # How to use the dashboard
+│   ├── features.md                # Feature explanations
+│   └── troubleshooting.md         # Common issues & fixes
 ├── backend/
 │   ├── Dockerfile
 │   ├── requirements.txt
@@ -250,7 +269,8 @@ day-pilot/
         │   ├── CalendarEvents.jsx
         │   ├── Weather.jsx
         │   ├── TodoList.jsx
-        │   └── Birthdays.jsx
+        │   ├── Birthdays.jsx
+        │   └── QuickAddButton.jsx
         └── test/
             ├── setup.js
             └── components.test.jsx
