@@ -1,0 +1,60 @@
+.todo-list__list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.todo-list__item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.03);
+}
+
+.todo-list__item--done {
+  opacity: 0.45;
+}
+
+.todo-list__checkbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.todo-list__checkbox--open {
+  border: 2px solid var(--card-border);
+}
+
+.todo-list__checkbox--done {
+  background: var(--success);
+  color: #fff;
+}
+
+.todo-list__text {
+  flex: 1;
+  font-size: 0.9rem;
+}
+
+.todo-list__item--done .todo-list__text {
+  text-decoration: line-through;
+}
+
+.todo-list__due {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.todo-list__prio {
+  font-size: 0.7rem;
+  font-weight: 600;
+}
