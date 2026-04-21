@@ -48,6 +48,11 @@ export default function QuickAddButton({ onSuccess }) {
     setTab('Event')
   }
 
+  function handleTabChange(newTab) {
+    setTab(newTab)
+    setError(null)
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     setLoading(true)
@@ -129,7 +134,7 @@ export default function QuickAddButton({ onSuccess }) {
                 <button
                   key={t}
                   className={`quick-add-tab${tab === t ? ' quick-add-tab--active' : ''}`}
-                  onClick={() => { setTab(t); setError(null) }}
+                  onClick={() => handleTabChange(t)}
                   type="button"
                 >
                   {t === 'Event' ? '📅' : '✅'} {t}

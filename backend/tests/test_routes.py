@@ -181,6 +181,8 @@ class TestTodosRoute:
             resp = client.post("/api/todos", json={"title": "Broken task"})
         assert resp.status_code == 503
 
+
+class TestVoiceRoute:
     def test_add_event_wrong_secret(self, client):
         payload = {
             "secret": "wrong-secret",
