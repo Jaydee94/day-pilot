@@ -2,14 +2,20 @@
 API routes for Day Pilot.
 """
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 import pytz
 from fastapi import APIRouter, HTTPException, Query
 
 from app.config import settings
-from app.models.schemas import DailySummary, SyncStatus, VoiceCommand
+from app.models.schemas import (
+    DailySummary,
+    SyncStatus,
+    VoiceCommand,
+    CreateEventRequest,
+    CreateTodoRequest,
+)
 from app.services.scheduler import build_daily_summary, run_daily_pipeline
 from app.services.calendar_sync import (
     fetch_google_events,
@@ -18,6 +24,7 @@ from app.services.calendar_sync import (
     fetch_google_birthdays,
     add_google_event,
     add_apple_event,
+    add_google_task,
 )
 from app.services.weather import fetch_weather
 from app.services.notifications import send_daily_push
@@ -123,3 +130,38 @@ def get_weather():
 @router.get("/birthdays", summary="Today's birthdays")
 def list_birthdays():
     return fetch_google_birthdays()
+
+
+@router.post("/events", summary="Create a calendar event")
+def create_event(payload: CreateEventRequest):
+    """Add a new event to the primary Google Calendar (falls back to Apple/CalDAV)."""
+    end = payload.end or payload.start + timedelta(hours=1)
+
+    event = add_google_event(
+        title=payload.title,
+        start=payload.start,
+        end=end,
+        location=payload.location,
+    )
+    if event:
+        return event
+
+    ok = add_apple_event(
+        title=payload.title,
+        start=payload.start,
+        end=end,
+        location=payload.location,
+    )
+    if ok:
+        return {"status": "created", "source": "apple", "title": payload.title}
+
+    raise HTTPException(status_code=503, detail="Could not add event to any calendar")
+
+
+@router.post("/todos", summary="Create a task")
+def create_todo(payload: CreateTodoRequest):
+    """Add a new task to Google Tasks."""
+    todo = add_google_task(title=payload.title, due=payload.due)
+    if todo:
+        return todo
+    raise HTTPException(status_code=503, detail="Could not add task to Google Tasks")

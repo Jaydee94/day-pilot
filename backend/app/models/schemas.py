@@ -49,6 +49,19 @@ class DailySummary(BaseModel):
     top_priorities: List[str] = []
 
 
+class CreateEventRequest(BaseModel):
+    title: str
+    start: datetime
+    end: Optional[datetime] = None
+    location: Optional[str] = None
+    description: Optional[str] = None
+
+
+class CreateTodoRequest(BaseModel):
+    title: str
+    due: Optional[datetime] = None
+
+
 class VoiceCommand(BaseModel):
     secret: str
     command: str  # "add_event" | "add_todo"

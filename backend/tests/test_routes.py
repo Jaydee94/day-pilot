@@ -105,7 +105,82 @@ class TestWeatherRoute:
         assert resp.status_code == 503
 
 
-class TestVoiceRoute:
+class TestEventsRoute:
+    def test_create_event_success(self, client):
+        from app.models.schemas import CalendarEvent
+
+        fake_event = CalendarEvent(
+            id="new-ev-1",
+            title="Team lunch",
+            start=datetime(2024, 6, 1, 12, 0, tzinfo=BERLIN_TZ),
+            end=datetime(2024, 6, 1, 13, 0, tzinfo=BERLIN_TZ),
+            source="google",
+        )
+        with patch("app.api.routes.add_google_event", return_value=fake_event):
+            resp = client.post(
+                "/api/events",
+                json={
+                    "title": "Team lunch",
+                    "start": "2024-06-01T12:00:00+02:00",
+                    "end": "2024-06-01T13:00:00+02:00",
+                },
+            )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["title"] == "Team lunch"
+        assert data["source"] == "google"
+
+    def test_create_event_falls_back_to_apple(self, client):
+        with patch("app.api.routes.add_google_event", return_value=None), patch(
+            "app.api.routes.add_apple_event", return_value=True
+        ):
+            resp = client.post(
+                "/api/events",
+                json={
+                    "title": "Doctor",
+                    "start": "2024-06-01T09:00:00+02:00",
+                },
+            )
+        assert resp.status_code == 200
+        assert resp.json()["source"] == "apple"
+
+    def test_create_event_service_unavailable(self, client):
+        with patch("app.api.routes.add_google_event", return_value=None), patch(
+            "app.api.routes.add_apple_event", return_value=False
+        ):
+            resp = client.post(
+                "/api/events",
+                json={
+                    "title": "Broken event",
+                    "start": "2024-06-01T09:00:00+02:00",
+                },
+            )
+        assert resp.status_code == 503
+
+
+class TestTodosRoute:
+    def test_create_todo_success(self, client):
+        from app.models.schemas import TodoItem
+
+        fake_todo = TodoItem(
+            id="task-1",
+            title="Pick up groceries",
+            completed=False,
+            source="google",
+        )
+        with patch("app.api.routes.add_google_task", return_value=fake_todo):
+            resp = client.post(
+                "/api/todos",
+                json={"title": "Pick up groceries"},
+            )
+        assert resp.status_code == 200
+        assert resp.json()["title"] == "Pick up groceries"
+
+    def test_create_todo_service_unavailable(self, client):
+        with patch("app.api.routes.add_google_task", return_value=None):
+            resp = client.post("/api/todos", json={"title": "Broken task"})
+        assert resp.status_code == 503
+
     def test_add_event_wrong_secret(self, client):
         payload = {
             "secret": "wrong-secret",
