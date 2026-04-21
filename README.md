@@ -1,5 +1,9 @@
 # ✈️ Day Pilot
 
+<p align="center">
+  <img src="frontend/public/logo.svg" alt="DayPilot Logo" width="300" />
+</p>
+
 A modular, containerised **AI-powered daily planner** for your home server.
 
 Day Pilot syncs your Google and Apple calendars, fetches the weather, surfaces
