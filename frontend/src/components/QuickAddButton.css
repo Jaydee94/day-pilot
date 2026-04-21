@@ -1,0 +1,80 @@
+.quick-add-btn {
+  position: fixed;
+  bottom: 84px; /* above bottom nav */
+  right: 1.5rem;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), #3a78e8);
+  color: #fff;
+  border: none;
+  font-size: 1.75rem;
+  line-height: 1;
+  box-shadow: 0 4px 16px rgba(79, 142, 247, 0.4);
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quick-add-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 24px rgba(79, 142, 247, 0.5);
+}
+
+.quick-add-btn:active {
+  transform: scale(0.96);
+}
+
+.quick-add-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  backdrop-filter: blur(2px);
+}
+
+.quick-add-modal {
+  width: 100%;
+  max-width: 420px;
+  border-radius: var(--radius);
+}
+
+.quick-add-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.quick-add-modal__title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.quick-add-modal__close {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  color: var(--text-muted);
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.quick-add-modal__close:hover {
+  background: var(--card-border);
+}
+
+.quick-add-modal__hint {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}

@@ -29,6 +29,7 @@
   border: 1px solid var(--card-border);
   border-radius: var(--radius);
   padding: 1.25rem;
+  box-shadow: var(--shadow);
 }
 
 .card__header {

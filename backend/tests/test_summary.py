@@ -62,8 +62,8 @@ class TestGenerateSummary:
         )
 
         fake_text = (
-            "ZUSAMMENFASSUNG:\nHeute wird ein produktiver Tag. Das Wetter ist schön.\n\n"
-            "PRIORITÄTEN:\n1. Report abschließen\n2. Team Standup\n3. Sport machen"
+            "SUMMARY:\nGood morning — today looks like a productive day. The weather is beautiful.\n\n"
+            "PRIORITIES:\n1. Finish the report\n2. Team Standup\n3. Exercise"
         )
 
         mock_choice = MagicMock()
@@ -79,9 +79,9 @@ class TestGenerateSummary:
             from app.services.ai_summary import generate_summary
             result = generate_summary(_make_summary())
 
-        assert "produktiver Tag" in result.ai_summary
+        assert "productive day" in result.ai_summary
         assert len(result.top_priorities) == 3
-        assert result.top_priorities[0] == "Report abschließen"
+        assert result.top_priorities[0] == "Finish the report"
 
     def test_handles_openai_error_gracefully(self, monkeypatch):
         monkeypatch.setattr(

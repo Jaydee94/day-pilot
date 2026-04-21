@@ -1,17 +1,35 @@
 /* Day Pilot – global styles */
 :root {
-  --bg: #0f1117;
-  --card: #1a1d27;
-  --card-border: #2a2d3e;
-  --accent: #6c63ff;
-  --accent-light: #8b85ff;
-  --text: #e8eaf0;
-  --text-muted: #9097b0;
-  --success: #4caf87;
-  --warning: #f5a623;
-  --error: #e05252;
-  --radius: 16px;
+  --bg: #F7F9FC;
+  --card: #FFFFFF;
+  --card-border: #E5EAF2;
+  --primary: #4F8EF7;
+  --primary-light: #A6C8FF;
+  --accent: #7ED957;
+  --accent-hover: #6BC445;
+  --text: #1F2937;
+  --text-muted: #6B7280;
+  --success: #7ED957;
+  --warning: #F59E0B;
+  --error: #EF4444;
+  --radius: 14px;
   --radius-sm: 8px;
+  --item-bg: rgba(79, 142, 247, 0.04);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(79, 142, 247, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111827;
+    --card: #1F2937;
+    --card-border: #374151;
+    --primary: #60A5FA;
+    --primary-light: #93C5FD;
+    --text: #F9FAFB;
+    --text-muted: #9CA3AF;
+    --item-bg: rgba(255, 255, 255, 0.04);
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.2);
+  }
 }
 
 *, *::before, *::after {
@@ -37,7 +55,7 @@ body {
 }
 
 a {
-  color: var(--accent-light);
+  color: var(--primary);
   text-decoration: none;
 }
 

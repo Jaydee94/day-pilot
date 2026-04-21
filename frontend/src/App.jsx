@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
-import DailySummary from './components/DailySummary.jsx'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import Navigation from './components/Navigation.jsx'
+import TodayPage from './pages/TodayPage.jsx'
+import CalendarPage from './pages/CalendarPage.jsx'
+import TasksPage from './pages/TasksPage.jsx'
+import SettingsPage from './pages/SettingsPage.jsx'
 import './App.css'
 
 const API_BASE = import.meta.env.VITE_API_URL
@@ -36,48 +41,64 @@ function App() {
   }, [fetchSummary])
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <div className="app-header__inner">
-          <div className="app-header__brand">
-            <span className="app-header__icon">✈️</span>
-            <h1 className="app-header__title">Day Pilot</h1>
+    <BrowserRouter>
+      <div className="app">
+        <header className="app-header">
+          <div className="app-header__inner">
+            <div className="app-header__brand">
+              <div className="app-header__logo">✈️</div>
+              <h1 className="app-header__title">
+                DayPilot
+                <span className="app-header__tagline"> your daily co-pilot</span>
+              </h1>
+            </div>
+            <div className="app-header__meta">
+              {lastRefresh && (
+                <span className="app-header__refresh">
+                  Updated: {lastRefresh.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+              <button
+                className="btn btn--icon"
+                onClick={fetchSummary}
+                disabled={loading}
+                title="Refresh"
+              >
+                {loading ? '⏳' : '🔄'}
+              </button>
+            </div>
           </div>
-          <div className="app-header__meta">
-            {lastRefresh && (
-              <span className="app-header__refresh">
-                Stand: {lastRefresh.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            )}
-            <button
-              className="btn btn--icon"
-              onClick={fetchSummary}
-              disabled={loading}
-              title="Aktualisieren"
-            >
-              {loading ? '⏳' : '🔄'}
-            </button>
-          </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="app-main">
-        {loading && !summary && (
-          <div className="loading-state">
-            <div className="spinner" />
-            <p>Lade Tages-Zusammenfassung…</p>
-          </div>
-        )}
-        {error && (
-          <div className="error-state">
-            <span>⚠️</span>
-            <p>Fehler: {error}</p>
-            <button className="btn" onClick={fetchSummary}>Erneut versuchen</button>
-          </div>
-        )}
-        {summary && <DailySummary summary={summary} />}
-      </main>
-    </div>
+        <main className="app-main">
+          {loading && !summary && (
+            <div className="loading-state">
+              <div className="spinner" />
+              <p>Loading your daily summary…</p>
+            </div>
+          )}
+          {error && (
+            <div className="error-state">
+              <span>⚠️</span>
+              <p>Error: {error}</p>
+              <button className="btn" onClick={fetchSummary}>Try again</button>
+            </div>
+          )}
+          {summary && (
+            <Routes>
+              <Route path="/" element={<Navigate to="/today" replace />} />
+              <Route path="/today" element={<TodayPage summary={summary} onRefresh={fetchSummary} />} />
+              <Route path="/calendar" element={<CalendarPage events={summary.events || []} />} />
+              <Route path="/tasks" element={<TasksPage todos={summary.todos || []} />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="*" element={<Navigate to="/today" replace />} />
+            </Routes>
+          )}
+        </main>
+
+        <Navigation />
+      </div>
+    </BrowserRouter>
   )
 }
 

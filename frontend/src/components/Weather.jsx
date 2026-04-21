@@ -12,7 +12,7 @@ export default function Weather({ weather }) {
     <div className="weather card">
       <div className="card__header">
         <span className="card__icon">🌤</span>
-        <span className="card__title">Wetter – {weather.city}</span>
+        <span className="card__title">Weather – {weather.city}</span>
       </div>
       <div className="weather__body">
         <img
@@ -28,7 +28,7 @@ export default function Weather({ weather }) {
         </div>
       </div>
       <div className="weather__details">
-        <span>Gefühlt {Math.round(weather.feels_like)}{unitSym}</span>
+        <span>Feels like {Math.round(weather.feels_like)}{unitSym}</span>
         <span>💧 {weather.humidity}%</span>
         <span>💨 {weather.wind_speed} {windUnit}</span>
       </div>

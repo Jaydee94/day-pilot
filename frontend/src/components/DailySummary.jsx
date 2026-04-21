@@ -7,7 +7,7 @@ import './DailySummary.css'
 
 function formatDate(iso) {
   const d = new Date(iso)
-  return d.toLocaleDateString('de-DE', {
+  return d.toLocaleDateString('en-US', {
     weekday: 'long',
     day: '2-digit',
     month: 'long',

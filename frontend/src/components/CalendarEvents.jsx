@@ -2,7 +2,7 @@ import './CalendarEvents.css'
 
 function formatTime(iso) {
   const d = new Date(iso)
-  return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
 const SOURCE_LABEL = {
@@ -15,11 +15,11 @@ export default function CalendarEvents({ events }) {
     <div className="cal-events card">
       <div className="card__header">
         <span className="card__icon">📅</span>
-        <span className="card__title">Termine ({events.length})</span>
+        <span className="card__title">Events ({events.length})</span>
       </div>
 
       {events.length === 0 ? (
-        <p className="card__empty">Keine Termine heute</p>
+        <p className="card__empty">No events today</p>
       ) : (
         <ul className="cal-events__list">
           {events.map((ev) => {

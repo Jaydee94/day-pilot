@@ -1,0 +1,80 @@
+.settings-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.settings-group__title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.75rem;
+}
+
+.settings-group__list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.settings-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background: var(--item-bg);
+}
+
+.settings-item__left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-item__label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.settings-item__desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.settings-item__env {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--primary);
+  background: rgba(79, 142, 247, 0.08);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.settings-voice {
+  margin-top: 0.25rem;
+}
+
+.settings-voice__desc {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.settings-voice__desc code {
+  background: rgba(79, 142, 247, 0.08);
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.85em;
+  color: var(--primary);
+}

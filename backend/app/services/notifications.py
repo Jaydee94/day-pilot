@@ -21,7 +21,7 @@ def _build_message(summary: DailySummary) -> str:
         lines.append("")
 
     if summary.top_priorities:
-        lines.append("Top-Prioritäten:")
+        lines.append("Top Priorities:")
         for i, p in enumerate(summary.top_priorities, 1):
             lines.append(f"  {i}. {p}")
         lines.append("")
@@ -34,11 +34,11 @@ def _build_message(summary: DailySummary) -> str:
         )
 
     if summary.events:
-        lines.append(f"📅 {len(summary.events)} Termin(e) heute")
+        lines.append(f"📅 {len(summary.events)} event(s) today")
 
     if summary.birthdays:
         names = ", ".join(b.name for b in summary.birthdays)
-        lines.append(f"🎂 Geburtstag: {names}")
+        lines.append(f"🎂 Birthday: {names}")
 
     return "\n".join(lines)
 
@@ -51,7 +51,7 @@ def send_daily_push(summary: DailySummary) -> bool:
 
     url = f"{settings.NTFY_SERVER.rstrip('/')}/{settings.NTFY_TOPIC}"
     message = _build_message(summary)
-    title = f"☀️ Guten Morgen – {summary.date.strftime('%d. %B %Y')}"
+    title = f"☀️ Good morning – {summary.date.strftime('%B %d, %Y')}"
 
     headers = {
         "Title": title,
