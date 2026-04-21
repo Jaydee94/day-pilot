@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { describe, it, expect } from 'vitest'
 import Weather from '../components/Weather.jsx'
 import CalendarEvents from '../components/CalendarEvents.jsx'
@@ -12,7 +13,7 @@ const mockWeather = {
   city: 'Berlin',
   temperature: 22,
   feels_like: 20,
-  description: 'sonnig',
+  description: 'sunny',
   icon: '01d',
   humidity: 50,
   wind_speed: 3.5,
@@ -39,8 +40,8 @@ const mockEvents = [
 ]
 
 const mockTodos = [
-  { id: 't1', title: 'Report abschließen', completed: false, priority: 1, due: null, source: 'google' },
-  { id: 't2', title: 'E-Mails lesen', completed: true, priority: null, due: null, source: 'google' },
+  { id: 't1', title: 'Finish report', completed: false, priority: 1, due: null, source: 'google' },
+  { id: 't2', title: 'Read emails', completed: true, priority: null, due: null, source: 'google' },
 ]
 
 const mockBirthdays = [
@@ -53,8 +54,13 @@ const mockSummary = {
   todos: mockTodos,
   birthdays: mockBirthdays,
   weather: mockWeather,
-  ai_summary: 'Heute wird ein toller Tag!',
-  top_priorities: ['Report abschließen', 'E-Mails beantworten', 'Sport machen'],
+  ai_summary: 'Today is going to be a great day!',
+  top_priorities: ['Finish report', 'Reply to emails', 'Exercise'],
+}
+
+// Helper to wrap components that use react-router hooks
+function withRouter(ui) {
+  return <MemoryRouter>{ui}</MemoryRouter>
 }
 
 // ---- Weather ----
@@ -71,7 +77,7 @@ describe('Weather', () => {
 
   it('renders description', () => {
     render(<Weather weather={mockWeather} />)
-    expect(screen.getByText(/sonnig/)).toBeInTheDocument()
+    expect(screen.getByText(/sunny/)).toBeInTheDocument()
   })
 
   it('renders wind speed', () => {
@@ -84,7 +90,7 @@ describe('Weather', () => {
 describe('CalendarEvents', () => {
   it('renders event count in header', () => {
     render(<CalendarEvents events={mockEvents} />)
-    expect(screen.getByText(/Termine \(2\)/)).toBeInTheDocument()
+    expect(screen.getByText(/Events \(2\)/)).toBeInTheDocument()
   })
 
   it('renders event titles', () => {
@@ -100,7 +106,7 @@ describe('CalendarEvents', () => {
 
   it('shows empty message when no events', () => {
     render(<CalendarEvents events={[]} />)
-    expect(screen.getByText(/Keine Termine heute/)).toBeInTheDocument()
+    expect(screen.getByText(/No events today/)).toBeInTheDocument()
   })
 
   it('renders source badges', () => {
@@ -114,23 +120,23 @@ describe('CalendarEvents', () => {
 describe('TodoList', () => {
   it('shows open task count', () => {
     render(<TodoList todos={mockTodos} />)
-    expect(screen.getByText(/1 offen/)).toBeInTheDocument()
+    expect(screen.getByText(/1 open/)).toBeInTheDocument()
   })
 
   it('renders task titles', () => {
     render(<TodoList todos={mockTodos} />)
-    expect(screen.getByText('Report abschließen')).toBeInTheDocument()
-    expect(screen.getByText('E-Mails lesen')).toBeInTheDocument()
+    expect(screen.getByText('Finish report')).toBeInTheDocument()
+    expect(screen.getByText('Read emails')).toBeInTheDocument()
   })
 
   it('shows empty message when no todos', () => {
     render(<TodoList todos={[]} />)
-    expect(screen.getByText(/Keine Aufgaben/)).toBeInTheDocument()
+    expect(screen.getByText(/No tasks/)).toBeInTheDocument()
   })
 
   it('renders priority label for high priority', () => {
     render(<TodoList todos={mockTodos} />)
-    expect(screen.getByText('Hoch')).toBeInTheDocument()
+    expect(screen.getByText('High')).toBeInTheDocument()
   })
 })
 
@@ -143,7 +149,7 @@ describe('Birthdays', () => {
 
   it('renders age when present', () => {
     render(<Birthdays birthdays={mockBirthdays} />)
-    expect(screen.getByText(/wird 30/)).toBeInTheDocument()
+    expect(screen.getByText(/turns 30/)).toBeInTheDocument()
   })
 
   it('renders multiple birthdays', () => {
@@ -159,8 +165,8 @@ describe('Birthdays', () => {
 // ---- AISummary ----
 describe('AISummary', () => {
   it('renders AI text', () => {
-    render(<AISummary text="Heute wird ein toller Tag!" priorities={[]} />)
-    expect(screen.getByText('Heute wird ein toller Tag!')).toBeInTheDocument()
+    render(<AISummary text="Today is going to be a great day!" priorities={[]} />)
+    expect(screen.getByText('Today is going to be a great day!')).toBeInTheDocument()
   })
 
   it('renders priorities', () => {
@@ -174,34 +180,39 @@ describe('AISummary', () => {
     expect(screen.getByText('1')).toBeInTheDocument()
     expect(screen.getByText('2')).toBeInTheDocument()
   })
+
+  it('renders DayPilot Briefing heading', () => {
+    render(<AISummary text="Hello" priorities={[]} />)
+    expect(screen.getByText(/DayPilot Briefing/i)).toBeInTheDocument()
+  })
 })
 
 // ---- DailySummary (integration) ----
 describe('DailySummary', () => {
   it('renders date', () => {
-    render(<DailySummary summary={mockSummary} />)
-    // Should contain "Juni" (German month)
-    expect(screen.getByText(/Juni/)).toBeInTheDocument()
+    render(withRouter(<DailySummary summary={mockSummary} />))
+    // Should contain "June" (English month)
+    expect(screen.getByText(/June/)).toBeInTheDocument()
   })
 
   it('renders all sections', () => {
-    render(<DailySummary summary={mockSummary} />)
-    expect(screen.getByText(/KI-Zusammenfassung/i)).toBeInTheDocument()
-    expect(screen.getByText(/Wetter/i)).toBeInTheDocument()
-    expect(screen.getByText(/Termine/i)).toBeInTheDocument()
-    expect(screen.getByText(/Aufgaben/i)).toBeInTheDocument()
-    expect(screen.getByText(/Geburtstage/i)).toBeInTheDocument()
+    render(withRouter(<DailySummary summary={mockSummary} />))
+    expect(screen.getByText(/DayPilot Briefing/i)).toBeInTheDocument()
+    expect(screen.getByText(/Weather/i)).toBeInTheDocument()
+    expect(screen.getByText(/Events/i)).toBeInTheDocument()
+    expect(screen.getByText(/Tasks/i)).toBeInTheDocument()
+    expect(screen.getByText(/Birthdays/i)).toBeInTheDocument()
   })
 
   it('hides AI section when no summary or priorities', () => {
     const s = { ...mockSummary, ai_summary: null, top_priorities: [] }
-    render(<DailySummary summary={s} />)
-    expect(screen.queryByText(/KI-Zusammenfassung/i)).not.toBeInTheDocument()
+    render(withRouter(<DailySummary summary={s} />))
+    expect(screen.queryByText(/DayPilot Briefing/i)).not.toBeInTheDocument()
   })
 
   it('hides birthdays when empty', () => {
     const s = { ...mockSummary, birthdays: [] }
-    render(<DailySummary summary={s} />)
-    expect(screen.queryByText(/Geburtstage/i)).not.toBeInTheDocument()
+    render(withRouter(<DailySummary summary={s} />))
+    expect(screen.queryByText(/Birthdays/i)).not.toBeInTheDocument()
   })
 })

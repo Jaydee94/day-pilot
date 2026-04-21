@@ -5,14 +5,14 @@ export default function Birthdays({ birthdays }) {
     <div className="birthdays card">
       <div className="card__header">
         <span className="card__icon">🎂</span>
-        <span className="card__title">Geburtstage heute</span>
+        <span className="card__title">Birthdays Today</span>
       </div>
       <ul className="birthdays__list">
         {birthdays.map((b, i) => (
           <li key={i} className="birthdays__item">
             <span className="birthdays__name">{b.name}</span>
             {b.age != null && (
-              <span className="birthdays__age">wird {b.age}</span>
+              <span className="birthdays__age">turns {b.age}</span>
             )}
           </li>
         ))}

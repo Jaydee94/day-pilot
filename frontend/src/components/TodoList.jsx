@@ -1,14 +1,14 @@
 import './TodoList.css'
 
 const PRIORITY_MAP = {
-  1: { label: 'Hoch', color: 'var(--error)' },
-  5: { label: 'Mittel', color: 'var(--warning)' },
-  9: { label: 'Niedrig', color: 'var(--success)' },
+  1: { label: 'High', color: 'var(--error)' },
+  5: { label: 'Medium', color: 'var(--warning)' },
+  9: { label: 'Low', color: 'var(--success)' },
 }
 
 function formatDue(iso) {
   if (!iso) return null
-  return new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 export default function TodoList({ todos }) {
@@ -19,11 +19,11 @@ export default function TodoList({ todos }) {
     <div className="todo-list card">
       <div className="card__header">
         <span className="card__icon">✅</span>
-        <span className="card__title">Aufgaben ({open.length} offen)</span>
+        <span className="card__title">Tasks ({open.length} open)</span>
       </div>
 
       {open.length === 0 && done.length === 0 ? (
-        <p className="card__empty">Keine Aufgaben</p>
+        <p className="card__empty">No tasks</p>
       ) : (
         <ul className="todo-list__list">
           {open.map((t) => {
