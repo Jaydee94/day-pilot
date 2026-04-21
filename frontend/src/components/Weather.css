@@ -1,0 +1,38 @@
+.weather__body {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.weather__icon {
+  width: 64px;
+  height: 64px;
+}
+
+.weather__main {
+  display: flex;
+  flex-direction: column;
+}
+
+.weather__temp {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.weather__desc {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  text-transform: capitalize;
+  margin-top: 0.2rem;
+}
+
+.weather__details {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}

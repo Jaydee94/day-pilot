@@ -1,0 +1,47 @@
+/* Day Pilot – global styles */
+:root {
+  --bg: #0f1117;
+  --card: #1a1d27;
+  --card-border: #2a2d3e;
+  --accent: #6c63ff;
+  --accent-light: #8b85ff;
+  --text: #e8eaf0;
+  --text-muted: #9097b0;
+  --success: #4caf87;
+  --warning: #f5a623;
+  --error: #e05252;
+  --radius: 16px;
+  --radius-sm: 8px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+a {
+  color: var(--accent-light);
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+}

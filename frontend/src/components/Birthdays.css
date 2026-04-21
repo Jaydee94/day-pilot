@@ -1,0 +1,27 @@
+.birthdays__list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.birthdays__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 200, 0, 0.07);
+  border: 1px solid rgba(255, 200, 0, 0.15);
+}
+
+.birthdays__name {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.birthdays__age {
+  font-size: 0.8rem;
+  color: var(--warning);
+  font-weight: 600;
+}
