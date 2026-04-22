@@ -5,6 +5,8 @@ import TodayPage from './pages/TodayPage.jsx'
 import CalendarPage from './pages/CalendarPage.jsx'
 import TasksPage from './pages/TasksPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
+import SetupWizard from './pages/SetupWizard.jsx'
+import { fetchSetupStatus } from './api.js'
 import './App.css'
 
 const API_BASE = import.meta.env.VITE_API_URL
@@ -16,6 +18,16 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [lastRefresh, setLastRefresh] = useState(null)
+
+  // null = not yet checked, true = wizard needed, false = already done
+  const [needsSetup, setNeedsSetup] = useState(null)
+
+  // Check setup status once on mount
+  useEffect(() => {
+    fetchSetupStatus()
+      .then(data => setNeedsSetup(data.needs_setup))
+      .catch(() => setNeedsSetup(false)) // if backend unreachable, skip wizard
+  }, [])
 
   const fetchSummary = useCallback(async () => {
     setLoading(true)
@@ -39,6 +51,15 @@ function App() {
     const interval = setInterval(fetchSummary, 15 * 60 * 1000)
     return () => clearInterval(interval)
   }, [fetchSummary])
+
+  // Show setup wizard as a full-page experience when first-run setup is needed
+  if (needsSetup === true) {
+    return (
+      <BrowserRouter>
+        <SetupWizard onComplete={() => { setNeedsSetup(false); fetchSummary() }} />
+      </BrowserRouter>
+    )
+  }
 
   return (
     <BrowserRouter>

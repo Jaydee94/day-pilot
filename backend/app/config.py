@@ -1,12 +1,27 @@
-from pydantic_settings import BaseSettings
-from typing import Literal, Optional
+import logging
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Literal
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        # Allow direct attribute assignment so the settings overlay can
+        # update values in-place after the object is constructed.
+        frozen=False,
+    )
+
     # General
     APP_NAME: str = "Day Pilot"
     APP_TIMEZONE: str = "Europe/Berlin"
     DAILY_SUMMARY_TIME: str = "07:00"  # HH:MM in APP_TIMEZONE
+
+    # Tracks whether the user has completed the interactive setup wizard.
+    SETUP_COMPLETE: bool = False
 
     # AI provider — "openai" (default) or "github" (GitHub Models via GitHub Copilot)
     AI_PROVIDER: Literal["openai", "github"] = "openai"
@@ -43,9 +58,23 @@ class Settings(BaseSettings):
     # Voice Webhook secret (used by Siri Shortcuts / Google Assistant IFTTT)
     VOICE_WEBHOOK_SECRET: str = "change-me-in-production"
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+
+def _apply_settings_overlay(s: Settings) -> None:
+    """Overlay persisted user settings on top of the env-based defaults.
+
+    This is called once at startup so that values saved through the frontend
+    wizard / settings page are picked up without requiring a container restart.
+    """
+    from app.services.settings_store import load_user_settings  # local import avoids circular dependency
+
+    user = load_user_settings()
+    for key, val in user.items():
+        if hasattr(s, key):
+            try:
+                setattr(s, key, val)
+            except Exception as exc:  # pragma: no cover
+                logger.warning("Could not apply settings overlay for %s: %s", key, exc)
 
 
 settings = Settings()
+_apply_settings_overlay(settings)
