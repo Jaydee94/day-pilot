@@ -55,7 +55,7 @@ def load_user_settings() -> Dict[str, Any]:
         # Only return keys we know about to guard against stale/unknown keys.
         return {k: v for k, v in data.items() if k in USER_CONFIGURABLE_KEYS}
     except Exception as exc:
-        logger.error("Failed to read settings file %s: %s", SETTINGS_FILE, exc)
+        logger.error("Failed to read settings file %s, falling back to defaults: %s", SETTINGS_FILE, exc)
         return {}
 
 

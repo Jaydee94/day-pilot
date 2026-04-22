@@ -73,7 +73,11 @@ def update_settings(payload: UserSettings) -> UserSettings:
             try:
                 setattr(app_settings, key, val)
             except Exception as exc:  # pragma: no cover
-                logger.warning("Could not update in-memory setting %s: %s", key, exc)
+                logger.warning(
+                    "Setting %s was persisted but failed to apply in-memory (restart may be required): %s",
+                    key,
+                    exc,
+                )
 
     # Restart the scheduler when timing-related settings change.
     if needs_scheduler_restart:

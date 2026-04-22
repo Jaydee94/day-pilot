@@ -73,7 +73,7 @@ def _apply_settings_overlay(s: Settings) -> None:
             try:
                 setattr(s, key, val)
             except Exception as exc:  # pragma: no cover
-                logger.warning("Could not apply settings overlay for %s: %s", key, exc)
+                logger.warning("Could not apply settings overlay for %s, using default value: %s", key, exc)
 
 
 settings = Settings()

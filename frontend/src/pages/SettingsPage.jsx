@@ -246,7 +246,7 @@ function SettingField({ fieldKey, label, desc, type, options, value, onChange })
     <div className="settings-field">
       <label className="settings-field__label" htmlFor={inputId}>{label}</label>
       {desc && <span className="settings-field__desc">{desc}</span>}
-      <div className="settings-field__input-wrap">
+      <div className={`settings-field__input-wrap${isSecret ? ' settings-field__input-wrap--has-toggle' : ''}`}>
         {type === 'select' ? (
           <select
             id={inputId}

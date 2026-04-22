@@ -141,9 +141,8 @@
   color: var(--text);
 }
 
-/* Password fields with toggle need right padding so text isn't hidden under button */
-.settings-field__input[type='password'],
-.settings-field__input[type='text']:not(.settings-field__select) {
+/* Secret/password fields need right padding so text doesn't overlap the toggle button */
+.settings-field__input-wrap--has-toggle .settings-field__input {
   padding-right: 2.5rem;
 }
 

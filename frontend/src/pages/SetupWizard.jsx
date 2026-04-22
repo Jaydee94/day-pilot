@@ -84,6 +84,15 @@ export default function SetupWizard({ onComplete }) {
     }
   }
 
+  async function handleFinish() {
+    try {
+      await saveStep()
+      setStep(TOTAL_STEPS)
+    } catch {
+      // error already set
+    }
+  }
+
   const progress = Math.round((step / TOTAL_STEPS) * 100)
 
   return (
@@ -133,7 +142,7 @@ export default function SetupWizard({ onComplete }) {
             </button>
             <button
               className="btn"
-              onClick={step === TOTAL_STEPS - 1 ? () => { saveStep().then(() => setStep(TOTAL_STEPS)).catch(() => {}) } : handleNext}
+              onClick={step === TOTAL_STEPS - 1 ? handleFinish : handleNext}
               disabled={saving}
             >
               {saving ? 'Saving…' : step === TOTAL_STEPS - 1 ? 'Finish →' : 'Next →'}
