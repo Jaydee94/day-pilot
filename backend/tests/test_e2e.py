@@ -228,10 +228,12 @@ class TestEventCreationJourney:
         assert resp.status_code == 200
         assert resp.json()["source"] == "apple"
 
-    def test_create_event_returns_503_when_all_calendars_fail(self, client):
+    def test_create_event_falls_back_to_local_when_all_external_fail(self, client):
+        """When Google and Apple both fail, the event is saved in the local calendar."""
+        fake_local = _make_event(eid="local-ev", title="Mystery event", source="local")
         with patch("app.api.routes.add_google_event", return_value=None), patch(
             "app.api.routes.add_apple_event", return_value=False
-        ):
+        ), patch("app.api.routes.add_local_event", return_value=fake_local):
             resp = client.post(
                 "/api/events",
                 json={
@@ -240,7 +242,10 @@ class TestEventCreationJourney:
                 },
             )
 
-        assert resp.status_code == 503
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["source"] == "local"
+        assert data["title"] == "Mystery event"
 
     def test_created_event_appears_in_event_list(self, client):
         """Creating and then listing events returns the new event."""
@@ -258,12 +263,37 @@ class TestEventCreationJourney:
 
         with patch("app.api.routes.fetch_google_events", return_value=[fake_event]), patch(
             "app.api.routes.fetch_apple_events", return_value=[]
-        ):
+        ), patch("app.api.routes.fetch_local_events", return_value=[]):
             list_resp = client.get("/api/events")
 
         assert list_resp.status_code == 200
         titles = [e["title"] for e in list_resp.json()]
         assert "Dentist" in titles
+
+
+class TestLocalCalendarJourney:
+    """A user creates and deletes events in the internal local calendar."""
+
+    def test_delete_local_event_success(self, client):
+        with patch("app.api.routes.delete_local_event", return_value=True):
+            resp = client.delete("/api/events/local-uuid-123")
+        assert resp.status_code == 200
+        assert resp.json()["event_id"] == "local-uuid-123"
+
+    def test_delete_nonexistent_local_event_returns_404(self, client):
+        with patch("app.api.routes.delete_local_event", return_value=False):
+            resp = client.delete("/api/events/does-not-exist")
+        assert resp.status_code == 404
+
+    def test_local_events_included_in_event_list(self, client):
+        local_ev = _make_event(eid="loc-1", title="Local meeting", source="local")
+        with patch("app.api.routes.fetch_google_events", return_value=[]), patch(
+            "app.api.routes.fetch_apple_events", return_value=[]
+        ), patch("app.api.routes.fetch_local_events", return_value=[local_ev]):
+            resp = client.get("/api/events")
+        assert resp.status_code == 200
+        sources = [e["source"] for e in resp.json()]
+        assert "local" in sources
 
 
 # ---------------------------------------------------------------------------

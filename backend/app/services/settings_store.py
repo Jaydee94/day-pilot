@@ -37,6 +37,7 @@ USER_CONFIGURABLE_KEYS: tuple[str, ...] = (
     "CALDAV_URL",
     "CALDAV_USERNAME",
     "CALDAV_PASSWORD",
+    "CALDAV_CONFIGS",
     "NTFY_SERVER",
     "NTFY_TOPIC",
     "NTFY_TOKEN",

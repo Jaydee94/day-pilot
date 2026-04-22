@@ -29,6 +29,11 @@ from app.services.calendar_sync import (
     add_apple_event,
     add_google_task,
 )
+from app.services.local_calendar import (
+    fetch_local_events,
+    add_local_event,
+    delete_local_event,
+)
 from app.services.weather import fetch_weather
 from app.services.notifications import send_daily_push
 from app.services.ai_summary import get_ai_config, list_models
@@ -114,7 +119,8 @@ def list_events(
             raise HTTPException(status_code=400, detail="Invalid date format.")
     google = fetch_google_events(date=target)
     apple = fetch_apple_events(date=target)
-    all_events = sorted(google + apple, key=lambda e: e.start)
+    local = fetch_local_events(date=target)
+    all_events = sorted(google + apple + local, key=lambda e: e.start)
     return all_events
 
 
@@ -138,7 +144,14 @@ def list_birthdays():
 
 @router.post("/events", summary="Create a calendar event")
 def create_event(payload: CreateEventRequest):
-    """Add a new event to the primary Google Calendar (falls back to Apple/CalDAV)."""
+    """Add a new event.
+
+    The event is written to the first calendar provider that accepts it,
+    tried in priority order:
+    1. Google Calendar (primary account)
+    2. Apple / CalDAV calendar (first configured account)
+    3. Internal local calendar (always available, no external credentials needed)
+    """
     end = payload.end or payload.start + timedelta(hours=1)
 
     event = add_google_event(
@@ -159,7 +172,33 @@ def create_event(payload: CreateEventRequest):
     if ok:
         return {"status": "created", "source": "apple", "title": payload.title}
 
-    raise HTTPException(status_code=503, detail="Could not add event to any calendar")
+    # Fall back to the internal local calendar so users can always create events
+    # even without any external calendar configured.
+    local_event = add_local_event(
+        title=payload.title,
+        start=payload.start,
+        end=end,
+        location=payload.location,
+        description=payload.description,
+    )
+    return local_event
+
+
+@router.delete("/events/{event_id}", summary="Delete a local calendar event")
+def delete_event(event_id: str):
+    """Delete an event from the internal local calendar.
+
+    Only locally stored events (source='local') can be deleted through this
+    endpoint.  Events from external calendars must be managed in the
+    respective calendar app.
+    """
+    removed = delete_local_event(event_id)
+    if not removed:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No local event with id '{event_id}' found. Only internal events can be deleted here.",
+        )
+    return {"status": "deleted", "event_id": event_id}
 
 
 @router.post("/todos", summary="Create a task")

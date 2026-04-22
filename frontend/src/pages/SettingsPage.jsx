@@ -36,6 +36,7 @@ const FIELD_LABEL_KEYS = {
   CALDAV_URL: 'settingsFieldCaldavUrl',
   CALDAV_USERNAME: 'settingsFieldUsername',
   CALDAV_PASSWORD: 'settingsFieldAppSpecificPassword',
+  CALDAV_CONFIGS: 'settingsCaldavConfigsLabel',
   VOICE_WEBHOOK_SECRET: 'settingsFieldWebhookSecret',
 }
 
@@ -53,6 +54,7 @@ const FIELD_DESC_KEYS = {
   CALDAV_URL: 'settingsFieldCaldavUrlDesc',
   CALDAV_USERNAME: 'settingsFieldUsernameDesc',
   CALDAV_PASSWORD: 'settingsFieldAppSpecificPasswordDesc',
+  CALDAV_CONFIGS: 'settingsCaldavConfigsDesc',
   VOICE_WEBHOOK_SECRET: 'settingsFieldWebhookSecretDesc',
 }
 
@@ -142,6 +144,7 @@ const SETTING_GROUPS = [
       { key: 'CALDAV_URL', label: 'CalDAV URL', desc: 'e.g. https://caldav.icloud.com', type: 'text' },
       { key: 'CALDAV_USERNAME', label: 'Username', desc: 'Your Apple ID email address', type: 'text' },
       { key: 'CALDAV_PASSWORD', label: 'App-Specific Password', desc: 'Generated at appleid.apple.com', type: 'password' },
+      { key: 'CALDAV_CONFIGS', label: 'Multiple CalDAV accounts (JSON)', desc: 'Optional: connect more than one iCloud / CalDAV account. Enter a JSON array, e.g. [{"url":"https://caldav.icloud.com","username":"you@icloud.com","password":"xxxx-xxxx-xxxx-xxxx"}]', type: 'text' },
     ],
   },
   {
@@ -422,6 +425,29 @@ export default function SettingsPage({ onLanguageChange }) {
         )}
         <p className="settings-note__text">
           {t('settingsGoogleCalendarNote1')} <code>credentials.json</code> {t('settingsGoogleCalendarNote2')} <code>./data/</code> {t('settingsGoogleCalendarNote3')} <code>GOOGLE_CREDENTIALS_JSON</code> {t('settingsGoogleCalendarNote4')} <code>.env</code> {t('settingsGoogleCalendarNote5')}
+        </p>
+        <p className="settings-note__text">
+          {t('settingsGoogleCalendarMultiNote')}
+        </p>
+        <p className="settings-note__text">
+          <a
+            href="docs/getting-started.md"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t('settingsGoogleCalendarSetupLink')}
+          </a>
+        </p>
+      </div>
+
+      {/* Internal calendar info */}
+      <div className="settings-note card">
+        <h3 className="settings-group__title">
+          <span className="settings-group__icon"><AppIcon name="calendar" className="icon" /></span>
+          {t('settingsLocalCalendarTitle')}
+        </h3>
+        <p className="settings-note__text">
+          {t('settingsLocalCalendarNote')}
         </p>
       </div>
 

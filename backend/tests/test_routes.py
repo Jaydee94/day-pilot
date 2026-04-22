@@ -134,9 +134,23 @@ class TestEventsRoute:
         assert resp.json()["source"] == "apple"
 
     def test_create_event_service_unavailable(self, client):
+        """When Google and Apple both fail, the event is saved locally (source='local')."""
+        from app.models.schemas import CalendarEvent
+        import pytz
+        from datetime import datetime, timedelta
+
+        tz = pytz.timezone("Europe/Berlin")
+        start = datetime(2024, 6, 1, 9, 0, tzinfo=tz)
+        fake_local = CalendarEvent(
+            id="local-1",
+            title="Broken event",
+            start=start,
+            end=start + timedelta(hours=1),
+            source="local",
+        )
         with patch("app.api.routes.add_google_event", return_value=None), patch(
             "app.api.routes.add_apple_event", return_value=False
-        ):
+        ), patch("app.api.routes.add_local_event", return_value=fake_local):
             resp = client.post(
                 "/api/events",
                 json={
@@ -144,7 +158,8 @@ class TestEventsRoute:
                     "start": "2024-06-01T09:00:00+02:00",
                 },
             )
-        assert resp.status_code == 503
+        assert resp.status_code == 200
+        assert resp.json()["source"] == "local"
 
 
 class TestTodosRoute:
