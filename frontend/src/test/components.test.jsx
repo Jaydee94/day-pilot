@@ -14,10 +14,45 @@ const mockWeather = {
   temperature: 22,
   feels_like: 20,
   description: 'sunny',
-  icon: '01d',
+  icon: 'https://cdn.weatherapi.com/weather/64x64/day/113.png',
   humidity: 50,
   wind_speed: 3.5,
   units: 'metric',
+  hourly_forecast: [
+    {
+      time: '2026-04-22T11:00:00+02:00',
+      temperature: 21,
+      icon: 'https://cdn.weatherapi.com/weather/64x64/day/116.png',
+      description: 'partly cloudy',
+      chance_of_rain: 20,
+    },
+  ],
+  daily_forecast: [
+    {
+      date: '2026-04-23T00:00:00+02:00',
+      min_temperature: 11,
+      max_temperature: 20,
+      icon: 'https://cdn.weatherapi.com/weather/64x64/day/119.png',
+      description: 'cloudy',
+      chance_of_rain: 40,
+    },
+    {
+      date: '2026-04-24T00:00:00+02:00',
+      min_temperature: 10,
+      max_temperature: 19,
+      icon: 'https://cdn.weatherapi.com/weather/64x64/day/296.png',
+      description: 'light rain',
+      chance_of_rain: 50,
+    },
+    {
+      date: '2026-04-25T00:00:00+02:00',
+      min_temperature: 9,
+      max_temperature: 18,
+      icon: 'https://cdn.weatherapi.com/weather/64x64/day/116.png',
+      description: 'partly cloudy',
+      chance_of_rain: 35,
+    },
+  ],
 }
 
 const mockEvents = [
@@ -83,6 +118,19 @@ describe('Weather', () => {
   it('renders wind speed', () => {
     render(<Weather weather={mockWeather} />)
     expect(screen.getByText(/3.5 m\/s/)).toBeInTheDocument()
+  })
+
+  it('renders hourly section for today', () => {
+    render(<Weather weather={mockWeather} />)
+    expect(screen.getByText(/Heute stündlich/)).toBeInTheDocument()
+    expect(screen.getByText(/11:00/)).toBeInTheDocument()
+  })
+
+  it('renders 3-day forecast panel', () => {
+    render(<Weather weather={mockWeather} />)
+    expect(screen.getByText(/Nächste 3 Tage/)).toBeInTheDocument()
+    expect(screen.getByText('cloudy')).toBeInTheDocument()
+    expect(screen.getByText('light rain')).toBeInTheDocument()
   })
 })
 

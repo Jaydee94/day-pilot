@@ -32,7 +32,10 @@ class TestFetchWeather:
         )
 
         fake_response_data = {
-            "location": {"name": "Berlin"},
+            "location": {
+                "name": "Berlin",
+                "localtime": "2026-04-22 10:00",
+            },
             "current": {
                 "temp_c": 22.5,
                 "temp_f": 72.5,
@@ -45,6 +48,88 @@ class TestFetchWeather:
                     "text": "Sunny",
                     "icon": "//cdn.weatherapi.com/weather/64x64/day/113.png",
                 },
+            },
+            "forecast": {
+                "forecastday": [
+                    {
+                        "date": "2026-04-22",
+                        "day": {
+                            "mintemp_c": 12.0,
+                            "mintemp_f": 53.6,
+                            "maxtemp_c": 23.0,
+                            "maxtemp_f": 73.4,
+                            "daily_chance_of_rain": 30,
+                            "condition": {
+                                "text": "Sunny",
+                                "icon": "//cdn.weatherapi.com/weather/64x64/day/113.png",
+                            },
+                        },
+                        "hour": [
+                            {
+                                "time": "2026-04-22 09:00",
+                                "temp_c": 18.0,
+                                "temp_f": 64.4,
+                                "chance_of_rain": 10,
+                                "condition": {
+                                    "text": "Sunny",
+                                    "icon": "//cdn.weatherapi.com/weather/64x64/day/113.png",
+                                },
+                            },
+                            {
+                                "time": "2026-04-22 11:00",
+                                "temp_c": 21.0,
+                                "temp_f": 69.8,
+                                "chance_of_rain": 20,
+                                "condition": {
+                                    "text": "Partly cloudy",
+                                    "icon": "//cdn.weatherapi.com/weather/64x64/day/116.png",
+                                },
+                            },
+                        ],
+                    },
+                    {
+                        "date": "2026-04-23",
+                        "day": {
+                            "mintemp_c": 11.0,
+                            "mintemp_f": 51.8,
+                            "maxtemp_c": 20.0,
+                            "maxtemp_f": 68.0,
+                            "daily_chance_of_rain": 40,
+                            "condition": {
+                                "text": "Cloudy",
+                                "icon": "//cdn.weatherapi.com/weather/64x64/day/119.png",
+                            },
+                        },
+                    },
+                    {
+                        "date": "2026-04-24",
+                        "day": {
+                            "mintemp_c": 10.0,
+                            "mintemp_f": 50.0,
+                            "maxtemp_c": 19.0,
+                            "maxtemp_f": 66.2,
+                            "daily_chance_of_rain": 50,
+                            "condition": {
+                                "text": "Light rain",
+                                "icon": "//cdn.weatherapi.com/weather/64x64/day/296.png",
+                            },
+                        },
+                    },
+                    {
+                        "date": "2026-04-25",
+                        "day": {
+                            "mintemp_c": 9.0,
+                            "mintemp_f": 48.2,
+                            "maxtemp_c": 18.0,
+                            "maxtemp_f": 64.4,
+                            "daily_chance_of_rain": 35,
+                            "condition": {
+                                "text": "Partly cloudy",
+                                "icon": "//cdn.weatherapi.com/weather/64x64/day/116.png",
+                            },
+                        },
+                    },
+                ]
             },
         }
 
@@ -69,6 +154,10 @@ class TestFetchWeather:
         assert result.humidity == 55
         assert result.icon.startswith("https://")
         assert result.units == "metric"
+        assert len(result.hourly_forecast) == 1
+        assert result.hourly_forecast[0].time.hour == 11
+        assert len(result.daily_forecast) == 3
+        assert result.daily_forecast[0].date.day == 23
 
     def test_returns_none_on_http_error(self, monkeypatch):
         monkeypatch.setattr(

@@ -28,6 +28,23 @@ class Birthday(BaseModel):
     age: Optional[int] = None
 
 
+class HourlyForecastPoint(BaseModel):
+    time: datetime
+    temperature: float
+    icon: str
+    description: str
+    chance_of_rain: int
+
+
+class DailyForecastPoint(BaseModel):
+    date: datetime
+    min_temperature: float
+    max_temperature: float
+    icon: str
+    description: str
+    chance_of_rain: int
+
+
 class WeatherInfo(BaseModel):
     city: str
     temperature: float
@@ -37,6 +54,8 @@ class WeatherInfo(BaseModel):
     humidity: int
     wind_speed: float
     units: str  # "metric" | "imperial"
+    hourly_forecast: List[HourlyForecastPoint] = []
+    daily_forecast: List[DailyForecastPoint] = []
 
 
 class DailySummary(BaseModel):
