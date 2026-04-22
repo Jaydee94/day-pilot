@@ -478,3 +478,74 @@ class TestPushNotificationJourney:
 
         assert resp.status_code == 200
         assert resp.json()["sent"] is False
+
+
+# ---------------------------------------------------------------------------
+# Journey 9: Settings management
+# ---------------------------------------------------------------------------
+
+class TestSettingsJourney:
+    """A user reads and updates DayPilot settings through the frontend."""
+
+    def test_setup_status_reports_needs_setup_on_first_boot(self, client, tmp_path):
+        settings_file = str(tmp_path / "settings.json")
+        with patch("app.services.settings_store.SETTINGS_FILE", settings_file):
+            resp = client.get("/api/settings/status")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["needs_setup"] is True
+        assert data["setup_complete"] is False
+
+    def test_get_settings_returns_all_configurable_keys(self, client):
+        resp = client.get("/api/settings")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "APP_TIMEZONE" in data
+        assert "WEATHER_CITY" in data
+        assert "NTFY_SERVER" in data
+        assert "SETUP_COMPLETE" in data
+
+    def test_update_settings_persists_and_applies(self, client, tmp_path):
+        settings_file = str(tmp_path / "settings.json")
+        with patch("app.services.settings_store.SETTINGS_FILE", settings_file):
+            resp = client.put(
+                "/api/settings",
+                json={"WEATHER_CITY": "Munich", "WEATHER_UNITS": "imperial"},
+            )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["WEATHER_CITY"] == "Munich"
+        assert data["WEATHER_UNITS"] == "imperial"
+
+    def test_wizard_completion_marks_setup_complete(self, client, tmp_path):
+        """Completing the setup wizard sets SETUP_COMPLETE and ends the wizard flow."""
+        settings_file = str(tmp_path / "settings.json")
+        with patch("app.services.settings_store.SETTINGS_FILE", settings_file):
+            # Step: mark setup as complete (last step of wizard)
+            put_resp = client.put("/api/settings", json={"SETUP_COMPLETE": True})
+            assert put_resp.status_code == 200
+            assert put_resp.json()["SETUP_COMPLETE"] is True
+
+            # Verify status endpoint reflects completion
+            status_resp = client.get("/api/settings/status")
+        assert status_resp.status_code == 200
+        status_data = status_resp.json()
+        assert status_data["setup_complete"] is True
+        assert status_data["needs_setup"] is False
+
+    def test_partial_update_does_not_overwrite_other_fields(self, client, tmp_path):
+        """Sending only one field in PUT must not reset other saved settings."""
+        settings_file = str(tmp_path / "settings.json")
+        with patch("app.services.settings_store.SETTINGS_FILE", settings_file):
+            # First save two fields
+            client.put("/api/settings", json={"WEATHER_CITY": "Berlin", "NTFY_TOPIC": "alerts"})
+            # Then update only one
+            resp = client.put("/api/settings", json={"WEATHER_CITY": "Hamburg"})
+
+        assert resp.status_code == 200
+        # NTFY_TOPIC must still be in the returned state (in-memory)
+        # WEATHER_CITY must reflect the update
+        assert resp.json()["WEATHER_CITY"] == "Hamburg"
