@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "day-pilot.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "day-pilot.labels" . | nindent 4 }}
+data:
+  APP_NAME: {{ .Values.config.appName | quote }}
+  APP_TIMEZONE: {{ .Values.config.timezone | quote }}
+  DAILY_SUMMARY_TIME: {{ .Values.config.dailySummaryTime | quote }}
+  WEATHER_CITY: {{ .Values.config.weatherCity | quote }}
+  WEATHER_UNITS: {{ .Values.config.weatherUnits | quote }}
+  OPENAI_MODEL: {{ .Values.config.openaiModel | quote }}
+  NTFY_SERVER: {{ .Values.config.ntfyServer | quote }}
+  GOOGLE_CREDENTIALS_JSON: "/app/data/credentials.json"
+  GOOGLE_TOKEN_JSON: "/app/data/google_token.json"
+  {{- if .Values.postgresql.enabled }}
+  POSTGRES_HOST: {{ include "day-pilot.postgresql.host" . | quote }}
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: {{ .Values.postgresql.auth.database | quote }}
+  POSTGRES_USER: {{ .Values.postgresql.auth.username | quote }}
+  {{- end }}
+  {{- if .Values.redis.enabled }}
+  REDIS_URL: {{ printf "redis://%s:6379/0" (include "day-pilot.redis.host" .) | quote }}
+  {{- end }}

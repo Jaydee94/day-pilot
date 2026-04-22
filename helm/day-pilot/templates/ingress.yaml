@@ -1,0 +1,62 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "day-pilot.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "day-pilot.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    {{- toYaml .Values.ingress.tls | nindent 4 }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          # API and backend routes
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "day-pilot.fullname" . }}-backend
+                port:
+                  name: http
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: {{ include "day-pilot.fullname" . }}-backend
+                port:
+                  name: http
+          - path: /docs
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "day-pilot.fullname" . }}-backend
+                port:
+                  name: http
+          - path: /openapi.json
+            pathType: Exact
+            backend:
+              service:
+                name: {{ include "day-pilot.fullname" . }}-backend
+                port:
+                  name: http
+          # All remaining traffic goes to the frontend
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "day-pilot.fullname" . }}-frontend
+                port:
+                  name: http
+{{- end }}

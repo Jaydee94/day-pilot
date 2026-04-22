@@ -1,0 +1,19 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "day-pilot.postgresql.host" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "day-pilot.labels" . | nindent 4 }}
+    {{- include "day-pilot.postgresql.selectorLabels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: postgresql
+      protocol: TCP
+      name: postgresql
+  selector:
+    {{- include "day-pilot.postgresql.selectorLabels" . | nindent 4 }}
+{{- end }}
