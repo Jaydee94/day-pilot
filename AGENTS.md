@@ -422,6 +422,7 @@ These rules govern every screen, component, and interaction in DayPilot. They ar
 - Every exported function and class must have a JSDoc comment
 - Unit tests required for all service-layer logic
 - Integration tests required for all API endpoints
+- **End-to-end tests required for all complete user journeys** — see Section 15
 
 ---
 
@@ -505,6 +506,8 @@ These rules apply to **every AI agent** (including GitHub Copilot, Cursor, and a
 - **Follow the naming conventions** defined in Section 11
 - **Respect the UX rules** defined in Section 6 — do not alter colors, spacing, or layout patterns
 - **Write tests** for any service-layer or API logic you add or modify
+- **Run the full test suite** (unit, integration, and e2e) before submitting any change — see Section 15
+- **Add or update e2e tests** whenever you add or change a user-facing API flow — see Section 15
 - **Update `/docs`** if you add or change a user-facing feature
 - **Keep `.env.example` current** when adding new environment variables
 
@@ -524,9 +527,53 @@ These rules apply to **every AI agent** (including GitHub Copilot, Cursor, and a
 Every PR must include:
 1. A clear description of what was changed and why
 2. Reference to the relevant section(s) of AGENTS.md
-3. Evidence that existing tests pass
-4. New tests for any added logic
+3. Evidence that existing tests pass (unit, integration, **and e2e**)
+4. New tests for any added logic — including e2e tests for any changed API flow
 5. Updated documentation if a user-facing feature was changed
+
+
+---
+
+## 15. END-TO-END TESTING
+
+DayPilot uses end-to-end (e2e) tests to validate complete user journeys through the API. These tests run in-process using FastAPI's `TestClient` and mock all external dependencies, so they require no live credentials or network access.
+
+### Location
+
+```
+backend/tests/test_e2e.py   ← e2e journey tests
+backend/tests/conftest.py   ← shared fixtures (TestClient with scheduler mocked)
+```
+
+### Covered Journeys
+
+| Journey                    | Description                                                           |
+|----------------------------|-----------------------------------------------------------------------|
+| Full Day Briefing          | Health check → daily summary (events, todos, weather, AI text)       |
+| Weather Check              | Fetch current weather; 503 when unavailable                          |
+| Event Creation             | Create via Google, fall back to Apple, fail gracefully               |
+| Todo Creation              | Quick Capture via Google Tasks, fail gracefully                      |
+| Service Status             | All services healthy; individual failure reporting                   |
+| AI Configuration           | Fetch provider config and model list                                 |
+| Voice Command              | Add event via webhook; reject bad secret / missing fields            |
+| Push Notification Trigger  | Manual push; graceful failure reporting                              |
+
+### Rules
+
+- **All external services must be mocked** — never connect to real APIs in the test suite.  Use `unittest.mock.patch` to replace calendar, weather, AI, and notification calls.
+- **Every new API endpoint or user journey must have a corresponding e2e test** before the PR is merged.
+- **Run e2e tests to validate any code change** — they are the primary safety net for regressions:
+  ```bash
+  cd backend && pytest tests/test_e2e.py -v
+  ```
+- Run the full suite (unit + integration + e2e) with:
+  ```bash
+  cd backend && pytest tests/ -v
+  ```
+- E2e tests must pass in CI before a PR can be merged.
+- When mocking, patch the name at the location where it is bound when the handler executes:
+  - **Module-level import** (e.g., `from app.services.weather import fetch_weather` at the top of `routes.py`): patch `app.api.routes.fetch_weather`.
+  - **Local import inside a function** (e.g., `from app.services.calendar_sync import fetch_google_events` inside a route handler): patch `app.services.calendar_sync.fetch_google_events`.
 
 ---
 

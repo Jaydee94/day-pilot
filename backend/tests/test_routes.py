@@ -5,7 +5,6 @@ from datetime import datetime
 from unittest.mock import patch, MagicMock
 
 import pytest
-from fastapi.testclient import TestClient
 
 import pytz
 
@@ -32,16 +31,6 @@ def _make_summary():
         top_priorities=["Task A", "Task B"],
     )
 
-
-@pytest.fixture()
-def client():
-    # Patch scheduler so tests don't spin up real APScheduler
-    with patch("app.services.scheduler.start_scheduler"), patch(
-        "app.services.scheduler.stop_scheduler"
-    ):
-        from app.main import app
-        with TestClient(app) as c:
-            yield c
 
 
 class TestHealthRoutes:
