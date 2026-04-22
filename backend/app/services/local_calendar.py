@@ -1,5 +1,5 @@
 """
-Local/internal calendar service for Day Pilot.
+Local/internal calendar service for DayPilot.
 
 Stores events locally in a JSON file so that DayPilot can be used without
 any external calendar provider.  Events created through the UI are persisted

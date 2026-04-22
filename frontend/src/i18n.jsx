@@ -304,7 +304,7 @@ const STRINGS = {
     settingsGoogleCalendarMultiNote: 'Um mehrere Google-Konten anzubinden, setze GOOGLE_CREDENTIALS_JSON auf eine kommagetrennte Liste von Credentials-Dateipfaden in deiner .env-Datei.',
     settingsAppleCalendarMultiNote: 'Um mehrere iCloud-/CalDAV-Konten anzubinden, verwende das Feld CALDAV_CONFIGS weiter unten mit einem JSON-Array.',
     settingsLocalCalendarTitle: 'Interner Kalender',
-    settingsLocalCalendarNote: 'DayPilot hat einen eingebauten Kalender, der ohne externes Konto funktioniert. Hier angelegte Termine werden lokal auf deinem Server gespeichert und sind immer verfuegbar – auch ohne Google- oder Apple-Kalender.',
+    settingsLocalCalendarNote: 'DayPilot hat einen eingebauten Kalender, der ohne externes Konto funktioniert. Hier angelegte Termine werden lokal auf deinem Server gespeichert und sind immer verfügbar – auch ohne Google- oder Apple-Kalender.',
     settingsCaldavConfigsLabel: 'Mehrere CalDAV-Konten (JSON)',
     settingsCaldavConfigsDesc: 'Optional: mehr als ein iCloud-/CalDAV-Konto verbinden. JSON-Array eingeben, z. B. [{"url":"https://caldav.icloud.com","username":"du@icloud.com","password":"xxxx-xxxx-xxxx-xxxx"}]',
     settingsVoiceWebhookTitle: 'Sprachsteuerungs-Webhook',

@@ -55,8 +55,9 @@ def _token_path_for_credentials(creds_path: str) -> str:
     """Derive the token JSON path that corresponds to a credentials file.
 
     The first account always uses GOOGLE_TOKEN_JSON.  Additional accounts get
-    token files in the same directory with a numeric suffix so they do not
-    overwrite each other.
+    token files in the same directory, named using the credentials file stem
+    (e.g. ``google_token_credentials_personal.json`` for
+    ``credentials_personal.json``), so they do not overwrite each other.
     """
     all_paths = _google_credential_paths()
     if all_paths and creds_path == all_paths[0]:
@@ -365,7 +366,7 @@ def _get_caldav_configs() -> List[dict]:
     legacy single-account variables ``CALDAV_URL`` / ``CALDAV_USERNAME`` /
     ``CALDAV_PASSWORD`` are used as a single-element list (backwards compat).
     """
-    raw = settings.CALDAV_CONFIGS.strip()
+    raw = (settings.CALDAV_CONFIGS or "").strip()
     if raw:
         try:
             configs = json.loads(raw)
