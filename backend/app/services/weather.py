@@ -12,7 +12,7 @@ from app.models.schemas import DailyForecastPoint, HourlyForecastPoint, WeatherI
 logger = logging.getLogger(__name__)
 
 _WEATHERAPI_BASE = "https://api.weatherapi.com/v1/forecast.json"
-_CACHE_TTL = timedelta(hours=2)
+_CACHE_TTL = timedelta(minutes=30)
 _cache_lock = Lock()
 _weather_cache: dict[tuple[str, str], tuple[datetime, WeatherInfo]] = {}
 

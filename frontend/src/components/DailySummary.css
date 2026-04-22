@@ -17,6 +17,22 @@
   gap: 1rem;
 }
 
+.daily-summary__weather-col {
+  display: contents;
+}
+
+@media (min-width: 768px) {
+  .daily-summary__weather-col {
+    display: flex;
+    gap: 1rem;
+    grid-column: 1 / -1;
+  }
+
+  .daily-summary__weather-col > .card {
+    flex: 1 1 320px;
+  }
+}
+
 .daily-summary__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));

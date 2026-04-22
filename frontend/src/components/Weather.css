@@ -56,9 +56,16 @@
 
 .weather__hourly-grid {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   overflow-x: auto;
   padding-bottom: 0.25rem;
+}
+
+@media (min-width: 640px) {
+  .weather__hourly-grid {
+    overflow-x: visible;
+  }
 }
 
 .weather__hourly-item {

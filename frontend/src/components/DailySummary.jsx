@@ -30,7 +30,9 @@ export default function DailySummary({ summary }) {
 
       {/* Grid: weather + birthdays */}
       <div className="daily-summary__row">
-        <Weather weather={summary.weather} />
+        <div className="daily-summary__weather-col">
+          <Weather weather={summary.weather} />
+        </div>
         {summary.birthdays?.length > 0 && (
           <Birthdays birthdays={summary.birthdays} />
         )}
