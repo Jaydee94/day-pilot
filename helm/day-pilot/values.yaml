@@ -1,0 +1,191 @@
+# =============================================================================
+#  DayPilot Helm Chart – Default Values
+#  Override these in your own values file:  helm install day-pilot ./helm/day-pilot -f my-values.yaml
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Global image settings
+# ---------------------------------------------------------------------------
+global:
+  imageRegistry: ""       # Prefix for all image repositories (e.g. "my-registry.example.com")
+  imagePullSecrets: []    # e.g. [{name: "regcred"}]
+
+# ---------------------------------------------------------------------------
+# Service Account
+# ---------------------------------------------------------------------------
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# ---------------------------------------------------------------------------
+# Backend – FastAPI application
+# ---------------------------------------------------------------------------
+backend:
+  image:
+    repository: ghcr.io/jaydee94/day-pilot-backend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  service:
+    type: ClusterIP
+    port: 8000
+
+  # Additional environment variables injected directly into the backend container
+  extraEnv: []
+  # - name: FOO
+  #   value: bar
+
+  # Persist Google OAuth tokens between pod restarts
+  persistence:
+    enabled: true
+    storageClass: ""        # "" = use cluster default
+    accessMode: ReadWriteOnce
+    size: 500Mi
+
+  podAnnotations: {}
+  podSecurityContext: {}
+  securityContext: {}
+
+# ---------------------------------------------------------------------------
+# Frontend – React PWA served via nginx
+# ---------------------------------------------------------------------------
+frontend:
+  image:
+    repository: ghcr.io/jaydee94/day-pilot-frontend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+  service:
+    type: ClusterIP
+    port: 80
+
+  podAnnotations: {}
+  podSecurityContext: {}
+  securityContext: {}
+
+# ---------------------------------------------------------------------------
+# Ingress
+# ---------------------------------------------------------------------------
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  # All paths are served through a single host.
+  # /api/* → backend service
+  # /*     → frontend service
+  host: day-pilot.example.com
+  tls: []
+  # - secretName: day-pilot-tls
+  #   hosts:
+  #     - day-pilot.example.com
+
+# ---------------------------------------------------------------------------
+# Application configuration  (non-sensitive, stored in ConfigMap)
+# ---------------------------------------------------------------------------
+config:
+  appName: "Day Pilot"
+  timezone: "Europe/Berlin"       # IANA timezone name
+  dailySummaryTime: "07:00"       # HH:MM – when the morning briefing is sent
+  weatherCity: "Berlin"
+  weatherUnits: "metric"          # metric | imperial
+  openaiModel: "gpt-4o-mini"
+  ntfyServer: "https://ntfy.sh"
+
+# ---------------------------------------------------------------------------
+# Secrets  (sensitive values – consider using an external secrets manager)
+# If existingSecret is set, that Secret is used instead of creating a new one.
+# The Secret must contain the keys listed below.
+# ---------------------------------------------------------------------------
+secrets:
+  existingSecret: ""   # name of an existing Kubernetes Secret to use
+
+  # Values used when existingSecret is empty (a new Secret is created):
+  openaiApiKey: ""
+  openweathermapApiKey: ""
+  ntfyTopic: ""
+  ntfyToken: ""
+  caldavUrl: ""
+  caldavUsername: ""
+  caldavPassword: ""
+  googleCredentialsJson: ""      # base64-encoded contents of credentials.json
+  voiceWebhookSecret: ""             # REQUIRED – set a random string, e.g.: $(openssl rand -hex 32)
+
+# ---------------------------------------------------------------------------
+# PostgreSQL  (bundled, single-replica deployment)
+# Set enabled: false if you supply an external DATABASE_URL via extraEnv.
+# ---------------------------------------------------------------------------
+postgresql:
+  enabled: true
+
+  image:
+    repository: postgres
+    tag: "17-alpine"
+    pullPolicy: IfNotPresent
+
+  auth:
+    database: daypilot
+    username: daypilot
+    password: ""   # REQUIRED – set a strong password, e.g.: --set postgresql.auth.password=$(openssl rand -hex 16)
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  persistence:
+    enabled: true
+    storageClass: ""
+    accessMode: ReadWriteOnce
+    size: 5Gi
+
+# ---------------------------------------------------------------------------
+# Redis  (bundled, single-replica deployment)
+# Set enabled: false if you supply an external REDIS_URL via extraEnv.
+# ---------------------------------------------------------------------------
+redis:
+  enabled: true
+
+  image:
+    repository: redis
+    tag: "7-alpine"
+    pullPolicy: IfNotPresent
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+  persistence:
+    enabled: true
+    storageClass: ""
+    accessMode: ReadWriteOnce
+    size: 1Gi

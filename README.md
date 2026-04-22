@@ -25,6 +25,7 @@ DayPilot is a self-hosted, AI-powered family planning system that runs on your h
 | 📊 **Dashboard** | React SPA — mobile-first, dark mode, responsive |
 | ⏰ **Scheduler** | Cron job at your chosen time every morning |
 | 🐳 **Docker Compose** | One-command deploy on any home server |
+| ☸️ **Helm / Kubernetes** | Production-grade deploy via Helm chart |
 
 ---
 
@@ -32,7 +33,7 @@ DayPilot is a self-hosted, AI-powered family planning system that runs on your h
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  Docker Compose (home server)                                    │
+│  Docker Compose / Kubernetes (home server or cloud)              │
 │                                                                  │
 │  ┌──────────────────────────┐   ┌────────────────────────────┐  │
 │  │   Backend  (FastAPI)     │   │  Frontend (React + Nginx)  │  │
@@ -50,6 +51,11 @@ DayPilot is a self-hosted, AI-powered family planning system that runs on your h
 │  │    routes.py   (REST)    │◄── Dashboard / external clients   │
 │  │    voice.py    (webhook) │◄── Siri / Google Assistant        │
 │  └──────────────────────────┘                                    │
+│            │                                                     │
+│  ┌─────────┴──────────┐   ┌─────────────────────────────────┐   │
+│  │  PostgreSQL :5432  │   │  Redis :6379                    │   │
+│  │  (primary store)   │   │  (job queue & cache)            │   │
+│  └────────────────────┘   └─────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -79,6 +85,22 @@ docker compose up -d --build
 
 - Dashboard → http://localhost:3000
 - API docs  → http://localhost:8000/docs
+
+### Deploy on Kubernetes
+
+```bash
+helm install day-pilot ./helm/day-pilot \
+  --namespace day-pilot \
+  --create-namespace \
+  --set backend.image.repository=ghcr.io/your-username/day-pilot-backend \
+  --set frontend.image.repository=ghcr.io/your-username/day-pilot-frontend \
+  --set secrets.openaiApiKey=sk-proj-... \
+  --set secrets.openweathermapApiKey=your-weather-key \
+  --set postgresql.auth.password="$(openssl rand -hex 16)" \
+  --set secrets.voiceWebhookSecret="$(openssl rand -hex 32)"
+```
+
+See the [Kubernetes / Helm deployment guide](docs/kubernetes.md) for full instructions.
 
 ---
 
@@ -183,6 +205,7 @@ Full interactive docs at `http://localhost:8000/docs` (Swagger UI).
 | Guide | Description |
 |---|---|
 | [Getting Started](docs/getting-started.md) | Step-by-step setup guide |
+| [Kubernetes / Helm](docs/kubernetes.md) | Deploy on Kubernetes with Helm |
 | [Configuration Reference](docs/configuration.md) | Every setting explained with examples |
 | [Daily Usage](docs/daily-usage.md) | How to use the dashboard every day |
 | [Features Explained](docs/features.md) | What each feature does |
@@ -228,6 +251,11 @@ day-pilot/
 ├── docker-compose.yml
 ├── .env.example
 ├── data/                          # Google tokens & credentials (git-ignored)
+├── helm/
+│   └── day-pilot/                 # Helm chart for Kubernetes deployment
+│       ├── Chart.yaml
+│       ├── values.yaml
+│       └── templates/             # Kubernetes resource templates
 ├── docs/                          # User-friendly documentation
 │   ├── README.md                  # Documentation index
 │   ├── getting-started.md         # Setup guide

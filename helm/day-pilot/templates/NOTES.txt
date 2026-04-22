@@ -1,0 +1,33 @@
+DayPilot has been deployed! 🎉
+
+Get the application URL:
+
+{{- if .Values.ingress.enabled }}
+  Dashboard : http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.host }}/
+  API docs  : http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.host }}/docs
+{{- else if eq .Values.frontend.service.type "NodePort" }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "day-pilot.fullname" . }}-frontend)
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo "Dashboard: http://$NODE_IP:$NODE_PORT"
+{{- else if eq .Values.frontend.service.type "LoadBalancer" }}
+  NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+  watch kubectl get --namespace {{ .Release.Namespace }} svc {{ include "day-pilot.fullname" . }}-frontend
+{{- else }}
+  # Port-forward the frontend:
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "day-pilot.fullname" . }}-frontend 3000:80
+  Dashboard : http://127.0.0.1:3000
+
+  # Port-forward the backend:
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "day-pilot.fullname" . }}-backend 8000:8000
+  API docs  : http://127.0.0.1:8000/docs
+{{- end }}
+
+{{- if not .Values.secrets.existingSecret }}
+
+⚠️  REMINDER: Ensure production secrets are set in your values file.
+   Required values that must not be left empty:
+     - secrets.voiceWebhookSecret  (generate with: openssl rand -hex 32)
+     {{- if .Values.postgresql.enabled }}
+     - postgresql.auth.password    (generate with: openssl rand -hex 16)
+     {{- end }}
+{{- end }}

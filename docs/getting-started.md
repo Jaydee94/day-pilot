@@ -278,4 +278,5 @@ docker compose up -d
 - ⚙️ Review all configuration options → [Configuration Reference](configuration.md)
 - 📱 Learn the dashboard → [Daily Usage Guide](daily-usage.md)
 - 🗣 Set up voice control → [Voice Control Guide](voice-control.md)
+- ☸️ Deploy on Kubernetes → [Kubernetes / Helm Guide](kubernetes.md)
 - ❓ Having trouble? → [Troubleshooting Guide](troubleshooting.md)
