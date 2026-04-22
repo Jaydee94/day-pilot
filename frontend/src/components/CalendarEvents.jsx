@@ -1,9 +1,10 @@
 import './CalendarEvents.css'
 import AppIcon from './AppIcon.jsx'
+import { useI18n } from '../i18n.jsx'
 
-function formatTime(iso) {
+function formatTime(iso, locale) {
   const d = new Date(iso)
-  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+  return d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
 const SOURCE_LABEL = {
@@ -12,15 +13,17 @@ const SOURCE_LABEL = {
 }
 
 export default function CalendarEvents({ events }) {
+  const { t, locale } = useI18n()
+
   return (
     <div className="cal-events card">
       <div className="card__header">
         <span className="card__icon"><AppIcon name="calendar" className="icon" /></span>
-        <span className="card__title">Events ({events.length})</span>
+        <span className="card__title">{t('eventsCount', { count: events.length })}</span>
       </div>
 
       {events.length === 0 ? (
-        <p className="card__empty">No events today</p>
+        <p className="card__empty">{t('noEventsToday')}</p>
       ) : (
         <ul className="cal-events__list">
           {events.map((ev) => {
@@ -28,8 +31,8 @@ export default function CalendarEvents({ events }) {
             return (
               <li key={ev.id} className="cal-events__item">
                 <div className="cal-events__time">
-                  <span>{formatTime(ev.start)}</span>
-                  <span className="cal-events__time-end">{formatTime(ev.end)}</span>
+                  <span>{formatTime(ev.start, locale)}</span>
+                  <span className="cal-events__time-end">{formatTime(ev.end, locale)}</span>
                 </div>
                 <div className="cal-events__content">
                   <span className="cal-events__title">{ev.title}</span>

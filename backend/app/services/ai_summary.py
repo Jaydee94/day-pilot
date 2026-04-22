@@ -179,8 +179,15 @@ def list_models() -> List[AIModelInfo]:
 
 
 def _build_prompt(summary: DailySummary) -> str:
+    lang = settings.APP_LANGUAGE if settings.APP_LANGUAGE in {"en", "de"} else "en"
+    is_de = lang == "de"
+
     lines: List[str] = [
-        f"Date: {summary.date.strftime('%A, %B %d, %Y')}",
+        (
+            f"Datum: {summary.date.strftime('%A, %B %d, %Y')}"
+            if is_de
+            else f"Date: {summary.date.strftime('%A, %B %d, %Y')}"
+        ),
         "",
     ]
 
@@ -188,21 +195,27 @@ def _build_prompt(summary: DailySummary) -> str:
         w = summary.weather
         unit_sym = "°C" if w.units == "metric" else "°F"
         lines.append(
-            f"Weather in {w.city}: {w.description}, {w.temperature}{unit_sym} "
-            f"(feels like {w.feels_like}{unit_sym}), humidity {w.humidity}%, "
-            f"wind {w.wind_speed} {'m/s' if w.units == 'metric' else 'mph'}"
+            (
+                f"Wetter in {w.city}: {w.description}, {w.temperature}{unit_sym} "
+                f"(gefuehlt {w.feels_like}{unit_sym}), Luftfeuchte {w.humidity}%, "
+                f"Wind {w.wind_speed} {'m/s' if w.units == 'metric' else 'mph'}"
+                if is_de
+                else f"Weather in {w.city}: {w.description}, {w.temperature}{unit_sym} "
+                f"(feels like {w.feels_like}{unit_sym}), humidity {w.humidity}%, "
+                f"wind {w.wind_speed} {'m/s' if w.units == 'metric' else 'mph'}"
+            )
         )
         lines.append("")
 
     if summary.birthdays:
-        lines.append("Birthdays today:")
+        lines.append("Geburtstage heute:" if is_de else "Birthdays today:")
         for b in summary.birthdays:
-            age_str = f" (turns {b.age})" if b.age else ""
+            age_str = f" (wird {b.age})" if (is_de and b.age) else (f" (turns {b.age})" if b.age else "")
             lines.append(f"  • {b.name}{age_str}")
         lines.append("")
 
     if summary.events:
-        lines.append("Events today:")
+        lines.append("Termine heute:" if is_de else "Events today:")
         for ev in summary.events:
             time_str = ev.start.strftime("%H:%M")
             loc_str = f" @ {ev.location}" if ev.location else ""
@@ -210,13 +223,27 @@ def _build_prompt(summary: DailySummary) -> str:
         lines.append("")
 
     if summary.todos:
-        lines.append("Tasks:")
+        lines.append("Aufgaben:" if is_de else "Tasks:")
         for td in summary.todos:
-            due_str = f" (due: {td.due.strftime('%b %d')})" if td.due else ""
+            due_str = (
+                f" (faellig: {td.due.strftime('%b %d')})"
+                if (is_de and td.due)
+                else (f" (due: {td.due.strftime('%b %d')})" if td.due else "")
+            )
             lines.append(f"  • {td.title}{due_str}")
         lines.append("")
 
     data_text = "\n".join(lines)
+
+    if is_de:
+        return (
+            "Du bist ein freundlicher persoenlicher Assistent fuer eine Familie. "
+            "Schreibe auf Basis der folgenden Daten ein warmes, kurzes Tagesbriefing auf Deutsch "
+            "(maximal 5 Saetze, beginne mit 'Guten Morgen'). "
+            "Extrahiere danach die 3 wichtigsten Prioritaeten als nummerierte Liste.\n\n"
+            "FORMAT:\nSUMMARY:\n<text>\n\nPRIORITIES:\n1. ...\n2. ...\n3. ...\n\n"
+            f"DATA:\n{data_text}"
+        )
 
     return (
         "You are a friendly personal assistant for a family. "

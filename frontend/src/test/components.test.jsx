@@ -122,13 +122,13 @@ describe('Weather', () => {
 
   it('renders hourly section for today', () => {
     render(<Weather weather={mockWeather} />)
-    expect(screen.getByText(/Heute stündlich/)).toBeInTheDocument()
+    expect(screen.getByText(/Today by hour/)).toBeInTheDocument()
     expect(screen.getByText(/11:00/)).toBeInTheDocument()
   })
 
   it('renders 3-day forecast panel', () => {
     render(<Weather weather={mockWeather} />)
-    expect(screen.getByText(/Nächste 3 Tage/)).toBeInTheDocument()
+    expect(screen.getByText(/Next 3 days/)).toBeInTheDocument()
     expect(screen.getByText('cloudy')).toBeInTheDocument()
     expect(screen.getByText('light rain')).toBeInTheDocument()
   })

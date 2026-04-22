@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     # General
     APP_NAME: str = "Day Pilot"
     APP_TIMEZONE: str = "Europe/Berlin"
+    APP_LANGUAGE: Literal["en", "de"] = "en"
     DAILY_SUMMARY_TIME: str = "07:00"  # HH:MM in APP_TIMEZONE
 
     # Tracks whether the user has completed the interactive setup wizard.

@@ -1,18 +1,20 @@
 import './TodoList.css'
 import AppIcon from './AppIcon.jsx'
+import { useI18n } from '../i18n.jsx'
 
-const PRIORITY_MAP = {
-  1: { label: 'High', color: 'var(--error)' },
-  5: { label: 'Medium', color: 'var(--warning)' },
-  9: { label: 'Low', color: 'var(--success)' },
-}
-
-function formatDue(iso) {
+function formatDue(iso, locale) {
   if (!iso) return null
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return new Date(iso).toLocaleDateString(locale, { month: 'short', day: 'numeric' })
 }
 
 export default function TodoList({ todos }) {
+  const { t, locale } = useI18n()
+  const PRIORITY_MAP = {
+    1: { label: t('priorityHigh'), color: 'var(--error)' },
+    5: { label: t('priorityMedium'), color: 'var(--warning)' },
+    9: { label: t('priorityLow'), color: 'var(--success)' },
+  }
+
   const open = todos.filter((t) => !t.completed)
   const done = todos.filter((t) => t.completed)
 
@@ -20,11 +22,11 @@ export default function TodoList({ todos }) {
     <div className="todo-list card">
       <div className="card__header">
         <span className="card__icon"><AppIcon name="tasks" className="icon" /></span>
-        <span className="card__title">Tasks ({open.length} open)</span>
+        <span className="card__title">{t('tasksOpenCount', { count: open.length })}</span>
       </div>
 
       {open.length === 0 && done.length === 0 ? (
-        <p className="card__empty">No tasks</p>
+        <p className="card__empty">{t('noTasks')}</p>
       ) : (
         <ul className="todo-list__list">
           {open.map((t) => {
@@ -33,8 +35,8 @@ export default function TodoList({ todos }) {
               <li key={t.id} className="todo-list__item">
                 <span className="todo-list__checkbox todo-list__checkbox--open" />
                 <span className="todo-list__text">{t.title}</span>
-                {formatDue(t.due) && (
-                  <span className="todo-list__due">{formatDue(t.due)}</span>
+                {formatDue(t.due, locale) && (
+                  <span className="todo-list__due">{formatDue(t.due, locale)}</span>
                 )}
                 {prio && (
                   <span

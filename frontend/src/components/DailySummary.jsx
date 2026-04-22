@@ -3,11 +3,12 @@ import CalendarEvents from './CalendarEvents.jsx'
 import TodoList from './TodoList.jsx'
 import Birthdays from './Birthdays.jsx'
 import AISummary from './AISummary.jsx'
+import { useI18n } from '../i18n.jsx'
 import './DailySummary.css'
 
-function formatDate(iso) {
+function formatDate(iso, locale) {
   const d = new Date(iso)
-  return d.toLocaleDateString('en-US', {
+  return d.toLocaleDateString(locale, {
     weekday: 'long',
     day: '2-digit',
     month: 'long',
@@ -16,9 +17,11 @@ function formatDate(iso) {
 }
 
 export default function DailySummary({ summary }) {
+  const { locale } = useI18n()
+
   return (
     <div className="daily-summary">
-      <div className="daily-summary__date">{formatDate(summary.date)}</div>
+      <div className="daily-summary__date">{formatDate(summary.date, locale)}</div>
 
       {/* Top row: AI summary */}
       {(summary.ai_summary || summary.top_priorities?.length > 0) && (

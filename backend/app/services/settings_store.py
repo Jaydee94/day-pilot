@@ -22,6 +22,7 @@ SETTINGS_FILE: str = os.environ.get("SETTINGS_FILE", "/app/data/settings.json")
 USER_CONFIGURABLE_KEYS: tuple[str, ...] = (
     "APP_NAME",
     "APP_TIMEZONE",
+    "APP_LANGUAGE",
     "DAILY_SUMMARY_TIME",
     "AI_PROVIDER",
     "AI_MODEL",

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { saveSettings } from '../api.js'
+import { useI18n } from '../i18n.jsx'
 import './SetupWizard.css'
 
 const TOTAL_STEPS = 6
@@ -10,15 +11,17 @@ const TOTAL_STEPS = 6
  * Guides the user through configuring general settings, weather, AI,
  * notifications, and CalDAV calendar, then marks setup as complete.
  *
- * @param {{ onComplete: () => void }} props
+ * @param {{ onComplete: () => void, onLanguageChange?: (lang: string) => void }} props
  */
-export default function SetupWizard({ onComplete }) {
+export default function SetupWizard({ onComplete, onLanguageChange }) {
+  const { t } = useI18n()
   const [step, setStep] = useState(0)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
 
   const [form, setForm] = useState({
     APP_TIMEZONE: 'Europe/Berlin',
+    APP_LANGUAGE: 'en',
     DAILY_SUMMARY_TIME: '07:00',
     WEATHERAPI_API_KEY: '',
     WEATHER_CITY: '',
@@ -44,9 +47,13 @@ export default function SetupWizard({ onComplete }) {
     setSaving(true)
     setError(null)
     try {
-      await saveSettings({ ...form, ...extraUpdates })
+      const payload = { ...form, ...extraUpdates }
+      await saveSettings(payload)
+      if (onLanguageChange) {
+        onLanguageChange(payload.APP_LANGUAGE === 'de' ? 'de' : 'en')
+      }
     } catch (err) {
-      setError('Could not save settings. Please try again.')
+      setError(t('setupSaveError'))
       throw err
     } finally {
       setSaving(false)
@@ -78,7 +85,7 @@ export default function SetupWizard({ onComplete }) {
       await saveSettings({ SETUP_COMPLETE: true })
       onComplete()
     } catch {
-      setError('Could not save settings. Please try again.')
+      setError(t('setupSaveError'))
     } finally {
       setSaving(false)
     }
@@ -101,15 +108,15 @@ export default function SetupWizard({ onComplete }) {
         {/* Header */}
         <div className="wizard__header">
           <img src="/favicon.svg" alt="DayPilot" className="wizard__logo" />
-          <h1 className="wizard__title">DayPilot Setup</h1>
+          <h1 className="wizard__title">{t('setupTitle')}</h1>
           {step > 0 && step < TOTAL_STEPS && (
-            <span className="wizard__step-count">Step {step} of {TOTAL_STEPS - 1}</span>
+            <span className="wizard__step-count">{t('stepOf', { step, total: TOTAL_STEPS - 1 })}</span>
           )}
         </div>
 
         {/* Progress bar */}
         {step > 0 && step < TOTAL_STEPS && (
-          <div className="wizard__progress" aria-label={`Setup progress: ${progress}%`}>
+          <div className="wizard__progress" aria-label={t('setupProgress', { progress })}>
             <div className="wizard__progress-bar" style={{ width: `${progress}%` }} />
           </div>
         )}
@@ -121,13 +128,13 @@ export default function SetupWizard({ onComplete }) {
 
         {/* Step content */}
         <div className="wizard__body">
-          {step === 0 && <StepWelcome onStart={() => setStep(1)} onSkip={handleSkip} saving={saving} />}
-          {step === 1 && <StepGeneral form={form} set={set} />}
-          {step === 2 && <StepWeather form={form} set={set} />}
-          {step === 3 && <StepAI form={form} set={set} />}
-          {step === 4 && <StepNotifications form={form} set={set} />}
-          {step === 5 && <StepCalendar form={form} set={set} />}
-          {step === TOTAL_STEPS && <StepDone onComplete={handleComplete} saving={saving} />}
+          {step === 0 && <StepWelcome onStart={() => setStep(1)} onSkip={handleSkip} saving={saving} t={t} />}
+          {step === 1 && <StepGeneral form={form} set={set} t={t} />}
+          {step === 2 && <StepWeather form={form} set={set} t={t} />}
+          {step === 3 && <StepAI form={form} set={set} t={t} />}
+          {step === 4 && <StepNotifications form={form} set={set} t={t} />}
+          {step === 5 && <StepCalendar form={form} set={set} t={t} />}
+          {step === TOTAL_STEPS && <StepDone onComplete={handleComplete} saving={saving} t={t} />}
         </div>
 
         {/* Navigation buttons */}
@@ -138,14 +145,14 @@ export default function SetupWizard({ onComplete }) {
               onClick={() => setStep(s => s - 1)}
               disabled={saving}
             >
-              ← Back
+              ← {t('back')}
             </button>
             <button
               className="btn"
               onClick={step === TOTAL_STEPS - 1 ? handleFinish : handleNext}
               disabled={saving}
             >
-              {saving ? 'Saving…' : step === TOTAL_STEPS - 1 ? 'Finish →' : 'Next →'}
+              {saving ? t('save') : step === TOTAL_STEPS - 1 ? `${t('finish')} →` : `${t('next')} →`}
             </button>
           </div>
         )}
@@ -156,46 +163,54 @@ export default function SetupWizard({ onComplete }) {
 
 /* ── Individual step components ────────────────────────────────────────────── */
 
-function StepWelcome({ onStart, onSkip, saving }) {
+function StepWelcome({ onStart, onSkip, saving, t }) {
   return (
     <div className="wizard-step">
       <div className="wizard-step__icon">🧭</div>
-      <h2 className="wizard-step__title">Welcome to DayPilot!</h2>
+      <h2 className="wizard-step__title">{t('welcomeTitle')}</h2>
       <p className="wizard-step__desc">
-        Your personal AI-powered daily co-pilot. Let's take a few minutes to
-        set things up so DayPilot can give you the most helpful briefings and
-        suggestions every morning.
+        {t('welcomeDesc')}
       </p>
       <div className="wizard-step__actions">
         <button className="btn btn--large" onClick={onStart} disabled={saving}>
-          Get started →
+          {t('getStarted')} →
         </button>
         <button className="btn btn--ghost" onClick={onSkip} disabled={saving}>
-          Skip setup, I'll configure manually
+          {t('skipSetup')}
         </button>
       </div>
     </div>
   )
 }
 
-function StepGeneral({ form, set }) {
+function StepGeneral({ form, set, t }) {
   return (
     <div className="wizard-step">
       <div className="wizard-step__icon">🌍</div>
-      <h2 className="wizard-step__title">General Settings</h2>
+      <h2 className="wizard-step__title">{t('setupGeneralTitle')}</h2>
       <p className="wizard-step__desc">
-        Tell DayPilot where you are and when you'd like your daily briefing.
+        {t('setupGeneralDesc')}
       </p>
       <div className="wizard-step__fields">
         <Field
-          label="Timezone"
-          hint="e.g. Europe/Berlin, America/New_York"
+          label={t('settingsFieldAppTimezone')}
+          hint={t('settingsFieldAppTimezoneDesc')}
           value={form.APP_TIMEZONE}
           onChange={v => set('APP_TIMEZONE', v)}
         />
+        <SelectField
+          label={t('settingsFieldAppLanguage')}
+          hint={t('settingsFieldAppLanguageDesc')}
+          value={form.APP_LANGUAGE}
+          onChange={v => set('APP_LANGUAGE', v)}
+          options={[
+            { value: 'en', label: t('languageEnglish') },
+            { value: 'de', label: t('languageGerman') },
+          ]}
+        />
         <Field
-          label="Daily briefing time"
-          hint="When should DayPilot generate and send your morning summary? (HH:MM)"
+          label={t('settingsFieldDailyBriefingTime')}
+          hint={t('setupGeneralBriefingHint')}
           type="time"
           value={form.DAILY_SUMMARY_TIME}
           onChange={v => set('DAILY_SUMMARY_TIME', v)}
@@ -205,41 +220,40 @@ function StepGeneral({ form, set }) {
   )
 }
 
-function StepWeather({ form, set }) {
+function StepWeather({ form, set, t }) {
   return (
     <div className="wizard-step">
       <div className="wizard-step__icon">🌤️</div>
-      <h2 className="wizard-step__title">Weather</h2>
+      <h2 className="wizard-step__title">{t('setupWeatherTitle')}</h2>
       <p className="wizard-step__desc">
-        DayPilot uses WeatherAPI to include weather in your daily briefing.
-        Get a free API key at{' '}
+        {t('setupWeatherDesc1')}{' '}
         <a href="https://www.weatherapi.com/" target="_blank" rel="noreferrer">
           weatherapi.com
         </a>
-        .
+        {t('setupWeatherDesc2')}
       </p>
       <div className="wizard-step__fields">
         <Field
-          label="WeatherAPI key"
-          hint="Your free API key from weatherapi.com"
+          label={t('settingsFieldWeatherApiKey')}
+          hint={t('settingsFieldWeatherApiKeyDesc')}
           type="password"
           value={form.WEATHERAPI_API_KEY}
           onChange={v => set('WEATHERAPI_API_KEY', v)}
         />
         <Field
-          label="City"
-          hint="Your city name, e.g. Berlin"
+          label={t('settingsFieldCity')}
+          hint={t('setupWeatherCityHint')}
           value={form.WEATHER_CITY}
           onChange={v => set('WEATHER_CITY', v)}
         />
         <SelectField
-          label="Units"
-          hint="Temperature unit"
+          label={t('settingsFieldUnits')}
+          hint={t('settingsFieldUnitsDesc')}
           value={form.WEATHER_UNITS}
           onChange={v => set('WEATHER_UNITS', v)}
           options={[
-            { value: 'metric', label: 'Metric (°C)' },
-            { value: 'imperial', label: 'Imperial (°F)' },
+            { value: 'metric', label: t('metricUnits') },
+            { value: 'imperial', label: t('imperialUnits') },
           ]}
         />
       </div>
@@ -247,39 +261,38 @@ function StepWeather({ form, set }) {
   )
 }
 
-function StepAI({ form, set }) {
+function StepAI({ form, set, t }) {
   const isOpenAI = form.AI_PROVIDER === 'openai'
   return (
     <div className="wizard-step">
       <div className="wizard-step__icon">🤖</div>
-      <h2 className="wizard-step__title">AI Configuration</h2>
+      <h2 className="wizard-step__title">{t('setupAiTitle')}</h2>
       <p className="wizard-step__desc">
-        DayPilot uses an AI model to generate your personalised daily briefing
-        and planning suggestions.
+        {t('setupAiDesc')}
       </p>
       <div className="wizard-step__fields">
         <SelectField
-          label="AI Provider"
-          hint="Choose between OpenAI or GitHub Models"
+          label={t('settingsAiProviderLabel')}
+          hint={t('setupAiProviderHint')}
           value={form.AI_PROVIDER}
           onChange={v => set('AI_PROVIDER', v)}
           options={[
-            { value: 'openai', label: 'OpenAI (GPT)' },
-            { value: 'github', label: 'GitHub Models' },
+            { value: 'openai', label: t('settingsAiProviderOpenAi') },
+            { value: 'github', label: t('settingsAiProviderGithub') },
           ]}
         />
         {isOpenAI ? (
           <>
             <Field
-              label="OpenAI API key"
-              hint="Your key from platform.openai.com"
+              label={t('settingsAiOpenAiKeyLabel')}
+              hint={t('settingsAiOpenAiKeyDesc')}
               type="password"
               value={form.OPENAI_API_KEY}
               onChange={v => set('OPENAI_API_KEY', v)}
             />
             <Field
-              label="Model"
-              hint="e.g. gpt-4o-mini, gpt-4o"
+              label={t('settingsAiModelLabel')}
+              hint={t('setupAiModelHintOpenAi')}
               value={form.OPENAI_MODEL}
               onChange={v => set('OPENAI_MODEL', v)}
             />
@@ -287,15 +300,15 @@ function StepAI({ form, set }) {
         ) : (
           <>
             <Field
-              label="GitHub Personal Access Token"
-              hint="A token with the models:read permission from github.com/settings/tokens"
+              label={t('setupAiGithubTokenLabel')}
+              hint={t('setupAiGithubTokenHint')}
               type="password"
               value={form.GITHUB_TOKEN}
               onChange={v => set('GITHUB_TOKEN', v)}
             />
             <Field
-              label="Model"
-              hint="e.g. gpt-4o, Meta-Llama-3.1-70B-Instruct (leave blank for default)"
+              label={t('settingsAiModelLabel')}
+              hint={t('setupAiModelHintGithub')}
               value={form.AI_MODEL}
               onChange={v => set('AI_MODEL', v)}
             />
@@ -306,32 +319,32 @@ function StepAI({ form, set }) {
   )
 }
 
-function StepNotifications({ form, set }) {
+function StepNotifications({ form, set, t }) {
   return (
     <div className="wizard-step">
       <div className="wizard-step__icon">🔔</div>
-      <h2 className="wizard-step__title">Push Notifications</h2>
+      <h2 className="wizard-step__title">{t('setupNotificationsTitle')}</h2>
       <p className="wizard-step__desc">
-        DayPilot sends your morning briefing and contextual alerts via{' '}
+        {t('setupNotificationsDesc1')}{' '}
         <a href="https://ntfy.sh" target="_blank" rel="noreferrer">ntfy.sh</a>
-        . Create a free topic at ntfy.sh or use your own self-hosted server.
+        {t('setupNotificationsDesc2')}
       </p>
       <div className="wizard-step__fields">
         <Field
-          label="ntfy server"
-          hint="e.g. https://ntfy.sh or your self-hosted URL"
+          label={t('settingsFieldNtfyServer')}
+          hint={t('settingsFieldNtfyServerDesc')}
           value={form.NTFY_SERVER}
           onChange={v => set('NTFY_SERVER', v)}
         />
         <Field
-          label="Topic"
-          hint="Your ntfy topic name (e.g. my-daypilot-alerts)"
+          label={t('settingsFieldTopic')}
+          hint={t('setupNotificationsTopicHint')}
           value={form.NTFY_TOPIC}
           onChange={v => set('NTFY_TOPIC', v)}
         />
         <Field
-          label="Token (optional)"
-          hint="Bearer token for private ntfy topics"
+          label={t('settingsFieldTokenOptional')}
+          hint={t('settingsFieldTokenOptionalDesc')}
           type="password"
           value={form.NTFY_TOKEN}
           onChange={v => set('NTFY_TOKEN', v)}
@@ -341,49 +354,48 @@ function StepNotifications({ form, set }) {
   )
 }
 
-function StepCalendar({ form, set }) {
+function StepCalendar({ form, set, t }) {
   return (
     <div className="wizard-step">
       <div className="wizard-step__icon">📅</div>
-      <h2 className="wizard-step__title">Calendar (Apple / iCloud)</h2>
+      <h2 className="wizard-step__title">{t('setupCalendarTitle')}</h2>
       <p className="wizard-step__desc">
-        Connect your Apple iCloud calendar via CalDAV. Use an{' '}
+        {t('setupCalendarDesc1')}{' '}
         <a
           href="https://appleid.apple.com/account/manage"
           target="_blank"
           rel="noreferrer"
         >
-          App-Specific Password
+          {t('settingsFieldAppSpecificPassword')}
         </a>{' '}
-        — not your regular iCloud password.
+        {t('setupCalendarDesc2')}
       </p>
       <div className="wizard-step__note">
         <span>📌</span>
         <span>
-          <strong>Google Calendar</strong> requires placing an OAuth2
-          credentials file on the server. See the{' '}
+          <strong>{t('settingsGoogleCalendarTitle')}</strong> {t('setupCalendarGoogleNote1')}{' '}
           <a href="/docs/features/briefing.md" target="_blank" rel="noreferrer">
-            documentation
+            {t('setupCalendarDocs')}
           </a>{' '}
-          for details.
+          {t('setupCalendarGoogleNote2')}
         </span>
       </div>
       <div className="wizard-step__fields">
         <Field
-          label="CalDAV URL"
-          hint="e.g. https://caldav.icloud.com"
+          label={t('settingsFieldCaldavUrl')}
+          hint={t('settingsFieldCaldavUrlDesc')}
           value={form.CALDAV_URL}
           onChange={v => set('CALDAV_URL', v)}
         />
         <Field
-          label="iCloud username"
-          hint="Your Apple ID email address"
+          label={t('setupCalendarIcloudUsernameLabel')}
+          hint={t('settingsFieldUsernameDesc')}
           value={form.CALDAV_USERNAME}
           onChange={v => set('CALDAV_USERNAME', v)}
         />
         <Field
-          label="App-Specific Password"
-          hint="Generated at appleid.apple.com → Sign-in and Security"
+          label={t('settingsFieldAppSpecificPassword')}
+          hint={t('setupCalendarAppPasswordHint')}
           type="password"
           value={form.CALDAV_PASSWORD}
           onChange={v => set('CALDAV_PASSWORD', v)}
@@ -393,18 +405,16 @@ function StepCalendar({ form, set }) {
   )
 }
 
-function StepDone({ onComplete, saving }) {
+function StepDone({ onComplete, saving, t }) {
   return (
     <div className="wizard-step wizard-step--done">
       <div className="wizard-step__icon">🎉</div>
-      <h2 className="wizard-step__title">You're all set!</h2>
+      <h2 className="wizard-step__title">{t('setupDoneTitle')}</h2>
       <p className="wizard-step__desc">
-        DayPilot is configured and ready to go. Your first morning briefing
-        will be generated at the time you selected. You can change any of
-        these settings at any time from the <strong>Settings</strong> page.
+        {t('setupDoneDesc1')} <strong>{t('settingsTitle')}</strong> {t('setupDoneDesc2')}
       </p>
       <button className="btn btn--large" onClick={onComplete} disabled={saving}>
-        {saving ? 'Starting…' : 'Start using DayPilot →'}
+        {saving ? t('setupStarting') : `${t('setupStartUsing')} →`}
       </button>
     </div>
   )

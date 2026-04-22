@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { fetchSchedulerJobs, triggerSchedulerJob } from '../api.js'
+import { useI18n } from '../i18n.jsx'
 import './SchedulerPage.css'
 
 /** Human-readable display names per job ID */
@@ -46,10 +47,10 @@ function formatCountdown(seconds) {
 }
 
 /** Format a next_run ISO string to a readable local time */
-function formatNextRun(isoString) {
-  if (!isoString) return 'Unbekannt'
+function formatNextRun(isoString, locale, unknownLabel) {
+  if (!isoString) return unknownLabel
   const d = new Date(isoString)
-  return d.toLocaleString('de-DE', {
+  return d.toLocaleString(locale, {
     weekday: 'short',
     day: '2-digit',
     month: '2-digit',
@@ -60,6 +61,7 @@ function formatNextRun(isoString) {
 }
 
 function JobCard({ job, onTrigger }) {
+  const { t, locale } = useI18n()
   const [secondsLeft, setSecondsLeft] = useState(null)
   const [triggering, setTriggering] = useState(false)
   const [triggered, setTriggered] = useState(false)
@@ -107,12 +109,12 @@ function JobCard({ job, onTrigger }) {
 
       <div className="scheduler-job__body">
         <div className="scheduler-job__row">
-          <span className="scheduler-job__label">Trigger</span>
+          <span className="scheduler-job__label">{t('schedulerTrigger')}</span>
           <code className="scheduler-job__trigger">{job.trigger}</code>
         </div>
         <div className="scheduler-job__row">
-          <span className="scheduler-job__label">Nächster Lauf</span>
-          <span className="scheduler-job__value">{formatNextRun(job.next_run)}</span>
+          <span className="scheduler-job__label">{t('schedulerNextRun')}</span>
+          <span className="scheduler-job__value">{formatNextRun(job.next_run, locale, t('unknown'))}</span>
         </div>
         <div className={`scheduler-job__countdown ${urgency}`} aria-live="polite">
           <span className="scheduler-job__countdown-label">in</span>
@@ -124,15 +126,15 @@ function JobCard({ job, onTrigger }) {
 
       <div className="scheduler-job__footer">
         {triggered && (
-          <span className="scheduler-job__feedback">Gestartet ✓</span>
+          <span className="scheduler-job__feedback">{t('schedulerStarted')} ✓</span>
         )}
         <button
           className="btn scheduler-job__btn"
           onClick={handleTrigger}
           disabled={triggering}
-          aria-label={`${JOB_DISPLAY[job.id] ?? job.name} jetzt ausführen`}
+          aria-label={`${JOB_DISPLAY[job.id] ?? job.name} ${t('schedulerRunNow')}`}
         >
-          {triggering ? 'Wird gestartet…' : 'Jetzt ausführen'}
+          {triggering ? t('schedulerStarting') : t('schedulerRunNow')}
         </button>
       </div>
     </div>
@@ -140,6 +142,7 @@ function JobCard({ job, onTrigger }) {
 }
 
 export default function SchedulerPage() {
+  const { t } = useI18n()
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -172,38 +175,38 @@ export default function SchedulerPage() {
   return (
     <div className="scheduler-page">
       <div className="scheduler-page__header">
-        <h2 className="scheduler-page__title">Geplante Aufgaben</h2>
+        <h2 className="scheduler-page__title">{t('schedulerTitle')}</h2>
         <p className="scheduler-page__subtitle">
-          Automatische Hintergrundprozesse und ihre nächsten Ausführungszeiten
+          {t('schedulerSubtitle')}
         </p>
         <button
           className="btn btn--secondary scheduler-page__refresh"
           onClick={loadJobs}
           disabled={loading}
-          aria-label="Jobs aktualisieren"
+          aria-label={t('schedulerRefresh')}
         >
-          Aktualisieren
+          {t('schedulerRefresh')}
         </button>
       </div>
 
       {loading && jobs.length === 0 && (
         <div className="loading-state">
           <div className="spinner" />
-          <p>Lade Scheduler-Jobs…</p>
+          <p>{t('schedulerLoading')}</p>
         </div>
       )}
 
       {error && (
         <div className="error-state">
           <span>⚠️</span>
-          <p>Fehler: {error}</p>
-          <button className="btn" onClick={loadJobs}>Erneut versuchen</button>
+          <p>{t('schedulerError', { error })}</p>
+          <button className="btn" onClick={loadJobs}>{t('schedulerRetry')}</button>
         </div>
       )}
 
       {!loading && !error && jobs.length === 0 && (
         <div className="scheduler-page__empty">
-          <p>Keine Scheduler-Jobs gefunden. Läuft der Backend-Server?</p>
+          <p>{t('schedulerEmpty')}</p>
         </div>
       )}
 

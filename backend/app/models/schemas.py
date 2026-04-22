@@ -135,6 +135,7 @@ class UserSettings(BaseModel):
 
     APP_NAME: Optional[str] = None
     APP_TIMEZONE: Optional[str] = None
+    APP_LANGUAGE: Optional[str] = None
     DAILY_SUMMARY_TIME: Optional[str] = None
     AI_PROVIDER: Optional[str] = None
     AI_MODEL: Optional[str] = None

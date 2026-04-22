@@ -8,14 +8,16 @@ import SettingsPage from './pages/SettingsPage.jsx'
 import SchedulerPage from './pages/SchedulerPage.jsx'
 import SetupWizard from './pages/SetupWizard.jsx'
 import AppIcon from './components/AppIcon.jsx'
-import { fetchSetupStatus } from './api.js'
+import { fetchSetupStatus, fetchSettings } from './api.js'
+import { I18nProvider, useI18n } from './i18n.jsx'
 import './App.css'
 
 const API_BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api`
   : '/api'
 
-function App() {
+function AppContent({ setLanguage }) {
+  const { t, locale } = useI18n()
   const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -58,7 +60,10 @@ function App() {
   if (needsSetup === true) {
     return (
       <BrowserRouter>
-        <SetupWizard onComplete={() => { setNeedsSetup(false); fetchSummary() }} />
+        <SetupWizard
+          onComplete={() => { setNeedsSetup(false); fetchSummary() }}
+          onLanguageChange={setLanguage}
+        />
       </BrowserRouter>
     )
   }
@@ -72,21 +77,23 @@ function App() {
               <img src="/favicon.svg" alt="DayPilot logo" className="app-header__logo" />
               <h1 className="app-header__title">
                 DayPilot
-                <span className="app-header__tagline"> your daily co-pilot</span>
+                <span className="app-header__tagline"> {t('appTagline')}</span>
               </h1>
             </div>
             <div className="app-header__meta">
               {lastRefresh && (
                 <span className="app-header__refresh">
-                  Updated: {lastRefresh.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                  {t('updatedAt', {
+                    time: lastRefresh.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }),
+                  })}
                 </span>
               )}
               <button
                 className="btn btn--icon"
                 onClick={fetchSummary}
                 disabled={loading}
-                title="Refresh"
-                aria-label="Refresh daily summary"
+                title={t('refresh')}
+                aria-label={t('refresh')}
               >
                 {loading ? (
                   <span className="app-header__refresh-loading" aria-hidden="true">...</span>
@@ -102,14 +109,14 @@ function App() {
           {loading && !summary && (
             <div className="loading-state">
               <div className="spinner" />
-              <p>Loading your daily summary…</p>
+              <p>{t('loadingSummary')}</p>
             </div>
           )}
           {error && (
             <div className="error-state">
               <span>⚠️</span>
-              <p>Error: {error}</p>
-              <button className="btn" onClick={fetchSummary}>Try again</button>
+              <p>{t('errorPrefix')} {error}</p>
+              <button className="btn" onClick={fetchSummary}>{t('tryAgain')}</button>
             </div>
           )}
           {summary && (
@@ -118,7 +125,7 @@ function App() {
               <Route path="/today" element={<TodayPage summary={summary} />} />
               <Route path="/calendar" element={<CalendarPage events={summary.events || []} />} />
               <Route path="/tasks" element={<TasksPage todos={summary.todos || []} />} />
-              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/settings" element={<SettingsPage onLanguageChange={setLanguage} />} />
               <Route path="/scheduler" element={<SchedulerPage />} />
               <Route path="*" element={<Navigate to="/today" replace />} />
             </Routes>
@@ -128,6 +135,27 @@ function App() {
         <Navigation />
       </div>
     </BrowserRouter>
+  )
+}
+
+function App() {
+  const [language, setLanguage] = useState('en')
+
+  useEffect(() => {
+    fetchSettings()
+      .then((data) => {
+        const lang = data.APP_LANGUAGE === 'de' ? 'de' : 'en'
+        setLanguage(lang)
+      })
+      .catch(() => {
+        setLanguage('en')
+      })
+  }, [])
+
+  return (
+    <I18nProvider language={language} setLanguage={setLanguage}>
+      <AppContent setLanguage={setLanguage} />
+    </I18nProvider>
   )
 }
 

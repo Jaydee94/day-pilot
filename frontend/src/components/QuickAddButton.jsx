@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import AppIcon from './AppIcon.jsx'
+import { useI18n } from '../i18n.jsx'
 import './QuickAddButton.css'
 
 const API_BASE = import.meta.env.VITE_API_URL
@@ -20,6 +21,7 @@ function toLocalDateTimeInput(date = new Date()) {
 }
 
 export default function QuickAddButton({ onSuccess }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState('Event')
   const [loading, setLoading] = useState(false)
@@ -107,8 +109,8 @@ export default function QuickAddButton({ onSuccess }) {
       <button
         className="quick-add-btn"
         onClick={() => setOpen(true)}
-        title="Quick Add"
-        aria-label="Quick add event or task"
+        title={t('quickAdd')}
+        aria-label={t('quickAdd')}
       >
         <AppIcon name="plus" className="quick-add-btn__icon" />
       </button>
@@ -124,35 +126,35 @@ export default function QuickAddButton({ onSuccess }) {
               <button
                 className="quick-add-modal__close"
                 onClick={handleClose}
-                aria-label="Close"
+                aria-label={t('close')}
               >
                 <AppIcon name="close" className="quick-add-close__icon" />
               </button>
             </div>
 
             <div className="quick-add-modal__tabs">
-              {TABS.map((t) => (
+              {TABS.map((tabName) => (
                 <button
-                  key={t}
-                  className={`quick-add-tab${tab === t ? ' quick-add-tab--active' : ''}`}
-                  onClick={() => handleTabChange(t)}
+                  key={tabName}
+                  className={`quick-add-tab${tab === tabName ? ' quick-add-tab--active' : ''}`}
+                  onClick={() => handleTabChange(tabName)}
                   type="button"
                 >
-                  <AppIcon name={t === 'Event' ? 'event' : 'tasks'} className="quick-add-tab__icon" /> {t}
+                  <AppIcon name={tabName === 'Event' ? 'event' : 'tasks'} className="quick-add-tab__icon" /> {tabName === 'Event' ? t('event') : t('task')}
                 </button>
               ))}
             </div>
 
             {success ? (
               <div className="quick-add-modal__success">
-                ✓ {tab} added successfully!
+                ✓ {t('addedSuccess', { type: tab === 'Event' ? t('event') : t('task') })}
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="quick-add-form">
                 {tab === 'Event' ? (
                   <>
                     <label className="quick-add-label">
-                      Title *
+                      {t('title')} *
                       <input
                         className="quick-add-input"
                         type="text"
@@ -164,7 +166,7 @@ export default function QuickAddButton({ onSuccess }) {
                       />
                     </label>
                     <label className="quick-add-label">
-                      Start *
+                      {t('start')} *
                       <input
                         className="quick-add-input"
                         type="datetime-local"
@@ -174,7 +176,7 @@ export default function QuickAddButton({ onSuccess }) {
                       />
                     </label>
                     <label className="quick-add-label">
-                      End
+                      {t('end')}
                       <input
                         className="quick-add-input"
                         type="datetime-local"
@@ -183,7 +185,7 @@ export default function QuickAddButton({ onSuccess }) {
                       />
                     </label>
                     <label className="quick-add-label">
-                      Location
+                      {t('location')}
                       <input
                         className="quick-add-input"
                         type="text"
@@ -196,7 +198,7 @@ export default function QuickAddButton({ onSuccess }) {
                 ) : (
                   <>
                     <label className="quick-add-label">
-                      Task *
+                      {t('taskLabel')} *
                       <input
                         className="quick-add-input"
                         type="text"
@@ -208,7 +210,7 @@ export default function QuickAddButton({ onSuccess }) {
                       />
                     </label>
                     <label className="quick-add-label">
-                      Due date
+                      {t('dueDate')}
                       <input
                         className="quick-add-input"
                         type="datetime-local"
@@ -228,7 +230,7 @@ export default function QuickAddButton({ onSuccess }) {
                   type="submit"
                   disabled={loading}
                 >
-                  {loading ? 'Saving…' : `Add ${tab}`}
+                  {loading ? t('save') : t('addItem', { type: tab === 'Event' ? t('event') : t('task') })}
                 </button>
               </form>
             )}
