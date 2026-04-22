@@ -124,7 +124,7 @@ secrets:
 
   # Values used when existingSecret is empty (a new Secret is created):
   openaiApiKey: ""
-  openweathermapApiKey: ""
+  weatherapiApiKey: ""
   ntfyTopic: ""
   ntfyToken: ""
   caldavUrl: ""

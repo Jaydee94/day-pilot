@@ -16,7 +16,7 @@ DayPilot is a self-hosted, AI-powered family planning system that runs on your h
 |---|---|
 | 📅 **Calendar sync** | Google Calendar + Apple iCloud Calendar (CalDAV) |
 | ✅ **To-do sync** | Google Tasks |
-| 🌤 **Weather intelligence** | OpenWeatherMap — influences AI advice, not just displayed |
+| 🌤 **Weather intelligence** | WeatherAPI — influences AI advice, not just displayed |
 | 🎂 **Birthdays** | Extracted from Google Contacts |
 | 🤖 **AI briefing** | OpenAI GPT — narrative morning summary + top-3 priorities |
 | 🔔 **Push notifications** | ntfy.sh (self-hosted or cloud) — all subscribed devices |
@@ -42,7 +42,7 @@ DayPilot is a self-hosted, AI-powered family planning system that runs on your h
 │  │  services/               │                                    │
 │  │    calendar_sync.py      │──► Google Calendar API            │
 │  │    calendar_sync.py      │──► Apple iCloud (CalDAV)          │
-│  │    weather.py            │──► OpenWeatherMap API             │
+│  │    weather.py            │──► WeatherAPI                     │
 │  │    ai_summary.py         │──► OpenAI API                     │
 │  │    notifications.py      │──► ntfy.sh  ──► 📱 phones        │
 │  │    scheduler.py          │   (daily cron)                    │
@@ -95,7 +95,7 @@ helm install day-pilot ./helm/day-pilot \
   --set backend.image.repository=ghcr.io/your-username/day-pilot-backend \
   --set frontend.image.repository=ghcr.io/your-username/day-pilot-frontend \
   --set secrets.openaiApiKey=sk-proj-... \
-  --set secrets.openweathermapApiKey=your-weather-key \
+  --set secrets.weatherapiApiKey=your-weather-key \
   --set postgresql.auth.password="$(openssl rand -hex 16)" \
   --set secrets.voiceWebhookSecret="$(openssl rand -hex 32)"
 ```
@@ -113,7 +113,7 @@ All settings live in `.env` (copy from `.env.example`).
 | Variable | Description |
 |---|---|
 | `OPENAI_API_KEY` | OpenAI API key |
-| `OPENWEATHERMAP_API_KEY` | Free key from openweathermap.org |
+| `WEATHERAPI_API_KEY` | Free key from weatherapi.com |
 | `GOOGLE_CREDENTIALS_JSON` | Path to your Google OAuth2 `credentials.json` |
 | `NTFY_TOPIC` | ntfy topic name (push target) |
 
@@ -221,16 +221,15 @@ Full interactive docs at `http://localhost:8000/docs` (Swagger UI).
 
 ```bash
 cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+poetry install
 cp ../.env.example ../.env   # fill in values
-uvicorn app.main:app --reload
+poetry run uvicorn app.main:app --reload
 ```
 
 Run tests:
 
 ```bash
-pytest
+poetry run pytest
 ```
 
 ### Frontend
@@ -264,7 +263,8 @@ day-pilot/
 │   └── troubleshooting.md         # Common issues & fixes
 ├── backend/
 │   ├── Dockerfile
-│   ├── requirements.txt
+│   ├── pyproject.toml
+│   ├── poetry.lock
 │   ├── pytest.ini
 │   ├── app/
 │   │   ├── main.py                # FastAPI application
@@ -276,7 +276,7 @@ day-pilot/
 │   │   │   └── schemas.py         # Pydantic models
 │   │   └── services/
 │   │       ├── calendar_sync.py   # Google + Apple calendar
-│   │       ├── weather.py         # OpenWeatherMap
+│   │       ├── weather.py         # WeatherAPI
 │   │       ├── ai_summary.py      # OpenAI summary generation
 │   │       ├── notifications.py   # ntfy push notifications
 │   │       └── scheduler.py       # APScheduler daily pipeline

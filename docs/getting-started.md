@@ -50,7 +50,7 @@ The file is divided into sections — here are the most important settings to fi
 | Setting | What to enter | Where to get it |
 |---|---|---|
 | `OPENAI_API_KEY` | Your OpenAI API key | [platform.openai.com](https://platform.openai.com) → API keys |
-| `OPENWEATHERMAP_API_KEY` | Your weather API key | [openweathermap.org/api](https://openweathermap.org/api) → free tier |
+| `WEATHERAPI_API_KEY` | Your weather API key | [weatherapi.com](https://www.weatherapi.com/) → free tier |
 | `NTFY_TOPIC` | A name for your notification channel | Make one up, e.g. `smith-family-2024` |
 | `WEATHER_CITY` | Your city name | e.g. `London`, `Berlin`, `New York` |
 

@@ -88,7 +88,7 @@ DayPilot reads your open tasks from **Google Tasks**.
 DayPilot doesn't just *show* the weather — it uses it to make the AI briefing smarter.
 
 **How it works:**
-1. When building a daily summary, DayPilot fetches current conditions for your configured city from OpenWeatherMap
+1. When building a daily summary, DayPilot fetches current conditions for your configured city from WeatherAPI
 2. This data is passed to the AI alongside your calendar and tasks
 3. The AI incorporates weather into its advice naturally
 
@@ -106,7 +106,7 @@ DayPilot doesn't just *show* the weather — it uses it to make the AI briefing 
 
 **Units:** Configure `WEATHER_UNITS=metric` for °C and m/s, or `WEATHER_UNITS=imperial` for °F and mph.
 
-**Data source:** [OpenWeatherMap](https://openweathermap.org/) — free tier provides more than enough requests for daily use.
+**Data source:** [WeatherAPI](https://www.weatherapi.com/) — free tier provides more than enough requests for daily use.
 
 ---
 
@@ -231,7 +231,7 @@ DayPilot runs a fully automated daily pipeline using APScheduler.
 **What happens at the scheduled time:**
 1. All Google and Apple calendar events for the day are fetched
 2. Google Tasks are fetched
-3. Weather data is fetched from OpenWeatherMap
+3. Weather data is fetched from WeatherAPI
 4. Birthdays are checked from Google Contacts
 5. The AI generates a briefing and extracts top priorities
 6. A push notification is sent to all ntfy subscribers
@@ -267,7 +267,7 @@ DayPilot runs entirely on your home server. Your family data stays in your home 
 **Replacing external services for full privacy:**
 - **AI:** Replace OpenAI with a local LLM (e.g. [Ollama](https://ollama.ai/)) by swapping `backend/app/services/ai_summary.py`
 - **Push notifications:** Self-host [ntfy](https://docs.ntfy.sh/install/) and set `NTFY_SERVER` to your instance
-- **Weather:** Replace the OpenWeatherMap service if desired
+- **Weather:** Replace the WeatherAPI service if desired
 
 ---
 

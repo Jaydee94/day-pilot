@@ -20,7 +20,7 @@ export default function SetupWizard({ onComplete }) {
   const [form, setForm] = useState({
     APP_TIMEZONE: 'Europe/Berlin',
     DAILY_SUMMARY_TIME: '07:00',
-    OPENWEATHERMAP_API_KEY: '',
+    WEATHERAPI_API_KEY: '',
     WEATHER_CITY: '',
     WEATHER_UNITS: 'metric',
     AI_PROVIDER: 'openai',
@@ -211,20 +211,20 @@ function StepWeather({ form, set }) {
       <div className="wizard-step__icon">🌤️</div>
       <h2 className="wizard-step__title">Weather</h2>
       <p className="wizard-step__desc">
-        DayPilot uses OpenWeatherMap to include weather in your daily briefing.
+        DayPilot uses WeatherAPI to include weather in your daily briefing.
         Get a free API key at{' '}
-        <a href="https://openweathermap.org/api" target="_blank" rel="noreferrer">
-          openweathermap.org
+        <a href="https://www.weatherapi.com/" target="_blank" rel="noreferrer">
+          weatherapi.com
         </a>
         .
       </p>
       <div className="wizard-step__fields">
         <Field
-          label="OpenWeatherMap API key"
-          hint="Your free API key from openweathermap.org"
+          label="WeatherAPI key"
+          hint="Your free API key from weatherapi.com"
           type="password"
-          value={form.OPENWEATHERMAP_API_KEY}
-          onChange={v => set('OPENWEATHERMAP_API_KEY', v)}
+          value={form.WEATHERAPI_API_KEY}
+          onChange={v => set('WEATHERAPI_API_KEY', v)}
         />
         <Field
           label="City"

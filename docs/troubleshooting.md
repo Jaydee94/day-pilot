@@ -180,13 +180,11 @@ If your Apple account has two-factor authentication enabled (which it should), a
 
 ### Missing or invalid API key
 
-Make sure `OPENWEATHERMAP_API_KEY` is set in `.env` with a valid key from [openweathermap.org/api](https://openweathermap.org/api).
-
-> ⏳ **New API keys can take up to 2 hours to activate.** If you just created your key, wait and try again.
+Make sure `WEATHERAPI_API_KEY` is set in `.env` with a valid key from [weatherapi.com](https://www.weatherapi.com/).
 
 ### Incorrect city name
 
-Make sure `WEATHER_CITY` in `.env` matches a real city name recognised by OpenWeatherMap. Try common variations:
+Make sure `WEATHER_CITY` in `.env` matches a real city name recognised by WeatherAPI. Try common variations:
 
 ```
 # Works
@@ -202,7 +200,7 @@ WEATHER_CITY=NYC          # abbreviation
 Test your city name directly:
 
 ```bash
-curl "https://api.openweathermap.org/data/2.5/weather?q=YourCity&appid=YOUR_KEY"
+curl "https://api.weatherapi.com/v1/current.json?key=YOUR_KEY&q=YourCity"
 ```
 
 ---

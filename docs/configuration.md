@@ -122,22 +122,20 @@ The briefing is generated with `temperature=0.7` and a `max_tokens` limit of `51
 
 ---
 
-## Weather (OpenWeatherMap)
+## Weather (WeatherAPI)
 
-### `OPENWEATHERMAP_API_KEY`
+### `WEATHERAPI_API_KEY`
 
 | Property | Value |
 |---|---|
 | Default | *(empty)* |
 | Required | No — weather is disabled if not set |
 
-Your OpenWeatherMap API key. Get a free key at [openweathermap.org/api](https://openweathermap.org/api) — the free tier provides more than enough requests for DayPilot's usage.
+Your WeatherAPI key. Get a free key at [weatherapi.com](https://www.weatherapi.com/) — the free tier provides more than enough requests for DayPilot's usage.
 
 ```
-OPENWEATHERMAP_API_KEY=abc123def456...
+WEATHERAPI_API_KEY=abc123def456...
 ```
-
-> ⏳ New API keys can take **up to 2 hours** to activate after creation.
 
 ---
 
@@ -148,7 +146,7 @@ OPENWEATHERMAP_API_KEY=abc123def456...
 | Default | `Berlin` |
 | Required | **If weather is enabled** |
 
-The city for which to fetch weather. Use the city name as OpenWeatherMap recognises it — typically just the city name, optionally followed by a country code.
+The city for which to fetch weather. Use a standard city name (optionally with a country code).
 
 ```
 WEATHER_CITY=London
@@ -373,7 +371,7 @@ OPENAI_API_KEY=sk-proj-your-openai-key
 OPENAI_MODEL=gpt-4o-mini
 
 # Weather
-OPENWEATHERMAP_API_KEY=your-openweathermap-key
+WEATHERAPI_API_KEY=your-weatherapi-key
 WEATHER_CITY=London
 WEATHER_UNITS=metric
 

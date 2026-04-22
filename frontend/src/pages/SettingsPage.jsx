@@ -21,7 +21,7 @@ const SETTING_GROUPS = [
     group: 'Weather',
     icon: '🌤️',
     items: [
-      { key: 'OPENWEATHERMAP_API_KEY', label: 'OpenWeatherMap API key', desc: 'Free key from openweathermap.org', type: 'password' },
+      { key: 'WEATHERAPI_API_KEY', label: 'WeatherAPI key', desc: 'Free key from weatherapi.com', type: 'password' },
       { key: 'WEATHER_CITY', label: 'City', desc: 'City name for weather data', type: 'text' },
       {
         key: 'WEATHER_UNITS',

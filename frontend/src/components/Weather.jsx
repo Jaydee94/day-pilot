@@ -4,9 +4,33 @@ const UNIT_SYMBOL = { metric: '°C', imperial: '°F' }
 const WIND_UNIT = { metric: 'm/s', imperial: 'mph' }
 
 export default function Weather({ weather }) {
+  if (!weather) {
+    return (
+      <div className="weather card weather--unavailable">
+        <div className="card__header">
+          <span className="card__icon">🌤</span>
+          <span className="card__title">Weather</span>
+        </div>
+        <div className="weather__body">
+          <div className="weather__main">
+            <span className="weather__temp">--</span>
+            <span className="weather__desc">Weather data is currently unavailable.</span>
+          </div>
+        </div>
+        <div className="weather__details">
+          <span>Feels like --</span>
+          <span>💧 --</span>
+          <span>💨 --</span>
+        </div>
+      </div>
+    )
+  }
+
   const unitSym = UNIT_SYMBOL[weather.units] || '°C'
   const windUnit = WIND_UNIT[weather.units] || 'm/s'
-  const iconUrl = `https://openweathermap.org/img/wn/${weather.icon}@2x.png`
+  const iconUrl = weather.icon?.startsWith('//')
+    ? `https:${weather.icon}`
+    : weather.icon
 
   return (
     <div className="weather card">

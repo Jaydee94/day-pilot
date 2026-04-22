@@ -78,7 +78,7 @@ helm install day-pilot ./helm/day-pilot \
   --set backend.image.repository=ghcr.io/your-username/day-pilot-backend \
   --set frontend.image.repository=ghcr.io/your-username/day-pilot-frontend \
   --set secrets.openaiApiKey=sk-proj-... \
-  --set secrets.openweathermapApiKey=your-weather-key \
+  --set secrets.weatherapiApiKey=your-weather-key \
   --set secrets.ntfyTopic=your-ntfy-topic \
   --set postgresql.auth.password="$DB_PASS" \
   --set secrets.voiceWebhookSecret="$WEBHOOK_SECRET"
@@ -132,7 +132,7 @@ postgresql:
 
 secrets:
   openaiApiKey: "sk-proj-..."
-  openweathermapApiKey: "your-key"
+  weatherapiApiKey: "your-key"
   ntfyTopic: "your-topic"
   voiceWebhookSecret: "a-random-32-char-string"
 ```
@@ -204,7 +204,7 @@ To avoid putting secrets in your values file, create a Kubernetes Secret manuall
 kubectl create secret generic day-pilot-secrets \
   --namespace day-pilot \
   --from-literal=OPENAI_API_KEY=sk-proj-... \
-  --from-literal=OPENWEATHERMAP_API_KEY=your-key \
+  --from-literal=WEATHERAPI_API_KEY=your-key \
   --from-literal=NTFY_TOPIC=your-topic \
   --from-literal=NTFY_TOKEN= \
   --from-literal=CALDAV_URL= \

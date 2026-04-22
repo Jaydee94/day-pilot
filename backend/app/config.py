@@ -36,8 +36,8 @@ class Settings(BaseSettings):
     # Requires a GitHub Personal Access Token with the "models:read" permission.
     GITHUB_TOKEN: str = ""
 
-    # Weather (OpenWeatherMap)
-    OPENWEATHERMAP_API_KEY: str = ""
+    # Weather (WeatherAPI)
+    WEATHERAPI_API_KEY: str = ""
     WEATHER_CITY: str = "Berlin"
     WEATHER_UNITS: str = "metric"  # metric | imperial
 

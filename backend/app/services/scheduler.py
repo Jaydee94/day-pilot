@@ -9,6 +9,7 @@ from typing import Optional
 import pytz
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 
 from app.config import settings
 from app.models.schemas import DailySummary
@@ -19,6 +20,7 @@ from app.services.calendar_sync import (
     fetch_apple_events,
 )
 from app.services.weather import fetch_weather
+from app.services.weather import refresh_weather_cache
 from app.services.ai_summary import generate_summary
 from app.services.notifications import send_daily_push
 
@@ -65,6 +67,16 @@ def run_daily_pipeline() -> None:
         logger.error("Daily pipeline failed: %s", exc)
 
 
+def run_weather_cache_refresh() -> None:
+    """Refresh cached weather data on a fixed schedule."""
+    logger.info("Refreshing weather cache…")
+    try:
+        refresh_weather_cache()
+        logger.info("Weather cache refresh completed.")
+    except Exception as exc:
+        logger.error("Weather cache refresh failed: %s", exc)
+
+
 def start_scheduler() -> None:
     global _scheduler
     if _scheduler and _scheduler.running:
@@ -78,6 +90,12 @@ def start_scheduler() -> None:
         run_daily_pipeline,
         CronTrigger(hour=int(hour), minute=int(minute), timezone=tz),
         id="daily_summary",
+        replace_existing=True,
+    )
+    _scheduler.add_job(
+        run_weather_cache_refresh,
+        IntervalTrigger(hours=2, timezone=tz),
+        id="weather_cache_refresh",
         replace_existing=True,
     )
     _scheduler.start()

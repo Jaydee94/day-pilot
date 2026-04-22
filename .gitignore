@@ -5,6 +5,8 @@ __pycache__/
 *.pyo
 .pytest_cache/
 .venv/
+venv/
+backend/venv/
 node_modules/
 dist/
 .DS_Store

@@ -198,7 +198,7 @@ curl http://localhost:8000/api/status
 |---|---|---|
 | `google_calendar` | boolean | `true` if Google Calendar API is reachable and authenticated |
 | `apple_calendar` | boolean | `true` if CalDAV/iCloud is reachable and authenticated |
-| `weather` | boolean | `true` if OpenWeatherMap is reachable and returning data |
+| `weather` | boolean | `true` if WeatherAPI is reachable and returning data |
 | `last_sync` | datetime | Timestamp of the last status check |
 | `errors` | array | Human-readable error messages for each failing integration |
 
@@ -379,7 +379,7 @@ curl http://localhost:8000/api/weather
   "temperature": 18.5,
   "feels_like": 17.2,
   "description": "Partly cloudy",
-  "icon": "02d",
+  "icon": "https://cdn.weatherapi.com/weather/64x64/day/116.png",
   "humidity": 65,
   "wind_speed": 3.5,
   "units": "metric"
@@ -392,7 +392,7 @@ curl http://localhost:8000/api/weather
 | `temperature` | float | Current temperature |
 | `feels_like` | float | Perceived temperature |
 | `description` | string | Human-readable weather description |
-| `icon` | string | OpenWeatherMap icon code (use `https://openweathermap.org/img/wn/{icon}@2x.png`) |
+| `icon` | string | Weather icon URL provided by WeatherAPI |
 | `humidity` | integer | Relative humidity (%) |
 | `wind_speed` | float | Wind speed (m/s if metric, mph if imperial) |
 | `units` | string | `metric` or `imperial` |
@@ -510,7 +510,7 @@ Common HTTP status codes:
 | `200` | Success |
 | `400` | Bad request — invalid input or missing required field |
 | `401` | Unauthorised — invalid webhook secret |
-| `503` | Service unavailable — external API (Google, Apple, OpenWeatherMap) not reachable |
+| `503` | Service unavailable — external API (Google, Apple, WeatherAPI) not reachable |
 
 ---
 
