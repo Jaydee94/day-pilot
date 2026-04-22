@@ -198,7 +198,9 @@ curl http://localhost:8000/api/ai/models
 
 ## Step 3 – Connect Google Calendar
 
-Google Calendar is the primary calendar source. This step also enables Google Tasks and birthday sync.
+> 💡 **Google Calendar is optional.** DayPilot works without it — the built-in local calendar is always available. Skip to Step 4 if you only want to use Apple Calendar, or to Step 5 if you want to skip external calendars entirely.
+
+Google Calendar integration also enables **Google Tasks** and **birthday sync** from your contacts.
 
 ### 3a. Create a Google Cloud project
 
@@ -262,20 +264,34 @@ The authorisation token is then saved to `data/google_token.json` and reused aut
 
 > ✅ You only need to do this once. The token is saved and reused automatically.
 
+### Connecting multiple Google accounts
+
+To import events from more than one Google account (e.g. personal + work), set `GOOGLE_CREDENTIALS_JSON` to a comma-separated list of credentials files — one per account:
+
+```
+GOOGLE_CREDENTIALS_JSON=/app/data/credentials_personal.json,/app/data/credentials_work.json
+```
+
+Each account needs its own `credentials.json` downloaded from the Google Cloud Console. The first authorisation flow is repeated for each account on first launch.
+
 ---
 
 ## Step 4 – Connect Apple Calendar (optional)
 
-If you use iCloud Calendar in addition to (or instead of) Google Calendar, follow these steps.
+> 💡 **Apple Calendar is optional.** Skip this step if you only use Google Calendar or want to use the built-in local calendar.
+
+If you use iCloud Calendar, follow these steps to import those events into DayPilot.
 
 ### 4a. Generate an App-Specific Password
 
-Apple requires a special password for third-party apps — you cannot use your regular iCloud password.
+Apple requires a **special password** for third-party apps — you cannot use your regular iCloud password.
 
 1. Go to [appleid.apple.com](https://appleid.apple.com/) and sign in
 2. Click **"Sign-In and Security"** → **"App-Specific Passwords"**
 3. Click **"+"** and enter a label like `DayPilot`
 4. Copy the generated password (format: `xxxx-xxxx-xxxx-xxxx`)
+
+> ⚠️ Keep this password safe. It gives access to your iCloud calendar.
 
 ### 4b. Configure your `.env`
 
@@ -290,6 +306,22 @@ CALDAV_PASSWORD=xxxx-xxxx-xxxx-xxxx
 Replace `your@icloud.com` with your Apple ID and `xxxx-xxxx-xxxx-xxxx` with the app-specific password you just generated.
 
 > 💡 Events from both Google and Apple calendars are merged and displayed together in the dashboard, sorted by time.
+
+### Connecting multiple Apple / iCloud accounts
+
+To import events from more than one iCloud account (e.g. your own and your partner's), use the `CALDAV_CONFIGS` variable instead of the individual `CALDAV_URL`, `CALDAV_USERNAME`, and `CALDAV_PASSWORD` variables:
+
+```dotenv
+CALDAV_CONFIGS=[{"url":"https://caldav.icloud.com","username":"you@icloud.com","password":"xxxx-xxxx-xxxx-xxxx"},{"url":"https://caldav.icloud.com","username":"partner@icloud.com","password":"yyyy-yyyy-yyyy-yyyy"}]
+```
+
+Each person needs their own App-Specific Password (follow Step 4a for each account).
+
+You can also use `CALDAV_CONFIGS` to connect non-Apple CalDAV servers such as **Nextcloud**, **Baikal**, or **Radicale**:
+
+```dotenv
+CALDAV_CONFIGS=[{"url":"https://nextcloud.yourdomain.com/remote.php/dav","username":"myuser","password":"mypassword"}]
+```
 
 ---
 

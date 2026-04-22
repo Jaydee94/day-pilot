@@ -150,6 +150,8 @@ class UserSettings(BaseModel):
     CALDAV_URL: Optional[str] = None
     CALDAV_USERNAME: Optional[str] = None
     CALDAV_PASSWORD: Optional[str] = None
+    # Multiple CalDAV accounts (JSON array of {url, username, password})
+    CALDAV_CONFIGS: Optional[str] = None
     NTFY_SERVER: Optional[str] = None
     NTFY_TOPIC: Optional[str] = None
     NTFY_TOKEN: Optional[str] = None

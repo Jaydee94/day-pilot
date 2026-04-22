@@ -56,6 +56,14 @@ class Settings(BaseSettings):
     CALDAV_URL: str = ""  # e.g. https://caldav.icloud.com
     CALDAV_USERNAME: str = ""
     CALDAV_PASSWORD: str = ""
+    # Multiple CalDAV accounts (JSON array of {url, username, password} objects).
+    # Takes precedence over the single CALDAV_URL / CALDAV_USERNAME / CALDAV_PASSWORD
+    # variables when non-empty. The single-account variables are still supported for
+    # backwards compatibility.
+    CALDAV_CONFIGS: str = ""
+
+    # Local / internal calendar
+    LOCAL_EVENTS_FILE: str = "/app/data/local_events.json"
 
     # Push Notifications (ntfy.sh)
     NTFY_SERVER: str = "https://ntfy.sh"

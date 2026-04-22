@@ -181,7 +181,40 @@ WEATHER_UNITS=imperial  # United States
 
 ---
 
+## Internal Calendar
+
+DayPilot includes a built-in local calendar that works **without any external account**. Events you create through the app are automatically stored locally on your server in a JSON file, so you can always use DayPilot — even if you haven't set up Google or Apple Calendar yet.
+
+> 💡 No configuration required. The internal calendar is always available. External calendars (Google, Apple) are optional and supplement the local calendar when configured.
+
+### `LOCAL_EVENTS_FILE`
+
+| Property | Value |
+|---|---|
+| Default | `/app/data/local_events.json` |
+| Required | No |
+
+The file path where locally created events are stored.
+
+```
+LOCAL_EVENTS_FILE=/app/data/local_events.json
+```
+
+---
+
 ## Google Calendar
+
+### How Google Calendar works in DayPilot
+
+DayPilot connects to Google Calendar using **OAuth2 file-based authentication**. You create credentials once in the Google Cloud Console, download a `credentials.json` file, place it on your server, and DayPilot handles the rest.
+
+**What you can do with Google Calendar integration:**
+- View all your Google Calendar events in the DayPilot dashboard
+- Create new events from DayPilot that appear in your Google Calendar
+- Import tasks from Google Tasks
+- See birthdays from Google Contacts
+
+**Step-by-step setup:** See [Getting Started → Step 3](getting-started.md#step-3--connect-google-calendar)
 
 ### `GOOGLE_CREDENTIALS_JSON`
 
@@ -197,6 +230,16 @@ Place your `credentials.json` in `./data/credentials.json` and use:
 ```
 GOOGLE_CREDENTIALS_JSON=/app/data/credentials.json
 ```
+
+**Connecting multiple Google accounts:**
+
+Set `GOOGLE_CREDENTIALS_JSON` to a comma-separated list of paths — one `credentials.json` per account:
+
+```
+GOOGLE_CREDENTIALS_JSON=/app/data/credentials_personal.json,/app/data/credentials_work.json
+```
+
+Each account requires its own `credentials.json` file obtained from the Google Cloud Console. Token files are derived automatically per account (`google_token_credentials_personal.json`, `google_token_credentials_work.json`).
 
 See [Getting Started → Step 3](getting-started.md#step-3--connect-google-calendar) for instructions on creating and downloading this file.
 
@@ -221,12 +264,35 @@ If this file is deleted, DayPilot will require re-authorisation on next startup.
 
 ## Apple Calendar (CalDAV / iCloud)
 
+### How Apple Calendar / iCloud works in DayPilot
+
+DayPilot connects to iCloud Calendar using the **CalDAV** standard. You need an **App-Specific Password** from Apple — you cannot use your regular iCloud account password.
+
+**What you can do with Apple Calendar integration:**
+- View all your iCloud Calendar events in the DayPilot dashboard
+- Create new events from DayPilot that appear in your iCloud Calendar
+
+**Step-by-step setup:**
+
+1. Go to [appleid.apple.com](https://appleid.apple.com/) and sign in
+2. Click **Sign-In and Security** → **App-Specific Passwords**
+3. Click **+** and name it `DayPilot`
+4. Copy the generated password (format: `xxxx-xxxx-xxxx-xxxx`)
+5. Add the following to your `.env`:
+   ```
+   CALDAV_URL=https://caldav.icloud.com
+   CALDAV_USERNAME=your@icloud.com
+   CALDAV_PASSWORD=xxxx-xxxx-xxxx-xxxx
+   ```
+
+> ⚠️ **Always use an App-Specific Password.** Apple requires this for third-party apps. Your regular iCloud password will not work.
+
 ### `CALDAV_URL`
 
 | Property | Value |
 |---|---|
 | Default | *(empty)* |
-| Required | **Yes, if using Apple Calendar** |
+| Required | **Yes, if using Apple Calendar (single account)** |
 
 The CalDAV server URL. For iCloud, always use:
 
@@ -241,7 +307,7 @@ CALDAV_URL=https://caldav.icloud.com
 | Property | Value |
 |---|---|
 | Default | *(empty)* |
-| Required | **Yes, if using Apple Calendar** |
+| Required | **Yes, if using Apple Calendar (single account)** |
 
 Your iCloud / Apple ID email address.
 
@@ -256,7 +322,7 @@ CALDAV_USERNAME=your@icloud.com
 | Property | Value |
 |---|---|
 | Default | *(empty)* |
-| Required | **Yes, if using Apple Calendar** |
+| Required | **Yes, if using Apple Calendar (single account)** |
 
 An **App-Specific Password** for your Apple account. You cannot use your regular iCloud password here.
 
@@ -271,7 +337,33 @@ CALDAV_PASSWORD=abcd-efgh-ijkl-mnop
 
 ---
 
-## Push Notifications (ntfy)
+### `CALDAV_CONFIGS`
+
+| Property | Value |
+|---|---|
+| Default | *(empty)* |
+| Required | No — use instead of `CALDAV_URL`/`CALDAV_USERNAME`/`CALDAV_PASSWORD` for multiple accounts |
+
+Allows connecting **multiple iCloud / CalDAV accounts** at once. Set this to a JSON array where each object has `url`, `username`, and `password`.
+
+When `CALDAV_CONFIGS` is set, it takes precedence over the individual `CALDAV_URL`, `CALDAV_USERNAME`, and `CALDAV_PASSWORD` variables.
+
+**Example — two iCloud accounts (family sharing):**
+
+```dotenv
+CALDAV_CONFIGS=[{"url":"https://caldav.icloud.com","username":"you@icloud.com","password":"xxxx-xxxx-xxxx-xxxx"},{"url":"https://caldav.icloud.com","username":"partner@icloud.com","password":"yyyy-yyyy-yyyy-yyyy"}]
+```
+
+Each account needs its own App-Specific Password. Events from all accounts are merged and displayed together in the dashboard.
+
+> 💡 You can also use `CALDAV_CONFIGS` with non-iCloud CalDAV servers (e.g. Nextcloud, Baikal, Radicale):
+> ```dotenv
+> CALDAV_CONFIGS=[{"url":"https://nextcloud.yourserver.com/remote.php/dav","username":"admin","password":"your-password"}]
+> ```
+
+---
+
+
 
 ### `NTFY_SERVER`
 
@@ -375,14 +467,20 @@ WEATHERAPI_API_KEY=your-weatherapi-key
 WEATHER_CITY=London
 WEATHER_UNITS=metric
 
-# Google Calendar
+# Google Calendar (single account)
 GOOGLE_CREDENTIALS_JSON=/app/data/credentials.json
 GOOGLE_TOKEN_JSON=/app/data/google_token.json
 
-# Apple Calendar (optional)
+# Google Calendar (multiple accounts — comma-separated)
+# GOOGLE_CREDENTIALS_JSON=/app/data/creds_personal.json,/app/data/creds_work.json
+
+# Apple Calendar (single iCloud account)
 CALDAV_URL=https://caldav.icloud.com
 CALDAV_USERNAME=your@icloud.com
 CALDAV_PASSWORD=xxxx-xxxx-xxxx-xxxx
+
+# Apple Calendar (multiple accounts — overrides the single-account vars above)
+# CALDAV_CONFIGS=[{"url":"https://caldav.icloud.com","username":"you@icloud.com","password":"xxxx-xxxx-xxxx-xxxx"},{"url":"https://caldav.icloud.com","username":"partner@icloud.com","password":"yyyy-yyyy-yyyy-yyyy"}]
 
 # Push Notifications
 NTFY_SERVER=https://ntfy.sh
