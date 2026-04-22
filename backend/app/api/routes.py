@@ -13,12 +13,13 @@ from app.models.schemas import (
     AIConfig,
     AIModelInfo,
     DailySummary,
+    ScheduledJob,
     SyncStatus,
     VoiceCommand,
     CreateEventRequest,
     CreateTodoRequest,
 )
-from app.services.scheduler import build_daily_summary, run_daily_pipeline
+from app.services.scheduler import build_daily_summary, run_daily_pipeline, get_jobs, trigger_job
 from app.services.calendar_sync import (
     fetch_google_events,
     fetch_apple_events,
@@ -186,3 +187,18 @@ def list_ai_models():
     For the ``openai`` provider an empty list is returned — set ``AI_MODEL`` directly.
     """
     return list_models()
+
+
+@router.get("/scheduler/jobs", response_model=List[ScheduledJob], summary="List scheduled jobs")
+def get_scheduler_jobs():
+    """Return all registered scheduler jobs with their next run times."""
+    return get_jobs()
+
+
+@router.post("/scheduler/jobs/{job_id}/run", summary="Manually trigger a scheduled job")
+def run_scheduled_job(job_id: str):
+    """Manually fire a scheduled job immediately (runs in background)."""
+    ok = trigger_job(job_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"No job with id '{job_id}'")
+    return {"status": "triggered", "job_id": job_id}

@@ -115,6 +115,16 @@ class AIConfig(BaseModel):
     configured: bool
 
 
+class ScheduledJob(BaseModel):
+    """A single APScheduler job with its next run time."""
+
+    id: str
+    name: str
+    description: str
+    trigger: str
+    next_run: Optional[datetime] = None
+
+
 class UserSettings(BaseModel):
     """User-configurable settings.
 

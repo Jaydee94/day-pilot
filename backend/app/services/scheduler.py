@@ -111,3 +111,40 @@ def stop_scheduler() -> None:
     if _scheduler and _scheduler.running:
         _scheduler.shutdown(wait=False)
         logger.info("Scheduler stopped.")
+
+
+_JOB_DESCRIPTIONS: dict[str, str] = {
+    "daily_summary": "Builds the DayPilot briefing and sends a push notification",
+    "weather_cache_refresh": "Refreshes the weather cache with the latest forecast data",
+}
+
+_JOB_RUNNERS: dict[str, object] = {
+    "daily_summary": run_daily_pipeline,
+    "weather_cache_refresh": run_weather_cache_refresh,
+}
+
+
+def get_jobs() -> list[dict]:
+    """Return metadata for all registered scheduler jobs."""
+    if not _scheduler or not _scheduler.running:
+        return []
+    result = []
+    for job in _scheduler.get_jobs():
+        result.append({
+            "id": job.id,
+            "name": job.name,
+            "description": _JOB_DESCRIPTIONS.get(job.id, ""),
+            "trigger": str(job.trigger),
+            "next_run": job.next_run_time,
+        })
+    return result
+
+
+def trigger_job(job_id: str) -> bool:
+    """Manually fire a job by its ID in a background thread. Returns False if unknown."""
+    import threading
+    runner = _JOB_RUNNERS.get(job_id)
+    if runner is None:
+        return False
+    threading.Thread(target=runner, daemon=True).start()
+    return True

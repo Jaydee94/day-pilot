@@ -40,3 +40,24 @@ export async function fetchSetupStatus() {
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
   return resp.json()
 }
+
+/**
+ * Fetch all scheduled jobs from the backend scheduler.
+ * @returns {Promise<Array>} list of ScheduledJob objects
+ */
+export async function fetchSchedulerJobs() {
+  const resp = await fetch(`${API_BASE}/scheduler/jobs`)
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  return resp.json()
+}
+
+/**
+ * Manually trigger a scheduled job by its ID.
+ * @param {string} jobId
+ * @returns {Promise<{status: string, job_id: string}>}
+ */
+export async function triggerSchedulerJob(jobId) {
+  const resp = await fetch(`${API_BASE}/scheduler/jobs/${jobId}/run`, { method: 'POST' })
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  return resp.json()
+}

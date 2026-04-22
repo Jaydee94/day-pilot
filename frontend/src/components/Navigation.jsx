@@ -5,6 +5,7 @@ const NAV_ITEMS = [
   { to: '/today', icon: '🏠', label: 'Today' },
   { to: '/calendar', icon: '📅', label: 'Calendar' },
   { to: '/tasks', icon: '✅', label: 'Tasks' },
+  { to: '/scheduler', icon: '⏱️', label: 'Scheduler' },
   { to: '/settings', icon: '⚙️', label: 'Settings' },
 ]
 

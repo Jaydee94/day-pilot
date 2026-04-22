@@ -549,3 +549,77 @@ class TestSettingsJourney:
         # NTFY_TOPIC must still be in the returned state (in-memory)
         # WEATHER_CITY must reflect the update
         assert resp.json()["WEATHER_CITY"] == "Hamburg"
+
+
+# ---------------------------------------------------------------------------
+# Journey 9: Scheduler jobs
+# ---------------------------------------------------------------------------
+
+class TestSchedulerJobsJourney:
+    """A user views scheduled jobs and triggers one manually."""
+
+    def _make_job(self, job_id: str, name: str, desc: str, trigger: str) -> dict:
+        return {
+            "id": job_id,
+            "name": name,
+            "description": desc,
+            "trigger": trigger,
+            "next_run": datetime.now(BERLIN_TZ) + timedelta(hours=1),
+        }
+
+    def test_list_jobs_returns_all_registered_jobs(self, client):
+        fake_jobs = [
+            self._make_job("daily_summary", "run_daily_pipeline",
+                           "Builds the DayPilot briefing and sends a push notification",
+                           "cron[hour='7', minute='0']"),
+            self._make_job("weather_cache_refresh", "run_weather_cache_refresh",
+                           "Refreshes the weather cache with the latest forecast data",
+                           "interval[0:30:00]"),
+        ]
+        with patch("app.api.routes.get_jobs", return_value=fake_jobs):
+            resp = client.get("/api/scheduler/jobs")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 2
+        ids = [j["id"] for j in data]
+        assert "daily_summary" in ids
+        assert "weather_cache_refresh" in ids
+
+    def test_each_job_has_required_fields(self, client):
+        fake_jobs = [
+            self._make_job("daily_summary", "run_daily_pipeline",
+                           "Builds the DayPilot briefing", "cron[hour='7']"),
+        ]
+        with patch("app.api.routes.get_jobs", return_value=fake_jobs):
+            resp = client.get("/api/scheduler/jobs")
+
+        assert resp.status_code == 200
+        job = resp.json()[0]
+        assert "id" in job
+        assert "name" in job
+        assert "description" in job
+        assert "trigger" in job
+        assert "next_run" in job
+
+    def test_trigger_known_job_returns_200(self, client):
+        with patch("app.api.routes.trigger_job", return_value=True):
+            resp = client.post("/api/scheduler/jobs/daily_summary/run")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "triggered"
+        assert data["job_id"] == "daily_summary"
+
+    def test_trigger_unknown_job_returns_404(self, client):
+        with patch("app.api.routes.trigger_job", return_value=False):
+            resp = client.post("/api/scheduler/jobs/nonexistent_job/run")
+
+        assert resp.status_code == 404
+
+    def test_list_jobs_returns_empty_when_scheduler_not_running(self, client):
+        with patch("app.api.routes.get_jobs", return_value=[]):
+            resp = client.get("/api/scheduler/jobs")
+
+        assert resp.status_code == 200
+        assert resp.json() == []

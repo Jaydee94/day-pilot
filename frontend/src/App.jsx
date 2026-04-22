@@ -5,6 +5,7 @@ import TodayPage from './pages/TodayPage.jsx'
 import CalendarPage from './pages/CalendarPage.jsx'
 import TasksPage from './pages/TasksPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
+import SchedulerPage from './pages/SchedulerPage.jsx'
 import SetupWizard from './pages/SetupWizard.jsx'
 import { fetchSetupStatus } from './api.js'
 import './App.css'
@@ -112,6 +113,7 @@ function App() {
               <Route path="/calendar" element={<CalendarPage events={summary.events || []} />} />
               <Route path="/tasks" element={<TasksPage todos={summary.todos || []} />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/scheduler" element={<SchedulerPage />} />
               <Route path="*" element={<Navigate to="/today" replace />} />
             </Routes>
           )}

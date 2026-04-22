@@ -1,0 +1,191 @@
+.scheduler-page {
+  padding: 1.5rem 1rem 6rem;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.scheduler-page__header {
+  margin-bottom: 1.5rem;
+}
+
+.scheduler-page__title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 0.25rem;
+}
+
+.scheduler-page__subtitle {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin: 0 0 1rem;
+}
+
+.scheduler-page__refresh {
+  font-size: 0.8rem;
+  padding: 0.4rem 1rem;
+}
+
+.scheduler-page__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.scheduler-page__empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 3rem 1rem;
+  font-size: 0.9rem;
+}
+
+/* ── Job card ─────────────────────────────────────────────────────────── */
+
+.scheduler-job {
+  border-radius: var(--radius);
+  padding: 1.25rem 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow-card);
+}
+
+.scheduler-job__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+}
+
+.scheduler-job__icon {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-sm);
+  background: rgba(79, 142, 247, 0.1);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem;
+}
+
+.scheduler-job__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.scheduler-job__meta {
+  flex: 1;
+}
+
+.scheduler-job__name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 0.2rem;
+}
+
+.scheduler-job__desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ── Body rows ────────────────────────────────────────────────────────── */
+
+.scheduler-job__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.scheduler-job__row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.scheduler-job__label {
+  color: var(--text-muted);
+  min-width: 6rem;
+  flex-shrink: 0;
+}
+
+.scheduler-job__value {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.scheduler-job__trigger {
+  font-family: ui-monospace, 'Cascadia Code', monospace;
+  font-size: 0.72rem;
+  background: var(--item-bg, rgba(0, 0, 0, 0.04));
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  color: var(--text);
+  word-break: break-all;
+}
+
+/* ── Countdown block ──────────────────────────────────────────────────── */
+
+.scheduler-job__countdown {
+  margin-top: 0.25rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  background: rgba(79, 142, 247, 0.07);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.875rem;
+}
+
+.scheduler-job__countdown-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.scheduler-job__countdown-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--primary);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.scheduler-job__countdown--soon .scheduler-job__countdown-value {
+  color: #e07c00;
+}
+
+.scheduler-job__countdown--soon {
+  background: rgba(224, 124, 0, 0.08);
+}
+
+/* ── Footer ───────────────────────────────────────────────────────────── */
+
+.scheduler-job__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.scheduler-job__feedback {
+  font-size: 0.8rem;
+  color: var(--accent, #7ed957);
+  font-weight: 500;
+}
+
+.scheduler-job__btn {
+  font-size: 0.8rem;
+  padding: 0.4rem 1.1rem;
+}
+
+@media (min-width: 640px) {
+  .scheduler-page {
+    padding: 2rem 1.5rem 2rem;
+  }
+}
