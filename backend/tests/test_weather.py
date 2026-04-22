@@ -181,7 +181,7 @@ class TestFetchWeather:
 
         assert result is None
 
-    def test_returns_cached_weather_within_two_hours(self, monkeypatch):
+    def test_returns_cached_weather_within_thirty_minutes(self, monkeypatch):
         monkeypatch.setattr(
             "app.services.weather.settings.WEATHERAPI_API_KEY", "fake-key"
         )
@@ -207,7 +207,7 @@ class TestFetchWeather:
 
         key = weather_module._cache_key("Berlin", "metric")
         weather_module._weather_cache[key] = (
-            datetime.now(timezone.utc) - timedelta(minutes=30),
+            datetime.now(timezone.utc) - timedelta(minutes=15),
             cached_weather,
         )
 

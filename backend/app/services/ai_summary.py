@@ -1,13 +1,14 @@
 """
-AI summary service supporting OpenAI and GitHub Models (GitHub Copilot) as providers.
+AI summary service supporting multiple providers, all via the OpenAI-compatible SDK.
 
 Provider selection is controlled by the ``AI_PROVIDER`` environment variable:
 - ``openai``  (default) — requires ``OPENAI_API_KEY``
 - ``github``            — requires ``GITHUB_TOKEN`` (GitHub PAT with ``models:read`` scope)
+- ``groq``             — requires ``GROQ_API_KEY`` (free tier at console.groq.com)
+- ``google``           — requires ``GOOGLE_AI_API_KEY`` (free tier at aistudio.google.com)
 
 The model to use is read from ``AI_MODEL``.  When ``AI_MODEL`` is empty the
-service falls back to ``OPENAI_MODEL`` for the OpenAI provider and
-``gpt-4o-mini`` for the GitHub provider.
+service falls back to the provider-specific default defined in ``_PROVIDER_DEFAULTS``.
 """
 import logging
 from typing import List, Optional
@@ -22,13 +23,17 @@ from app.models.schemas import DailySummary, AIConfig, AIModelInfo
 
 logger = logging.getLogger(__name__)
 
-# GitHub Models base URL (OpenAI-compatible)
+# Provider base URLs (all OpenAI-compatible)
 _GITHUB_MODELS_BASE_URL = "https://models.inference.ai.azure.com"
+_GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+_GOOGLE_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 
 # Default model per provider when AI_MODEL is not configured
 _PROVIDER_DEFAULTS = {
     "openai": "gpt-4o-mini",
     "github": "gpt-4o-mini",
+    "groq": "llama-3.3-70b-versatile",
+    "google": "gemini-2.0-flash",
 }
 
 # Well-known models available through the GitHub Models marketplace.
@@ -72,6 +77,22 @@ _GITHUB_KNOWN_MODELS: List[AIModelInfo] = [
     ),
 ]
 
+_GROQ_KNOWN_MODELS: List[AIModelInfo] = [
+    AIModelInfo(id="llama-3.3-70b-versatile", name="Llama 3.3 70B (free)", provider="groq"),
+    AIModelInfo(id="llama-3.1-8b-instant", name="Llama 3.1 8B Instant (free)", provider="groq"),
+    AIModelInfo(id="llama-3.2-11b-vision-preview", name="Llama 3.2 11B Vision (free)", provider="groq"),
+    AIModelInfo(id="mixtral-8x7b-32768", name="Mixtral 8x7B (free)", provider="groq"),
+    AIModelInfo(id="gemma2-9b-it", name="Gemma 2 9B (free)", provider="groq"),
+]
+
+_GOOGLE_KNOWN_MODELS: List[AIModelInfo] = [
+    AIModelInfo(id="gemini-2.0-flash", name="Gemini 2.0 Flash (free)", provider="google"),
+    AIModelInfo(id="gemini-2.0-flash-lite", name="Gemini 2.0 Flash Lite (free)", provider="google"),
+    AIModelInfo(id="gemini-1.5-flash", name="Gemini 1.5 Flash (free)", provider="google"),
+    AIModelInfo(id="gemini-1.5-flash-8b", name="Gemini 1.5 Flash-8B (free)", provider="google"),
+    AIModelInfo(id="gemini-1.5-pro", name="Gemini 1.5 Pro", provider="google"),
+]
+
 
 def _resolve_model() -> str:
     """Return the model name to use, respecting AI_MODEL > legacy OPENAI_MODEL > provider default."""
@@ -89,6 +110,16 @@ def _get_client() -> "OpenAI":  # type: ignore[name-defined]
             base_url=_GITHUB_MODELS_BASE_URL,
             api_key=settings.GITHUB_TOKEN,
         )
+    if settings.AI_PROVIDER == "groq":
+        return OpenAI(
+            base_url=_GROQ_BASE_URL,
+            api_key=settings.GROQ_API_KEY,
+        )
+    if settings.AI_PROVIDER == "google":
+        return OpenAI(
+            base_url=_GOOGLE_BASE_URL,
+            api_key=settings.GOOGLE_AI_API_KEY,
+        )
     return OpenAI(api_key=settings.OPENAI_API_KEY)
 
 
@@ -96,6 +127,10 @@ def _is_configured() -> bool:
     """Return True when the required credential for the active provider is set."""
     if settings.AI_PROVIDER == "github":
         return bool(settings.GITHUB_TOKEN)
+    if settings.AI_PROVIDER == "groq":
+        return bool(settings.GROQ_API_KEY)
+    if settings.AI_PROVIDER == "google":
+        return bool(settings.GOOGLE_AI_API_KEY)
     return bool(settings.OPENAI_API_KEY)
 
 
@@ -114,12 +149,18 @@ def list_models() -> List[AIModelInfo]:
 
     For the GitHub provider the list is fetched live from the models endpoint;
     if that call fails the built-in fallback list is returned instead.
-    An empty list is returned when ``GITHUB_TOKEN`` is not set.
-
-    For the OpenAI provider no live enumeration is performed and an empty list
-    is returned (OpenAI has hundreds of models — users set the model via AI_MODEL).
+    For Groq and Google the built-in curated lists are returned directly.
+    For OpenAI an empty list is returned (users set the model via AI_MODEL).
     """
-    if settings.AI_PROVIDER != "github" or not settings.GITHUB_TOKEN:
+    provider = settings.AI_PROVIDER
+
+    if provider == "groq":
+        return _GROQ_KNOWN_MODELS if settings.GROQ_API_KEY else []
+
+    if provider == "google":
+        return _GOOGLE_KNOWN_MODELS if settings.GOOGLE_AI_API_KEY else []
+
+    if provider != "github" or not settings.GITHUB_TOKEN:
         return []
 
     if OpenAI is None:

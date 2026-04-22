@@ -131,6 +131,8 @@ class UserSettings(BaseModel):
     OPENAI_API_KEY: Optional[str] = None
     OPENAI_MODEL: Optional[str] = None
     GITHUB_TOKEN: Optional[str] = None
+    GROQ_API_KEY: Optional[str] = None
+    GOOGLE_AI_API_KEY: Optional[str] = None
     WEATHERAPI_API_KEY: Optional[str] = None
     WEATHER_CITY: Optional[str] = None
     WEATHER_UNITS: Optional[str] = None

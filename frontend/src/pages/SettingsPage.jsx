@@ -3,9 +3,52 @@ import { fetchSettings, saveSettings } from '../api.js'
 import './Page.css'
 import './SettingsPage.css'
 
+// Known models per provider for the model dropdown
+const PROVIDER_MODELS = {
+  openai: [
+    { value: 'gpt-4o-mini', label: 'GPT-4o mini (recommended)' },
+    { value: 'gpt-4o', label: 'GPT-4o' },
+    { value: 'gpt-4.1-mini', label: 'GPT-4.1 mini' },
+    { value: 'gpt-4.1', label: 'GPT-4.1' },
+    { value: 'o4-mini', label: 'o4-mini' },
+    { value: 'o3-mini', label: 'o3-mini' },
+  ],
+  github: [
+    { value: 'gpt-4o-mini', label: 'GPT-4o mini (default)' },
+    { value: 'gpt-4o', label: 'GPT-4o' },
+    { value: 'o1-mini', label: 'o1-mini' },
+    { value: 'o3-mini', label: 'o3-mini' },
+    { value: 'Meta-Llama-3.1-70B-Instruct', label: 'Llama 3.1 70B (Meta)' },
+    { value: 'Mistral-large-2407', label: 'Mistral Large' },
+    { value: 'Phi-3.5-MoE-instruct', label: 'Phi 3.5 MoE' },
+  ],
+  groq: [
+    { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (default, free)' },
+    { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B Instant (free)' },
+    { value: 'llama-3.2-11b-vision-preview', label: 'Llama 3.2 11B Vision (free)' },
+    { value: 'gemma2-9b-it', label: 'Gemma 2 9B (free)' },
+    { value: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B (free)' },
+  ],
+  google: [
+    { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (default, free)' },
+    { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite (free)' },
+    { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (free)' },
+    { value: 'gemini-1.5-flash-8b', label: 'Gemini 1.5 Flash-8B (free)' },
+    { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+  ],
+}
+
+// Provider-specific credential fields
+const PROVIDER_CREDENTIAL = {
+  openai: { key: 'OPENAI_API_KEY', label: 'OpenAI API key', desc: 'Key from platform.openai.com', link: 'https://platform.openai.com/api-keys' },
+  github: { key: 'GITHUB_TOKEN', label: 'GitHub token', desc: 'Fine-grained PAT with "Models: read" permission', link: 'https://github.com/settings/tokens' },
+  groq: { key: 'GROQ_API_KEY', label: 'Groq API key', desc: 'Free key from console.groq.com', link: 'https://console.groq.com' },
+  google: { key: 'GOOGLE_AI_API_KEY', label: 'Google AI API key', desc: 'Free key from aistudio.google.com', link: 'https://aistudio.google.com/app/apikey' },
+}
+
 /**
  * All user-configurable setting groups displayed on the settings page.
- * Each item contains: key (backend field name), label, description, type.
+ * The AI Provider section is rendered separately as AIProviderSection.
  */
 const SETTING_GROUPS = [
   {
@@ -33,26 +76,6 @@ const SETTING_GROUPS = [
           { value: 'imperial', label: 'Imperial (°F)' },
         ],
       },
-    ],
-  },
-  {
-    group: 'AI Provider',
-    icon: '🤖',
-    items: [
-      {
-        key: 'AI_PROVIDER',
-        label: 'Provider',
-        desc: 'openai or github',
-        type: 'select',
-        options: [
-          { value: 'openai', label: 'OpenAI (GPT)' },
-          { value: 'github', label: 'GitHub Models' },
-        ],
-      },
-      { key: 'OPENAI_API_KEY', label: 'OpenAI API key', desc: 'Key from platform.openai.com', type: 'password' },
-      { key: 'OPENAI_MODEL', label: 'OpenAI model', desc: 'e.g. gpt-4o-mini, gpt-4o', type: 'text' },
-      { key: 'GITHUB_TOKEN', label: 'GitHub token', desc: 'PAT with models:read permission (for GitHub Models provider)', type: 'password' },
-      { key: 'AI_MODEL', label: 'Model override', desc: 'Override the default model for the selected provider', type: 'text' },
     ],
   },
   {
@@ -168,7 +191,35 @@ export default function SettingsPage() {
       )}
 
       <div className="settings-groups">
-        {SETTING_GROUPS.map(({ group, icon, items }) => (
+        {/* General + Weather groups */}
+        {SETTING_GROUPS.slice(0, 2).map(({ group, icon, items }) => (
+          <div key={group} className="settings-group card">
+            <h3 className="settings-group__title">
+              <span className="settings-group__icon">{icon}</span>
+              {group}
+            </h3>
+            <div className="settings-group__fields">
+              {items.map(({ key, label, desc, type, options }) => (
+                <SettingField
+                  key={key}
+                  fieldKey={key}
+                  label={label}
+                  desc={desc}
+                  type={type}
+                  options={options}
+                  value={values[key] ?? ''}
+                  onChange={v => handleChange(key, v)}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {/* AI Provider section — dynamic credential + model fields */}
+        <AIProviderSection values={values} onChange={handleChange} />
+
+        {/* Remaining groups (Notifications, CalDAV, Voice) */}
+        {SETTING_GROUPS.slice(2).map(({ group, icon, items }) => (
           <div key={group} className="settings-group card">
             <h3 className="settings-group__title">
               <span className="settings-group__icon">{icon}</span>
@@ -229,6 +280,86 @@ export default function SettingsPage() {
         >
           {saving ? 'Saving…' : '💾 Save all settings'}
         </button>
+      </div>
+    </div>
+  )
+}
+
+/* ── AI Provider section ─────────────────────────────────────────────────── */
+
+function AIProviderSection({ values, onChange }) {
+  const provider = values.AI_PROVIDER || 'openai'
+  const cred = PROVIDER_CREDENTIAL[provider]
+  const modelOptions = PROVIDER_MODELS[provider] || []
+
+  const providerOptions = [
+    { value: 'openai', label: 'OpenAI (GPT)' },
+    { value: 'github', label: 'GitHub Models' },
+    { value: 'groq', label: 'Groq — free tier' },
+    { value: 'google', label: 'Google Gemini — free tier' },
+  ]
+
+  const freeBadge = (provider === 'groq' || provider === 'google')
+    ? <span className="settings-badge settings-badge--free">Free tier</span>
+    : null
+
+  return (
+    <div className="settings-group card">
+      <h3 className="settings-group__title">
+        <span className="settings-group__icon">🤖</span>
+        AI Provider
+        {freeBadge}
+      </h3>
+      <div className="settings-group__fields">
+        {/* Provider selector */}
+        <div className="settings-field">
+          <label className="settings-field__label" htmlFor="setting-AI_PROVIDER">Provider</label>
+          <span className="settings-field__desc">Which AI service generates the daily briefing</span>
+          <div className="settings-field__input-wrap">
+            <select
+              id="setting-AI_PROVIDER"
+              className="settings-field__input settings-field__select"
+              value={provider}
+              onChange={e => onChange('AI_PROVIDER', e.target.value)}
+            >
+              {providerOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Credential field — changes with provider */}
+        {cred && (
+          <SettingField
+            key={cred.key}
+            fieldKey={cred.key}
+            label={cred.label}
+            desc={<>{cred.desc} — <a href={cred.link} target="_blank" rel="noreferrer">Get free key ↗</a></>}
+            type="password"
+            value={values[cred.key] ?? ''}
+            onChange={v => onChange(cred.key, v)}
+          />
+        )}
+
+        {/* Model selector */}
+        <div className="settings-field">
+          <label className="settings-field__label" htmlFor="setting-AI_MODEL">Model</label>
+          <span className="settings-field__desc">Leave on default or choose a specific model</span>
+          <div className="settings-field__input-wrap">
+            <select
+              id="setting-AI_MODEL"
+              className="settings-field__input settings-field__select"
+              value={values.AI_MODEL || ''}
+              onChange={e => onChange('AI_MODEL', e.target.value)}
+            >
+              <option value="">— Provider default —</option>
+              {modelOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
     </div>
   )

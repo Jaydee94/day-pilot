@@ -91,7 +91,7 @@ def _build_daily_forecast(data: dict) -> list[DailyForecastPoint]:
 
 
 def fetch_weather(city: Optional[str] = None, force_refresh: bool = False) -> Optional[WeatherInfo]:
-    """Fetch current weather for the configured city with forecast and 2-hour cache."""
+    """Fetch current weather for the configured city with forecast and 30-minute cache."""
     target_city = city or settings.WEATHER_CITY
     key = _cache_key(target_city, settings.WEATHER_UNITS)
     now = datetime.now(timezone.utc)

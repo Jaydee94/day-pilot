@@ -49,12 +49,20 @@ The file is divided into sections — here are the most important settings to fi
 
 | Setting | What to enter | Where to get it |
 |---|---|---|
-| `OPENAI_API_KEY` | Your OpenAI API key | [platform.openai.com](https://platform.openai.com) → API keys |
 | `WEATHERAPI_API_KEY` | Your weather API key | [weatherapi.com](https://www.weatherapi.com/) → free tier |
 | `NTFY_TOPIC` | A name for your notification channel | Make one up, e.g. `smith-family-2024` |
 | `WEATHER_CITY` | Your city name | e.g. `London`, `Berlin`, `New York` |
 
-> 💡 **Want to use GitHub Copilot instead of OpenAI?** See [Step 2b – GitHub Copilot setup](#step-2b--use-github-copilot-instead-of-openai) below — you won't need an OpenAI key at all.
+For the AI briefing you need **one** of the following (see Step 2b for details):
+
+| Provider | Free? | Setting |
+|---|---|---|
+| Groq | ✅ Free | `AI_PROVIDER=groq` + `GROQ_API_KEY=…` |
+| Google Gemini | ✅ Free | `AI_PROVIDER=google` + `GOOGLE_AI_API_KEY=…` |
+| OpenAI | Pay-per-use | `AI_PROVIDER=openai` + `OPENAI_API_KEY=…` |
+| GitHub Models | Requires Copilot subscription | `AI_PROVIDER=github` + `GITHUB_TOKEN=…` |
+
+> 💡 **No AI key yet?** DayPilot still shows your calendar, tasks, and weather — the AI briefing text is simply skipped until a provider is configured.
 
 ### Recommended settings
 
@@ -70,74 +78,121 @@ The file is divided into sections — here are the most important settings to fi
 
 ---
 
-## Step 2b – Use GitHub Copilot instead of OpenAI
+## Step 2b – Choose your AI provider
 
-If you have a **GitHub Copilot subscription** (Individual, Business, or Enterprise) you can use GitHub's hosted models — no separate OpenAI account needed.
+DayPilot supports four AI providers. Pick the one that suits you best — you only need to configure one.
 
-> 💡 GitHub Models are **OpenAI-compatible**, so DayPilot uses the exact same code path — only the endpoint and the token change.
+---
 
-### 1 — Create a GitHub Personal Access Token
+### Option A — Groq (recommended for free users)
 
-1. Go to [github.com/settings/tokens](https://github.com/settings/tokens) and sign in
-2. Click **"Generate new token"** → choose **"Fine-grained token"** (recommended) or a classic token
-3. Give it a name like `DayPilot`
-4. Under **"Permissions"**, find **"Models"** → set it to **Read-only**
-5. Click **"Generate token"** and copy the value (starts with `ghp_` or `github_pat_`)
+Groq offers a **completely free tier** with fast open-source models. No credit card required.
 
-> ⚠️ Keep this token secret — treat it like a password. Never share it or commit it to version control.
-
-### 2 — Configure DayPilot to use GitHub Models
-
-Open your `.env` file and change these lines:
+1. Sign up at [console.groq.com](https://console.groq.com)
+2. Go to **API Keys** → **Create API key** → copy the key (starts with `gsk_`)
+3. In your `.env`:
 
 ```env
-# Switch the AI provider to GitHub
-AI_PROVIDER=github
-
-# Paste your GitHub Personal Access Token here
-GITHUB_TOKEN=ghp_your_token_here
-
-# (Optional) Choose a specific model — see the list below
-AI_MODEL=gpt-4o-mini
+AI_PROVIDER=groq
+GROQ_API_KEY=gsk_your_key_here
+# Optional: pick a model (default is llama-3.3-70b-versatile)
+AI_MODEL=llama-3.3-70b-versatile
 ```
 
-You do **not** need to set `OPENAI_API_KEY` when using the GitHub provider.
-
-### 3 — Available models
-
-When `AI_PROVIDER=github` you can use any model from the [GitHub Models marketplace](https://github.com/marketplace/models). Popular choices:
+**Free models available:**
 
 | Model ID | Description |
 |---|---|
-| `gpt-4o-mini` | Fast, affordable — great daily driver (default) |
-| `gpt-4o` | More capable, slightly slower |
-| `o1-mini` | Strong reasoning tasks |
-| `Meta-Llama-3.1-70B-Instruct` | Open-source alternative from Meta |
-| `Mistral-large-2407` | Open-source alternative from Mistral |
+| `llama-3.3-70b-versatile` | Best quality, great daily driver (default) |
+| `llama-3.1-8b-instant` | Fastest, lowest latency |
+| `gemma2-9b-it` | Google Gemma, compact and capable |
+| `mixtral-8x7b-32768` | Large context window |
 
-Set the model via `AI_MODEL=<model-id>` in your `.env`.
+---
 
-You can also query the live list at any time after DayPilot is running:
+### Option B — Google Gemini (free tier)
 
-```bash
-curl http://localhost:8000/api/ai/models
+Google AI Studio offers a **free tier** with Gemini models. No credit card required.
+
+1. Go to [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) and sign in with your Google account
+2. Click **Create API key** → copy the key (starts with `AIza`)
+3. In your `.env`:
+
+```env
+AI_PROVIDER=google
+GOOGLE_AI_API_KEY=AIza_your_key_here
+# Optional: pick a model (default is gemini-2.0-flash)
+AI_MODEL=gemini-2.0-flash
 ```
 
-### 4 — Verify the configuration
+**Free models available:**
 
-After starting DayPilot, check which provider and model are active:
+| Model ID | Description |
+|---|---|
+| `gemini-2.0-flash` | Fast, capable — great default (free) |
+| `gemini-2.0-flash-lite` | Lightest and fastest (free) |
+| `gemini-1.5-flash` | Previous generation, still excellent (free) |
+
+---
+
+### Option C — OpenAI
+
+OpenAI is pay-per-use but extremely affordable for daily briefings (a few cents per month).
+
+1. Go to [platform.openai.com/api-keys](https://platform.openai.com/api-keys) and sign in
+2. Click **Create new secret key** → copy it
+3. In your `.env`:
+
+```env
+AI_PROVIDER=openai
+OPENAI_API_KEY=sk_your_key_here
+# Optional: pick a model (default is gpt-4o-mini)
+AI_MODEL=gpt-4o-mini
+```
+
+---
+
+### Option D — GitHub Models
+
+If you have a **GitHub Copilot subscription** you can use GitHub's hosted models — no separate account needed.
+
+> ⚠️ Requires an active Copilot Individual, Business, or Enterprise subscription. The `models:read` permission must be available in your account's token settings.
+
+1. Go to [github.com/settings/tokens](https://github.com/settings/tokens)
+2. Click **Generate new token** → **Fine-grained token**
+3. Under **Permissions** → **Models** → set to **Read-only**
+4. Copy the token (starts with `github_pat_`)
+5. In your `.env`:
+
+```env
+AI_PROVIDER=github
+GITHUB_TOKEN=github_pat_your_token_here
+# Optional: pick a model (default is gpt-4o-mini)
+AI_MODEL=gpt-4o-mini
+```
+
+---
+
+### Verify your AI configuration
+
+After starting DayPilot, confirm the active provider:
 
 ```bash
 curl http://localhost:8000/api/ai/config
 ```
 
-You should see something like:
-
+Expected response:
 ```json
-{"provider": "github", "model": "gpt-4o-mini", "configured": true}
+{"provider": "groq", "model": "llama-3.3-70b-versatile", "configured": true}
 ```
 
-If `configured` is `false`, double-check that `GITHUB_TOKEN` is set correctly in `.env`.
+If `configured` is `false`, double-check that the correct API key is set in `.env`.
+
+To list available models for your active provider:
+
+```bash
+curl http://localhost:8000/api/ai/models
+```
 
 ---
 

@@ -5,6 +5,24 @@
   gap: 1rem;
 }
 
+.settings-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.settings-badge--free {
+  background: rgba(126, 217, 87, 0.15);
+  color: var(--accent-hover);
+  border: 1px solid var(--accent);
+}
+
 .settings-loading,
 .settings-error {
   display: flex;

@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     SETUP_COMPLETE: bool = False
 
     # AI provider — "openai" (default) or "github" (GitHub Models via GitHub Copilot)
-    AI_PROVIDER: Literal["openai", "github"] = "openai"
+    AI_PROVIDER: Literal["openai", "github", "groq", "google"] = "openai"
     # Model to use; defaults differ per provider (see ai_summary.py)
     AI_MODEL: str = ""
 
@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     # GitHub Models (https://github.com/marketplace/models)
     # Requires a GitHub Personal Access Token with the "models:read" permission.
     GITHUB_TOKEN: str = ""
+
+    # Groq  (https://console.groq.com)  — free tier available
+    GROQ_API_KEY: str = ""
+
+    # Google AI Studio  (https://aistudio.google.com)  — free tier available
+    GOOGLE_AI_API_KEY: str = ""
 
     # Weather (WeatherAPI)
     WEATHERAPI_API_KEY: str = ""

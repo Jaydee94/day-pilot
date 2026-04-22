@@ -28,12 +28,14 @@ Every morning DayPilot gathers all your information — calendars, tasks, weathe
 
 **Supported AI providers:**
 
-| Provider | What you need | Set in `.env` |
-|---|---|---|
-| **OpenAI** (default) | OpenAI API key | `AI_PROVIDER=openai` + `OPENAI_API_KEY=…` |
-| **GitHub Copilot** | GitHub account + Copilot subscription | `AI_PROVIDER=github` + `GITHUB_TOKEN=…` |
+| Provider | Free tier? | What you need | Set in `.env` |
+|---|---|---|---|
+| **OpenAI** (default) | Pay-per-use (very cheap) | OpenAI API key | `AI_PROVIDER=openai` + `OPENAI_API_KEY=…` |
+| **Groq** | ✅ Free tier | Groq API key | `AI_PROVIDER=groq` + `GROQ_API_KEY=…` |
+| **Google Gemini** | ✅ Free tier | Google AI API key | `AI_PROVIDER=google` + `GOOGLE_AI_API_KEY=…` |
+| **GitHub Models** | Requires Copilot subscription | GitHub PAT with `models:read` | `AI_PROVIDER=github` + `GITHUB_TOKEN=…` |
 
-You can switch provider at any time by updating `.env` and restarting DayPilot.
+You can switch provider at any time in the **Settings** page or by updating `.env` and restarting DayPilot.
 
 **Choosing a model:**
 
