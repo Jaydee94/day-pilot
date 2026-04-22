@@ -37,6 +37,14 @@
   flex-wrap: wrap;
 }
 
+.weather__details span,
+.weather__hourly-rain,
+.weather__daily-rain {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
 .weather--unavailable .weather__temp {
   font-size: 1.6rem;
 }

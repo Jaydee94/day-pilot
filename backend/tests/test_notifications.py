@@ -66,6 +66,8 @@ class TestSendDailyPush:
         mock_client.post.assert_called_once()
         call_args = mock_client.post.call_args
         assert "my-topic" in call_args[0][0]
+        headers = call_args[1]["headers"]
+        headers["Title"].encode("ascii")
 
     def test_returns_false_on_http_error(self, monkeypatch):
         monkeypatch.setattr(

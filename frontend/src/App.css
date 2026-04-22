@@ -3,7 +3,7 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  padding-bottom: 72px; /* space for bottom nav */
+  padding-bottom: 88px; /* space for floating bottom nav */
 }
 
 /* Header */
@@ -67,7 +67,7 @@
 /* Main content */
 .app-main {
   flex: 1;
-  padding: 1.5rem;
+  padding: 1.25rem 1rem;
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
@@ -120,13 +120,38 @@
 }
 
 .btn--icon {
-  padding: 0.35rem 0.5rem;
+  width: 2rem;
+  height: 2rem;
+  padding: 0.35rem;
   background: transparent;
-  font-size: 1.1rem;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn__icon-svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.app-header__refresh-loading {
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
 }
 
 .btn--icon:hover {
   background: var(--card-border);
+}
+
+@media (min-width: 768px) {
+  .app {
+    padding-bottom: 0;
+    padding-left: 84px;
+  }
+
+  .app-main {
+    padding: 1.5rem;
+  }
 }

@@ -45,7 +45,10 @@ html {
 
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background: var(--bg);
+  background:
+    radial-gradient(1200px 600px at 100% -10%, rgba(166, 200, 255, 0.28), transparent 55%),
+    radial-gradient(1000px 520px at -10% 0%, rgba(126, 217, 87, 0.12), transparent 60%),
+    var(--bg);
   color: var(--text);
   min-height: 100vh;
 }
@@ -62,4 +65,11 @@ a {
 button {
   cursor: pointer;
   font-family: inherit;
+}
+
+.icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.14em;
 }

@@ -56,7 +56,12 @@
 }
 
 .card__icon {
-  font-size: 1.2rem;
+  width: 1.15rem;
+  height: 1.15rem;
+  color: var(--primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .card__title {

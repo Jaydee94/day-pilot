@@ -1,4 +1,5 @@
 import './CalendarEvents.css'
+import AppIcon from './AppIcon.jsx'
 
 function formatTime(iso) {
   const d = new Date(iso)
@@ -14,7 +15,7 @@ export default function CalendarEvents({ events }) {
   return (
     <div className="cal-events card">
       <div className="card__header">
-        <span className="card__icon">📅</span>
+        <span className="card__icon"><AppIcon name="calendar" className="icon" /></span>
         <span className="card__title">Events ({events.length})</span>
       </div>
 
@@ -33,7 +34,7 @@ export default function CalendarEvents({ events }) {
                 <div className="cal-events__content">
                   <span className="cal-events__title">{ev.title}</span>
                   {ev.location && (
-                    <span className="cal-events__location">📍 {ev.location}</span>
+                    <span className="cal-events__location"><AppIcon name="mapPin" className="icon" /> {ev.location}</span>
                   )}
                 </div>
                 <span

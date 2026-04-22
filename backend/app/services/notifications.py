@@ -51,7 +51,8 @@ def send_daily_push(summary: DailySummary) -> bool:
 
     url = f"{settings.NTFY_SERVER.rstrip('/')}/{settings.NTFY_TOPIC}"
     message = _build_message(summary)
-    title = f"☀️ Good morning – {summary.date.strftime('%B %d, %Y')}"
+    # HTTP headers are ASCII-only in the request stack, so keep title plain ASCII.
+    title = f"Good morning - {summary.date.strftime('%B %d, %Y')}"
 
     headers = {
         "Title": title,

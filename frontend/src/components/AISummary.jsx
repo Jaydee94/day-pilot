@@ -1,10 +1,11 @@
 import './AISummary.css'
+import AppIcon from './AppIcon.jsx'
 
 export default function AISummary({ text, priorities }) {
   return (
     <div className="ai-summary card">
       <div className="card__header">
-        <span className="card__icon">✈️</span>
+        <span className="card__icon"><AppIcon name="briefing" className="icon" /></span>
         <span className="card__title">DayPilot Briefing</span>
       </div>
       {text && <p className="ai-summary__text">{text}</p>}

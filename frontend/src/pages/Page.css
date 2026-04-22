@@ -1,20 +1,22 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1rem;
+  width: min(100%, 960px);
+  margin: 0 auto;
 }
 
 .page__title {
-  font-size: 1.5rem;
+  font-size: clamp(1.25rem, 2.8vw, 1.7rem);
   font-weight: 700;
   letter-spacing: -0.03em;
   color: var(--text);
 }
 
 .page__subtitle {
-  font-size: 0.875rem;
+  font-size: 0.95rem;
   color: var(--text-muted);
-  line-height: 1.6;
+  line-height: 1.55;
 }
 
 .page__subtitle code {

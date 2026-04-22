@@ -7,6 +7,7 @@ import TasksPage from './pages/TasksPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
 import SchedulerPage from './pages/SchedulerPage.jsx'
 import SetupWizard from './pages/SetupWizard.jsx'
+import AppIcon from './components/AppIcon.jsx'
 import { fetchSetupStatus } from './api.js'
 import './App.css'
 
@@ -85,8 +86,13 @@ function App() {
                 onClick={fetchSummary}
                 disabled={loading}
                 title="Refresh"
+                aria-label="Refresh daily summary"
               >
-                {loading ? '⏳' : '🔄'}
+                {loading ? (
+                  <span className="app-header__refresh-loading" aria-hidden="true">...</span>
+                ) : (
+                  <AppIcon name="refresh" className="btn__icon-svg" />
+                )}
               </button>
             </div>
           </div>

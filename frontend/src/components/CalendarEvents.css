@@ -43,6 +43,9 @@
 }
 
 .cal-events__location {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
   font-size: 0.78rem;
   color: var(--text-muted);
 }

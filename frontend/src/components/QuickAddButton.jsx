@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import AppIcon from './AppIcon.jsx'
 import './QuickAddButton.css'
 
 const API_BASE = import.meta.env.VITE_API_URL
@@ -109,7 +110,7 @@ export default function QuickAddButton({ onSuccess }) {
         title="Quick Add"
         aria-label="Quick add event or task"
       >
-        +
+        <AppIcon name="plus" className="quick-add-btn__icon" />
       </button>
 
       {open && (
@@ -125,7 +126,7 @@ export default function QuickAddButton({ onSuccess }) {
                 onClick={handleClose}
                 aria-label="Close"
               >
-                ✕
+                <AppIcon name="close" className="quick-add-close__icon" />
               </button>
             </div>
 
@@ -137,7 +138,7 @@ export default function QuickAddButton({ onSuccess }) {
                   onClick={() => handleTabChange(t)}
                   type="button"
                 >
-                  {t === 'Event' ? '📅' : '✅'} {t}
+                  <AppIcon name={t === 'Event' ? 'event' : 'tasks'} className="quick-add-tab__icon" /> {t}
                 </button>
               ))}
             </div>

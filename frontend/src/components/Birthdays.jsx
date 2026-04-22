@@ -1,10 +1,11 @@
 import './Birthdays.css'
+import AppIcon from './AppIcon.jsx'
 
 export default function Birthdays({ birthdays }) {
   return (
     <div className="birthdays card">
       <div className="card__header">
-        <span className="card__icon">🎂</span>
+        <span className="card__icon"><AppIcon name="birthday" className="icon" /></span>
         <span className="card__title">Birthdays Today</span>
       </div>
       <ul className="birthdays__list">

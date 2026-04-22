@@ -161,3 +161,17 @@ class SetupStatus(BaseModel):
 
     setup_complete: bool
     needs_setup: bool
+
+
+class IntegrationTestRequest(BaseModel):
+    """Payload for testing a specific integration with optional temporary setting overrides."""
+
+    overrides: Optional[UserSettings] = None
+
+
+class IntegrationTestResult(BaseModel):
+    """Result of a single integration connection test."""
+
+    integration: str
+    ok: bool
+    message: str

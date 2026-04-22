@@ -32,6 +32,25 @@ export async function saveSettings(updates) {
 }
 
 /**
+ * Test a single integration connection using the current unsaved settings values.
+ * @param {string} integration
+ * @param {Object} overrides
+ * @returns {Promise<{integration: string, ok: boolean, message: string}>}
+ */
+export async function testIntegrationConnection(integration, overrides = {}) {
+  const resp = await fetch(`${API_BASE}/settings/test-connection/${integration}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ overrides }),
+  })
+  if (!resp.ok) {
+    const data = await resp.json().catch(() => ({}))
+    throw new Error(data.detail || `HTTP ${resp.status}`)
+  }
+  return resp.json()
+}
+
+/**
  * Check whether the initial setup wizard has been completed.
  * @returns {Promise<{setup_complete: boolean, needs_setup: boolean}>}
  */

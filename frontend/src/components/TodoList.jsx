@@ -1,4 +1,5 @@
 import './TodoList.css'
+import AppIcon from './AppIcon.jsx'
 
 const PRIORITY_MAP = {
   1: { label: 'High', color: 'var(--error)' },
@@ -18,7 +19,7 @@ export default function TodoList({ todos }) {
   return (
     <div className="todo-list card">
       <div className="card__header">
-        <span className="card__icon">✅</span>
+        <span className="card__icon"><AppIcon name="tasks" className="icon" /></span>
         <span className="card__title">Tasks ({open.length} open)</span>
       </div>
 

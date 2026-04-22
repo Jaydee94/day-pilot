@@ -1,4 +1,5 @@
 import './Weather.css'
+import AppIcon from './AppIcon.jsx'
 
 const UNIT_SYMBOL = { metric: '°C', imperial: '°F' }
 const WIND_UNIT = { metric: 'm/s', imperial: 'mph' }
@@ -23,7 +24,7 @@ export default function Weather({ weather }) {
     return (
       <div className="weather card weather--unavailable">
         <div className="card__header">
-          <span className="card__icon">🌤</span>
+          <span className="card__icon"><AppIcon name="weather" className="icon" /></span>
           <span className="card__title">Weather</span>
         </div>
         <div className="weather__body">
@@ -34,8 +35,8 @@ export default function Weather({ weather }) {
         </div>
         <div className="weather__details">
           <span>Feels like --</span>
-          <span>💧 --</span>
-          <span>💨 --</span>
+          <span><AppIcon name="droplet" className="icon" /> --</span>
+          <span><AppIcon name="wind" className="icon" /> --</span>
         </div>
       </div>
     )
@@ -51,7 +52,7 @@ export default function Weather({ weather }) {
     <>
       <div className="weather card">
         <div className="card__header">
-          <span className="card__icon">🌤</span>
+          <span className="card__icon"><AppIcon name="weather" className="icon" /></span>
           <span className="card__title">Weather – {weather.city}</span>
         </div>
         <div className="weather__body">
@@ -69,8 +70,8 @@ export default function Weather({ weather }) {
         </div>
         <div className="weather__details">
           <span>Feels like {Math.round(weather.feels_like)}{unitSym}</span>
-          <span>💧 {weather.humidity}%</span>
-          <span>💨 {weather.wind_speed} {windUnit}</span>
+          <span><AppIcon name="droplet" className="icon" /> {weather.humidity}%</span>
+          <span><AppIcon name="wind" className="icon" /> {weather.wind_speed} {windUnit}</span>
         </div>
 
         <div className="weather__section">
@@ -88,7 +89,7 @@ export default function Weather({ weather }) {
                     alt={point.description}
                   />
                   <div className="weather__hourly-temp">{Math.round(point.temperature)}{unitSym}</div>
-                  <div className="weather__hourly-rain">💧 {point.chance_of_rain}%</div>
+                  <div className="weather__hourly-rain"><AppIcon name="droplet" className="icon" /> {point.chance_of_rain}%</div>
                 </div>
               ))}
             </div>
@@ -98,7 +99,7 @@ export default function Weather({ weather }) {
 
       <div className="weather card weather__forecast-panel">
         <div className="card__header">
-          <span className="card__icon">📅</span>
+          <span className="card__icon"><AppIcon name="calendar" className="icon" /></span>
           <span className="card__title">Nächste 3 Tage</span>
         </div>
         {dailyForecast.length === 0 ? (
@@ -117,7 +118,7 @@ export default function Weather({ weather }) {
                 <div className="weather__daily-temp">
                   {Math.round(day.min_temperature)}{unitSym} - {Math.round(day.max_temperature)}{unitSym}
                 </div>
-                <div className="weather__daily-rain">💧 {day.chance_of_rain}%</div>
+                <div className="weather__daily-rain"><AppIcon name="droplet" className="icon" /> {day.chance_of_rain}%</div>
               </div>
             ))}
           </div>

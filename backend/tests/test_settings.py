@@ -112,3 +112,34 @@ class TestSetupStatus:
         data = c.get("/api/settings/status").json()
         assert data["setup_complete"] is True
         assert data["needs_setup"] is False
+
+
+class TestIntegrationConnection:
+    def test_weather_connection_success(self, client):
+        c, _ = client
+        fake_weather = MagicMock(city="Berlin")
+        with patch("app.api.settings_router.fetch_weather", return_value=fake_weather):
+            resp = c.post(
+                "/api/settings/test-connection/weather",
+                json={"overrides": {"WEATHER_CITY": "Berlin"}},
+            )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["integration"] == "weather"
+        assert data["ok"] is True
+
+    def test_notifications_connection_missing_topic(self, client):
+        c, _ = client
+        resp = c.post(
+            "/api/settings/test-connection/notifications",
+            json={"overrides": {"NTFY_SERVER": "https://ntfy.sh", "NTFY_TOPIC": ""}},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["integration"] == "notifications"
+        assert data["ok"] is False
+
+    def test_unknown_integration_returns_404(self, client):
+        c, _ = client
+        resp = c.post("/api/settings/test-connection/not-real", json={"overrides": {}})
+        assert resp.status_code == 404

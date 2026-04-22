@@ -1,7 +1,17 @@
 import { useState, useEffect } from 'react'
-import { fetchSettings, saveSettings } from '../api.js'
+import { fetchSettings, saveSettings, testIntegrationConnection } from '../api.js'
+import AppIcon from '../components/AppIcon.jsx'
 import './Page.css'
 import './SettingsPage.css'
+
+const TESTABLE_INTEGRATIONS = [
+  'ai',
+  'google_calendar',
+  'apple_calendar',
+  'weather',
+  'notifications',
+  'voice_webhook',
+]
 
 // Known models per provider for the model dropdown
 const PROVIDER_MODELS = {
@@ -53,7 +63,8 @@ const PROVIDER_CREDENTIAL = {
 const SETTING_GROUPS = [
   {
     group: 'General',
-    icon: '🌍',
+    icon: 'globe',
+    integration: null,
     items: [
       { key: 'APP_NAME', label: 'App name', desc: 'Display name shown in the header', type: 'text' },
       { key: 'APP_TIMEZONE', label: 'Timezone', desc: 'e.g. Europe/Berlin, America/New_York', type: 'text' },
@@ -62,7 +73,8 @@ const SETTING_GROUPS = [
   },
   {
     group: 'Weather',
-    icon: '🌤️',
+    icon: 'weather',
+    integration: 'weather',
     items: [
       { key: 'WEATHERAPI_API_KEY', label: 'WeatherAPI key', desc: 'Free key from weatherapi.com', type: 'password' },
       { key: 'WEATHER_CITY', label: 'City', desc: 'City name for weather data', type: 'text' },
@@ -80,7 +92,8 @@ const SETTING_GROUPS = [
   },
   {
     group: 'Push Notifications (ntfy)',
-    icon: '🔔',
+    icon: 'bell',
+    integration: 'notifications',
     items: [
       { key: 'NTFY_SERVER', label: 'ntfy server', desc: 'e.g. https://ntfy.sh', type: 'text' },
       { key: 'NTFY_TOPIC', label: 'Topic', desc: 'Your ntfy topic name', type: 'text' },
@@ -89,7 +102,8 @@ const SETTING_GROUPS = [
   },
   {
     group: 'Apple Calendar (iCloud)',
-    icon: '📅',
+    icon: 'calendar',
+    integration: 'apple_calendar',
     items: [
       { key: 'CALDAV_URL', label: 'CalDAV URL', desc: 'e.g. https://caldav.icloud.com', type: 'text' },
       { key: 'CALDAV_USERNAME', label: 'Username', desc: 'Your Apple ID email address', type: 'text' },
@@ -98,7 +112,8 @@ const SETTING_GROUPS = [
   },
   {
     group: 'Voice Control',
-    icon: '🎙️',
+    icon: 'mic',
+    integration: 'voice_webhook',
     items: [
       { key: 'VOICE_WEBHOOK_SECRET', label: 'Webhook secret', desc: 'Strong random secret for the Siri / Google Assistant webhook', type: 'password' },
     ],
@@ -111,6 +126,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [loadError, setLoadError] = useState(null)
   const [saveStatus, setSaveStatus] = useState(null) // 'success' | 'error' | null
+  const [connectionStates, setConnectionStates] = useState({})
 
   useEffect(() => {
     fetchSettings()
@@ -136,11 +152,49 @@ export default function SettingsPage() {
       const updated = await saveSettings(values)
       setValues(updated)
       setSaveStatus('success')
-      setTimeout(() => setSaveStatus(null), 3000)
+      setTimeout(() => setSaveStatus(null), 6000)
     } catch {
       setSaveStatus('error')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleTestConnection(integration) {
+    if (!integration) return
+
+    setConnectionStates(prev => ({
+      ...prev,
+      [integration]: { loading: true, ok: null, message: 'Verbindung wird getestet...' },
+    }))
+
+    try {
+      const result = await testIntegrationConnection(integration, values)
+      setConnectionStates(prev => ({
+        ...prev,
+        [integration]: { loading: false, ok: result.ok, message: result.message },
+      }))
+      if (result.ok) {
+        setTimeout(() => {
+          setConnectionStates(prev => {
+            if (!prev[integration]?.ok) return prev
+            return { ...prev, [integration]: null }
+          })
+        }, 6000)
+      }
+    } catch (err) {
+      setConnectionStates(prev => ({
+        ...prev,
+        [integration]: { loading: false, ok: false, message: err.message },
+      }))
+    }
+  }
+
+  async function handleTestAllConnections() {
+    for (const integration of TESTABLE_INTEGRATIONS) {
+      // Run one-by-one to keep feedback readable in the UI.
+      // eslint-disable-next-line no-await-in-loop
+      await handleTestConnection(integration)
     }
   }
 
@@ -176,28 +230,57 @@ export default function SettingsPage() {
             Configure DayPilot to match your preferences. Changes take effect immediately.
           </p>
         </div>
+        <button
+          type="button"
+          className="settings-test-all-btn"
+          onClick={handleTestAllConnections}
+          aria-label="Alle Integrationen testen"
+        >
+          Alle Integrationen testen
+        </button>
       </div>
 
       {/* Save status toast */}
       {saveStatus === 'success' && (
         <div className="settings-toast settings-toast--success" role="status">
-          ✓ Settings saved successfully
+          Einstellungen erfolgreich gespeichert
         </div>
       )}
       {saveStatus === 'error' && (
         <div className="settings-toast settings-toast--error" role="alert">
-          ⚠️ Failed to save settings. Please try again.
+          Speichern fehlgeschlagen. Bitte versuche es erneut.
         </div>
       )}
 
       <div className="settings-groups">
         {/* General + Weather groups */}
-        {SETTING_GROUPS.slice(0, 2).map(({ group, icon, items }) => (
+        {SETTING_GROUPS.slice(0, 2).map(({ group, icon, items, integration }) => (
           <div key={group} className="settings-group card">
-            <h3 className="settings-group__title">
-              <span className="settings-group__icon">{icon}</span>
-              {group}
-            </h3>
+            <div className="settings-group__head">
+              <h3 className="settings-group__title">
+                <span className="settings-group__icon"><AppIcon name={icon} className="icon" /></span>
+                {group}
+              </h3>
+              {integration && (
+                <button
+                  type="button"
+                  className="settings-test-btn"
+                  onClick={() => handleTestConnection(integration)}
+                  disabled={connectionStates[integration]?.loading}
+                  aria-label={`Test ${group} connection`}
+                >
+                  {connectionStates[integration]?.loading ? 'Teste...' : 'Verbindung testen'}
+                </button>
+              )}
+            </div>
+            {integration && connectionStates[integration]?.message && (
+              <p
+                className={`settings-test-result ${connectionStates[integration]?.ok ? 'settings-test-result--success' : 'settings-test-result--error'}`}
+                role="status"
+              >
+                {connectionStates[integration]?.ok ? 'Verbunden' : 'Nicht verbunden'}: {connectionStates[integration]?.message}
+              </p>
+            )}
             <div className="settings-group__fields">
               {items.map(({ key, label, desc, type, options }) => (
                 <SettingField
@@ -216,15 +299,41 @@ export default function SettingsPage() {
         ))}
 
         {/* AI Provider section — dynamic credential + model fields */}
-        <AIProviderSection values={values} onChange={handleChange} />
+        <AIProviderSection
+          values={values}
+          onChange={handleChange}
+          onTest={handleTestConnection}
+          connectionState={connectionStates.ai}
+        />
 
         {/* Remaining groups (Notifications, CalDAV, Voice) */}
-        {SETTING_GROUPS.slice(2).map(({ group, icon, items }) => (
+        {SETTING_GROUPS.slice(2).map(({ group, icon, items, integration }) => (
           <div key={group} className="settings-group card">
-            <h3 className="settings-group__title">
-              <span className="settings-group__icon">{icon}</span>
-              {group}
-            </h3>
+            <div className="settings-group__head">
+              <h3 className="settings-group__title">
+                <span className="settings-group__icon"><AppIcon name={icon} className="icon" /></span>
+                {group}
+              </h3>
+              {integration && (
+                <button
+                  type="button"
+                  className="settings-test-btn"
+                  onClick={() => handleTestConnection(integration)}
+                  disabled={connectionStates[integration]?.loading}
+                  aria-label={`Test ${group} connection`}
+                >
+                  {connectionStates[integration]?.loading ? 'Teste...' : 'Verbindung testen'}
+                </button>
+              )}
+            </div>
+            {integration && connectionStates[integration]?.message && (
+              <p
+                className={`settings-test-result ${connectionStates[integration]?.ok ? 'settings-test-result--success' : 'settings-test-result--error'}`}
+                role="status"
+              >
+                {connectionStates[integration]?.ok ? 'Verbunden' : 'Nicht verbunden'}: {connectionStates[integration]?.message}
+              </p>
+            )}
             <div className="settings-group__fields">
               {items.map(({ key, label, desc, type, options }) => (
                 <SettingField
@@ -245,10 +354,29 @@ export default function SettingsPage() {
 
       {/* Google Calendar note */}
       <div className="settings-note card">
-        <h3 className="settings-group__title">
-          <span className="settings-group__icon">📌</span>
-          Google Calendar
-        </h3>
+        <div className="settings-group__head">
+          <h3 className="settings-group__title">
+            <span className="settings-group__icon"><AppIcon name="pin" className="icon" /></span>
+            Google Calendar
+          </h3>
+          <button
+            type="button"
+            className="settings-test-btn"
+            onClick={() => handleTestConnection('google_calendar')}
+            disabled={connectionStates.google_calendar?.loading}
+            aria-label="Test Google Calendar connection"
+          >
+            {connectionStates.google_calendar?.loading ? 'Teste...' : 'Verbindung testen'}
+          </button>
+        </div>
+        {connectionStates.google_calendar?.message && (
+          <p
+            className={`settings-test-result ${connectionStates.google_calendar?.ok ? 'settings-test-result--success' : 'settings-test-result--error'}`}
+            role="status"
+          >
+            {connectionStates.google_calendar?.ok ? 'Verbunden' : 'Nicht verbunden'}: {connectionStates.google_calendar?.message}
+          </p>
+        )}
         <p className="settings-note__text">
           Google Calendar uses OAuth2 file-based authentication. Place your{' '}
           <code>credentials.json</code> in the <code>./data/</code> directory
@@ -261,7 +389,7 @@ export default function SettingsPage() {
       {/* Voice webhook info */}
       <div className="settings-note card">
         <h3 className="settings-group__title">
-          <span className="settings-group__icon">🎙️</span>
+          <span className="settings-group__icon"><AppIcon name="mic" className="icon" /></span>
           Voice Control Webhook
         </h3>
         <p className="settings-note__text">
@@ -278,7 +406,11 @@ export default function SettingsPage() {
           disabled={saving}
           aria-label="Save all settings"
         >
-          {saving ? 'Saving…' : '💾 Save all settings'}
+          {saving ? 'Speichere...' : (
+            <>
+              <AppIcon name="save" className="settings-save__icon" /> Alle Einstellungen speichern
+            </>
+          )}
         </button>
       </div>
     </div>
@@ -287,7 +419,7 @@ export default function SettingsPage() {
 
 /* ── AI Provider section ─────────────────────────────────────────────────── */
 
-function AIProviderSection({ values, onChange }) {
+function AIProviderSection({ values, onChange, onTest, connectionState }) {
   const provider = values.AI_PROVIDER || 'openai'
   const cred = PROVIDER_CREDENTIAL[provider]
   const modelOptions = PROVIDER_MODELS[provider] || []
@@ -305,11 +437,27 @@ function AIProviderSection({ values, onChange }) {
 
   return (
     <div className="settings-group card">
-      <h3 className="settings-group__title">
-        <span className="settings-group__icon">🤖</span>
-        AI Provider
-        {freeBadge}
-      </h3>
+      <div className="settings-group__head">
+        <h3 className="settings-group__title">
+          <span className="settings-group__icon"><AppIcon name="robot" className="icon" /></span>
+          AI Provider
+          {freeBadge}
+        </h3>
+        <button
+          type="button"
+          className="settings-test-btn"
+          onClick={() => onTest('ai')}
+          disabled={connectionState?.loading}
+          aria-label="AI-Verbindung testen"
+        >
+          {connectionState?.loading ? 'Teste...' : 'Verbindung testen'}
+        </button>
+      </div>
+      {connectionState?.message && (
+        <p className={`settings-test-result ${connectionState?.ok ? 'settings-test-result--success' : 'settings-test-result--error'}`} role="status">
+          {connectionState?.ok ? 'Verbunden' : 'Nicht verbunden'}: {connectionState?.message}
+        </p>
+      )}
       <div className="settings-group__fields">
         {/* Provider selector */}
         <div className="settings-field">
@@ -406,7 +554,7 @@ function SettingField({ fieldKey, label, desc, type, options, value, onChange })
             onClick={() => setVisible(v => !v)}
             aria-label={visible ? 'Hide value' : 'Show value'}
           >
-            {visible ? '🙈' : '👁️'}
+            <AppIcon name={visible ? 'eyeOff' : 'eye'} className="settings-toggle__icon" />
           </button>
         )}
       </div>
