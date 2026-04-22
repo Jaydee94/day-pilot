@@ -69,12 +69,18 @@
 }
 
 .weather__hourly-item {
-  min-width: 88px;
-  background: rgba(255, 255, 255, 0.7);
+  min-width: 80px;
+  background: var(--item-bg);
   border: 1px solid var(--card-border);
-  border-radius: 10px;
-  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.6rem;
   text-align: center;
+  transition: background 0.15s;
+}
+
+.weather__hourly-item:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
 }
 
 .weather__hourly-time,
