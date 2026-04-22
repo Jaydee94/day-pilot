@@ -7,8 +7,11 @@ RUN npm ci
 
 COPY . .
 
-# Build with the API URL pointing to the backend service
-ARG VITE_API_URL=http://localhost:8000
+# VITE_API_URL is intentionally left empty so the frontend uses a relative
+# /api path, which nginx proxies to the backend container. Set this build arg
+# only when the frontend is served from a different origin than the API
+# (e.g. a reverse-proxy split setup).
+ARG VITE_API_URL=
 ENV VITE_API_URL=${VITE_API_URL}
 
 RUN npm run build
