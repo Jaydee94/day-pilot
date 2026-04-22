@@ -246,7 +246,6 @@ class TestLocalCalendar:
     def test_add_and_fetch_local_event(self, tmp_path, monkeypatch):
         events_file = tmp_path / "local_events.json"
         monkeypatch.setattr("app.services.local_calendar.settings.LOCAL_EVENTS_FILE", str(events_file), raising=False)
-        monkeypatch.setattr("app.config.settings.LOCAL_EVENTS_FILE", str(events_file), raising=False)
 
         from app.services.local_calendar import add_local_event, fetch_local_events
 

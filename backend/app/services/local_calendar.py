@@ -20,11 +20,9 @@ from app.models.schemas import CalendarEvent
 
 logger = logging.getLogger(__name__)
 
-LOCAL_EVENTS_FILE_DEFAULT = "/app/data/local_events.json"
-
 
 def _events_file() -> str:
-    return getattr(settings, "LOCAL_EVENTS_FILE", LOCAL_EVENTS_FILE_DEFAULT)
+    return settings.LOCAL_EVENTS_FILE
 
 
 def _local_tz() -> pytz.BaseTzInfo:
@@ -79,7 +77,8 @@ def fetch_local_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
     """Return local events for the given day (defaults to today)."""
     tz = _local_tz()
     if date:
-        start = date.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(tz)
+        # Convert to local tz first, then zero out the time components.
+        start = date.astimezone(tz).replace(hour=0, minute=0, second=0, microsecond=0)
     else:
         now = datetime.now(tz)
         start = now.replace(hour=0, minute=0, second=0, microsecond=0)

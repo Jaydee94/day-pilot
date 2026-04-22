@@ -431,7 +431,7 @@ export default function SettingsPage({ onLanguageChange }) {
         </p>
         <p className="settings-note__text">
           <a
-            href="https://github.com/Jaydee94/day-pilot/blob/main/docs/getting-started.md#step-3--connect-google-calendar"
+            href="docs/getting-started.md"
             target="_blank"
             rel="noopener noreferrer"
           >

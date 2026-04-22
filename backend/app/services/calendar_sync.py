@@ -59,7 +59,7 @@ def _token_path_for_credentials(creds_path: str) -> str:
     overwrite each other.
     """
     all_paths = _google_credential_paths()
-    if creds_path == all_paths[0] if all_paths else creds_path:
+    if all_paths and creds_path == all_paths[0]:
         return settings.GOOGLE_TOKEN_JSON
     # Derive a unique token file name based on the credentials file stem.
     base_dir = os.path.dirname(settings.GOOGLE_TOKEN_JSON)
@@ -365,7 +365,7 @@ def _get_caldav_configs() -> List[dict]:
     legacy single-account variables ``CALDAV_URL`` / ``CALDAV_USERNAME`` /
     ``CALDAV_PASSWORD`` are used as a single-element list (backwards compat).
     """
-    raw = getattr(settings, "CALDAV_CONFIGS", "").strip()
+    raw = settings.CALDAV_CONFIGS.strip()
     if raw:
         try:
             configs = json.loads(raw)
@@ -482,7 +482,7 @@ def fetch_apple_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
                     logger.warning("Error reading CalDAV calendar %s: %s", cal, cal_exc)
 
         except Exception as exc:
-            logger.error("Failed to fetch Apple events for account %s: %s", cfg.get("url"), exc)
+            logger.error("Failed to fetch Apple events for a CalDAV account: %s", exc)
 
     return events
 

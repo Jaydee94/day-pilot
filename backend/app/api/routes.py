@@ -146,7 +146,8 @@ def list_birthdays():
 def create_event(payload: CreateEventRequest):
     """Add a new event.
 
-    The event is written to the first available calendar in priority order:
+    The event is written to the first calendar provider that accepts it,
+    tried in priority order:
     1. Google Calendar (primary account)
     2. Apple / CalDAV calendar (first configured account)
     3. Internal local calendar (always available, no external credentials needed)
