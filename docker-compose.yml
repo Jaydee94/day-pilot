@@ -79,7 +79,10 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+        # Leave empty so the built JS uses a relative /api path (proxied by
+        # nginx). Set VITE_API_URL in .env only when a split-origin setup is
+        # needed (e.g. frontend and backend on different ports/hosts).
+        VITE_API_URL: ${VITE_API_URL:-}
     container_name: day-pilot-frontend
     restart: unless-stopped
     ports:
