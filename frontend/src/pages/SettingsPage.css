@@ -1,3 +1,52 @@
+.settings-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.settings-loading,
+.settings-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 3rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.settings-error {
+  color: var(--error);
+}
+
+/* Toast */
+.settings-toast {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.settings-toast--success {
+  background: rgba(126, 217, 87, 0.12);
+  border: 1px solid rgba(126, 217, 87, 0.35);
+  color: #3a7e1f;
+}
+
+@media (prefers-color-scheme: dark) {
+  .settings-toast--success {
+    color: var(--accent);
+  }
+}
+
+.settings-toast--error {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: var(--error);
+}
+
+/* Groups */
 .settings-groups {
   display: flex;
   flex-direction: column;
@@ -5,76 +54,134 @@
 }
 
 .settings-group__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   font-size: 0.875rem;
   font-weight: 700;
   color: var(--primary);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
 }
 
-.settings-group__list {
-  list-style: none;
+.settings-group__icon {
+  font-size: 1rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.settings-group__fields {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-}
-
-.settings-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 1rem;
-  padding: 0.6rem 0.75rem;
-  border-radius: var(--radius-sm);
-  background: var(--item-bg);
 }
 
-.settings-item__left {
+/* Individual field */
+.settings-field {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
-  flex: 1;
-  min-width: 0;
+  gap: 0.3rem;
 }
 
-.settings-item__label {
+.settings-field__label {
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text);
 }
 
-.settings-item__desc {
-  font-size: 0.75rem;
+.settings-field__desc {
+  font-size: 0.78rem;
   color: var(--text-muted);
+  line-height: 1.4;
 }
 
-.settings-item__env {
-  font-family: monospace;
-  font-size: 0.75rem;
-  color: var(--primary);
-  background: rgba(79, 142, 247, 0.08);
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-  white-space: nowrap;
-  flex-shrink: 0;
+.settings-field__input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
-.settings-voice {
-  margin-top: 0.25rem;
+.settings-field__input {
+  appearance: none;
+  background: var(--bg);
+  border: 1.5px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.75rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: var(--text);
+  width: 100%;
+  transition: border-color 0.15s;
 }
 
-.settings-voice__desc {
+.settings-field__input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(79, 142, 247, 0.12);
+}
+
+.settings-field__select {
+  cursor: pointer;
+}
+
+.settings-field__toggle {
+  position: absolute;
+  right: 0.5rem;
+  background: transparent;
+  border: none;
+  padding: 0.25rem;
+  font-size: 1rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.settings-field__toggle:hover {
+  color: var(--text);
+}
+
+/* Secret/password fields need right padding so text doesn't overlap the toggle button */
+.settings-field__input-wrap--has-toggle .settings-field__input {
+  padding-right: 2.5rem;
+}
+
+/* Notes / info cards */
+.settings-note {
   font-size: 0.875rem;
-  color: var(--text-muted);
-  line-height: 1.6;
 }
 
-.settings-voice__desc code {
+.settings-note__text {
+  color: var(--text-muted);
+  line-height: 1.65;
+}
+
+.settings-note__text code {
   background: rgba(79, 142, 247, 0.08);
   padding: 0.1em 0.4em;
   border-radius: 4px;
   font-family: monospace;
   font-size: 0.85em;
   color: var(--primary);
+}
+
+/* Card base (shared across page) */
+.card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  box-shadow: var(--shadow);
+}
+
+/* Save button area */
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-bottom: 1rem;
+}
+
+.settings-actions__save {
+  padding: 0.65rem 1.75rem;
+  font-size: 0.95rem;
 }

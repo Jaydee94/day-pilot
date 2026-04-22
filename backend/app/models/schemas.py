@@ -94,3 +94,39 @@ class AIConfig(BaseModel):
     provider: str  # "openai" | "github"
     model: str
     configured: bool
+
+
+class UserSettings(BaseModel):
+    """User-configurable settings.
+
+    All fields are ``Optional`` so that the client can send partial updates.
+    When used as a GET response every field will be populated with the
+    current effective value.
+    """
+
+    APP_NAME: Optional[str] = None
+    APP_TIMEZONE: Optional[str] = None
+    DAILY_SUMMARY_TIME: Optional[str] = None
+    AI_PROVIDER: Optional[str] = None
+    AI_MODEL: Optional[str] = None
+    OPENAI_API_KEY: Optional[str] = None
+    OPENAI_MODEL: Optional[str] = None
+    GITHUB_TOKEN: Optional[str] = None
+    OPENWEATHERMAP_API_KEY: Optional[str] = None
+    WEATHER_CITY: Optional[str] = None
+    WEATHER_UNITS: Optional[str] = None
+    CALDAV_URL: Optional[str] = None
+    CALDAV_USERNAME: Optional[str] = None
+    CALDAV_PASSWORD: Optional[str] = None
+    NTFY_SERVER: Optional[str] = None
+    NTFY_TOPIC: Optional[str] = None
+    NTFY_TOKEN: Optional[str] = None
+    VOICE_WEBHOOK_SECRET: Optional[str] = None
+    SETUP_COMPLETE: Optional[bool] = None
+
+
+class SetupStatus(BaseModel):
+    """Setup / onboarding status returned by ``GET /api/settings/status``."""
+
+    setup_complete: bool
+    needs_setup: bool
