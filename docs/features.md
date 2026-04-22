@@ -26,9 +26,24 @@ Every morning DayPilot gathers all your information — calendars, tasks, weathe
 
 **Below the briefing text** you'll also see your **Top 3 Priorities** — automatically extracted by the AI from your events and tasks.
 
-**Powered by OpenAI** — the same technology behind ChatGPT. The model is configurable via `OPENAI_MODEL` in your `.env` file. The default is `gpt-4o-mini`, which is fast, affordable, and more than capable for daily briefings.
+**Supported AI providers:**
 
-> 💡 The AI briefing is **optional**. If `OPENAI_API_KEY` is not set, DayPilot still shows all your events, tasks, and weather — just without the AI-generated text.
+| Provider | What you need | Set in `.env` |
+|---|---|---|
+| **OpenAI** (default) | OpenAI API key | `AI_PROVIDER=openai` + `OPENAI_API_KEY=…` |
+| **GitHub Copilot** | GitHub account + Copilot subscription | `AI_PROVIDER=github` + `GITHUB_TOKEN=…` |
+
+You can switch provider at any time by updating `.env` and restarting DayPilot.
+
+**Choosing a model:**
+
+Set `AI_MODEL` in `.env` to pick the exact model you want (e.g. `AI_MODEL=gpt-4o`).
+When `AI_MODEL` is empty, DayPilot uses a sensible default for the active provider (`gpt-4o-mini`).
+
+To see which models are available for the GitHub provider, visit `http://localhost:8000/api/ai/models` after DayPilot is running.
+To check your current provider and model, visit `http://localhost:8000/api/ai/config`.
+
+> 💡 The AI briefing is **optional**. If no AI credential is configured, DayPilot still shows all your events, tasks, and weather — just without the AI-generated text.
 
 ---
 

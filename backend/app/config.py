@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from typing import Optional
+from typing import Literal, Optional
 
 
 class Settings(BaseSettings):
@@ -8,9 +8,18 @@ class Settings(BaseSettings):
     APP_TIMEZONE: str = "Europe/Berlin"
     DAILY_SUMMARY_TIME: str = "07:00"  # HH:MM in APP_TIMEZONE
 
+    # AI provider — "openai" (default) or "github" (GitHub Models via GitHub Copilot)
+    AI_PROVIDER: Literal["openai", "github"] = "openai"
+    # Model to use; defaults differ per provider (see ai_summary.py)
+    AI_MODEL: str = ""
+
     # OpenAI
     OPENAI_API_KEY: str = ""
-    OPENAI_MODEL: str = "gpt-4o-mini"
+    OPENAI_MODEL: str = "gpt-4o-mini"  # kept for backwards compatibility
+
+    # GitHub Models (https://github.com/marketplace/models)
+    # Requires a GitHub Personal Access Token with the "models:read" permission.
+    GITHUB_TOKEN: str = ""
 
     # Weather (OpenWeatherMap)
     OPENWEATHERMAP_API_KEY: str = ""

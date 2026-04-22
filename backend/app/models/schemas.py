@@ -78,3 +78,19 @@ class SyncStatus(BaseModel):
     weather: bool = False
     last_sync: Optional[datetime] = None
     errors: List[str] = []
+
+
+class AIModelInfo(BaseModel):
+    """Information about a single AI model available through a provider."""
+
+    id: str
+    name: str
+    provider: str  # "openai" | "github"
+
+
+class AIConfig(BaseModel):
+    """Current AI provider configuration."""
+
+    provider: str  # "openai" | "github"
+    model: str
+    configured: bool

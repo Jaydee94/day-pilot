@@ -182,6 +182,40 @@ class TestTodosRoute:
         assert resp.status_code == 503
 
 
+class TestAIRoutes:
+    def test_get_ai_config(self, client):
+        from app.models.schemas import AIConfig
+
+        fake_cfg = AIConfig(provider="openai", model="gpt-4o-mini", configured=True)
+        with patch("app.api.routes.get_ai_config", return_value=fake_cfg):
+            resp = client.get("/api/ai/config")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["provider"] == "openai"
+        assert data["model"] == "gpt-4o-mini"
+        assert data["configured"] is True
+
+    def test_list_ai_models_returns_list(self, client):
+        from app.models.schemas import AIModelInfo
+
+        fake_models = [
+            AIModelInfo(id="gpt-4o", name="GPT-4o", provider="github"),
+            AIModelInfo(id="gpt-4o-mini", name="GPT-4o mini", provider="github"),
+        ]
+        with patch("app.api.routes.list_models", return_value=fake_models):
+            resp = client.get("/api/ai/models")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 2
+        assert data[0]["id"] == "gpt-4o"
+
+    def test_list_ai_models_empty_for_openai(self, client):
+        with patch("app.api.routes.list_models", return_value=[]):
+            resp = client.get("/api/ai/models")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+
 class TestVoiceRoute:
     def test_add_event_wrong_secret(self, client):
         payload = {
