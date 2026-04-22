@@ -48,13 +48,87 @@ You'll see many settings — don't worry, most have sensible defaults. Here are 
 | `NTFY_TOPIC` | A name for your notifications | Make up any name, e.g. `smith-family` |
 | `WEATHER_CITY` | Your city | e.g. `London`, `Berlin`, `New York` |
 
+> 💡 **Want to use GitHub Copilot instead of OpenAI?** See [Step 2b – GitHub Copilot setup](#step-2b--use-github-copilot-instead-of-openai) below — you won't need an OpenAI key at all.
+
 ### Optional (but recommended)
 
 | Setting | What it does |
 |---|---|
 | `APP_TIMEZONE` | Your timezone, e.g. `Europe/London`, `America/New_York` |
 | `DAILY_SUMMARY_TIME` | When to send your morning briefing, e.g. `07:00` |
-| `OPENAI_MODEL` | Which AI model to use (default `gpt-4o-mini` is great and cheap) |
+| `AI_MODEL` | Which AI model to use (leave empty for a sensible default) |
+| `OPENAI_MODEL` | Legacy: which OpenAI model to use (overridden by `AI_MODEL` if set) |
+
+---
+
+## Step 2b – Use GitHub Copilot instead of OpenAI
+
+If you have a **GitHub Copilot subscription** (Individual, Business, or Enterprise) you can use GitHub's hosted models — no separate OpenAI account needed.
+
+> 💡 GitHub Models are **OpenAI-compatible**, so DayPilot uses the exact same code path — only the endpoint and the token change.
+
+### 1 — Create a GitHub Personal Access Token
+
+1. Go to [github.com/settings/tokens](https://github.com/settings/tokens) and sign in
+2. Click **"Generate new token"** → choose **"Fine-grained token"** (recommended) or a classic token
+3. Give it a name like `DayPilot`
+4. Under **"Permissions"**, find **"Models"** → set it to **Read-only**
+5. Click **"Generate token"** and copy the value (starts with `ghp_` or `github_pat_`)
+
+> ⚠️ Keep this token secret — treat it like a password. Never share it or commit it to version control.
+
+### 2 — Configure DayPilot to use GitHub Models
+
+Open your `.env` file and change these lines:
+
+```env
+# Switch the AI provider to GitHub
+AI_PROVIDER=github
+
+# Paste your GitHub Personal Access Token here
+GITHUB_TOKEN=ghp_your_token_here
+
+# (Optional) Choose a specific model — see the list below
+AI_MODEL=gpt-4o-mini
+```
+
+You do **not** need to set `OPENAI_API_KEY` when using the GitHub provider.
+
+### 3 — Available models
+
+When `AI_PROVIDER=github` you can use any model from the [GitHub Models marketplace](https://github.com/marketplace/models). Popular choices:
+
+| Model ID | Description |
+|---|---|
+| `gpt-4o-mini` | Fast, affordable — great daily driver (default) |
+| `gpt-4o` | More capable, slightly slower |
+| `o1-mini` | Strong reasoning tasks |
+| `Meta-Llama-3.1-70B-Instruct` | Open-source alternative from Meta |
+| `Mistral-large-2407` | Open-source alternative from Mistral |
+
+Set the model via `AI_MODEL=<model-id>` in your `.env`.
+
+You can also query the live list at any time after DayPilot is running:
+
+```bash
+curl http://localhost:8000/api/ai/models
+```
+
+### 4 — Verify the configuration
+
+After starting DayPilot, check which provider and model are active:
+
+```bash
+curl http://localhost:8000/api/ai/config
+```
+
+You should see something like:
+
+```json
+{"provider": "github", "model": "gpt-4o-mini", "configured": true}
+```
+
+If `configured` is `false`, double-check that `GITHUB_TOKEN` is set correctly in `.env`.
 
 ---
 

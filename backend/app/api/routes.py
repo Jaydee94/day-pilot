@@ -3,13 +3,15 @@ API routes for Day Pilot.
 """
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import List, Optional
 
 import pytz
 from fastapi import APIRouter, HTTPException, Query
 
 from app.config import settings
 from app.models.schemas import (
+    AIConfig,
+    AIModelInfo,
     DailySummary,
     SyncStatus,
     VoiceCommand,
@@ -28,6 +30,7 @@ from app.services.calendar_sync import (
 )
 from app.services.weather import fetch_weather
 from app.services.notifications import send_daily_push
+from app.services.ai_summary import get_ai_config, list_models
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -165,3 +168,21 @@ def create_todo(payload: CreateTodoRequest):
     if todo:
         return todo
     raise HTTPException(status_code=503, detail="Could not add task to Google Tasks")
+
+
+@router.get("/ai/config", response_model=AIConfig, summary="Current AI provider configuration")
+def get_ai_configuration():
+    """Return the active AI provider, selected model, and whether a credential is configured."""
+    return get_ai_config()
+
+
+@router.get("/ai/models", response_model=List[AIModelInfo], summary="List available AI models")
+def list_ai_models():
+    """
+    Return models available for the configured AI provider.
+
+    For the ``github`` provider this fetches the live model list from GitHub Models
+    (falls back to a built-in list if the API is unreachable).
+    For the ``openai`` provider an empty list is returned — set ``AI_MODEL`` directly.
+    """
+    return list_models()

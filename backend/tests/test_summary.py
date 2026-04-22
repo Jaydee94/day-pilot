@@ -45,7 +45,9 @@ def _make_summary() -> DailySummary:
 
 class TestGenerateSummary:
     def test_returns_unchanged_when_no_api_key(self, monkeypatch):
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_PROVIDER", "openai")
         monkeypatch.setattr("app.services.ai_summary.settings.OPENAI_API_KEY", "")
+        monkeypatch.setattr("app.services.ai_summary.settings.GITHUB_TOKEN", "")
         from app.services.ai_summary import generate_summary
 
         summary = _make_summary()
@@ -54,12 +56,14 @@ class TestGenerateSummary:
         assert result.top_priorities == []
 
     def test_parses_openai_response(self, monkeypatch):
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_PROVIDER", "openai")
         monkeypatch.setattr(
             "app.services.ai_summary.settings.OPENAI_API_KEY", "fake-key"
         )
         monkeypatch.setattr(
             "app.services.ai_summary.settings.OPENAI_MODEL", "gpt-4o-mini"
         )
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_MODEL", "")
 
         fake_text = (
             "SUMMARY:\nGood morning — today looks like a productive day. The weather is beautiful.\n\n"
@@ -84,9 +88,11 @@ class TestGenerateSummary:
         assert result.top_priorities[0] == "Finish the report"
 
     def test_handles_openai_error_gracefully(self, monkeypatch):
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_PROVIDER", "openai")
         monkeypatch.setattr(
             "app.services.ai_summary.settings.OPENAI_API_KEY", "fake-key"
         )
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_MODEL", "")
 
         with patch("app.services.ai_summary.OpenAI") as mock_openai_cls:
             mock_openai_cls.side_effect = Exception("API error")
@@ -95,3 +101,142 @@ class TestGenerateSummary:
 
         # Should not raise, just return original summary
         assert result is not None
+
+    def test_github_provider_uses_correct_base_url(self, monkeypatch):
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_PROVIDER", "github")
+        monkeypatch.setattr("app.services.ai_summary.settings.GITHUB_TOKEN", "ghp_fake")
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_MODEL", "gpt-4o-mini")
+
+        fake_text = (
+            "SUMMARY:\nGood morning — all clear today.\n\n"
+            "PRIORITIES:\n1. Stand-up\n2. Lunch\n3. Review"
+        )
+        mock_choice = MagicMock()
+        mock_choice.message.content = fake_text
+        mock_completion = MagicMock()
+        mock_completion.choices = [mock_choice]
+
+        with patch("app.services.ai_summary.OpenAI") as mock_openai_cls:
+            mock_client = MagicMock()
+            mock_client.chat.completions.create.return_value = mock_completion
+            mock_openai_cls.return_value = mock_client
+
+            from app.services.ai_summary import generate_summary
+            result = generate_summary(_make_summary())
+
+            # Ensure OpenAI was instantiated with the GitHub base URL
+            call_kwargs = mock_openai_cls.call_args.kwargs
+            assert call_kwargs.get("base_url") == "https://models.inference.ai.azure.com"
+            assert call_kwargs.get("api_key") == "ghp_fake"
+
+        assert "all clear" in result.ai_summary
+        assert len(result.top_priorities) == 3
+
+    def test_github_provider_skips_when_no_token(self, monkeypatch):
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_PROVIDER", "github")
+        monkeypatch.setattr("app.services.ai_summary.settings.GITHUB_TOKEN", "")
+        monkeypatch.setattr("app.services.ai_summary.settings.OPENAI_API_KEY", "")
+
+        from app.services.ai_summary import generate_summary
+        result = generate_summary(_make_summary())
+        assert result.ai_summary is None
+
+    def test_ai_model_overrides_provider_default(self, monkeypatch):
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_PROVIDER", "openai")
+        monkeypatch.setattr("app.services.ai_summary.settings.OPENAI_API_KEY", "fake-key")
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_MODEL", "gpt-4o")
+        monkeypatch.setattr("app.services.ai_summary.settings.OPENAI_MODEL", "gpt-4o-mini")
+
+        fake_text = (
+            "SUMMARY:\nGood morning — great day ahead.\n\n"
+            "PRIORITIES:\n1. Deploy\n2. Review\n3. Sync"
+        )
+        mock_choice = MagicMock()
+        mock_choice.message.content = fake_text
+        mock_completion = MagicMock()
+        mock_completion.choices = [mock_choice]
+
+        with patch("app.services.ai_summary.OpenAI") as mock_openai_cls:
+            mock_client = MagicMock()
+            mock_client.chat.completions.create.return_value = mock_completion
+            mock_openai_cls.return_value = mock_client
+
+            from app.services.ai_summary import generate_summary
+            generate_summary(_make_summary())
+
+            create_call = mock_client.chat.completions.create.call_args
+            assert create_call.kwargs.get("model") == "gpt-4o"
+
+
+class TestListModels:
+    def test_returns_empty_for_openai_provider(self, monkeypatch):
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_PROVIDER", "openai")
+        monkeypatch.setattr("app.services.ai_summary.settings.GITHUB_TOKEN", "")
+        from app.services.ai_summary import list_models
+        assert list_models() == []
+
+    def test_returns_empty_when_github_token_missing(self, monkeypatch):
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_PROVIDER", "github")
+        monkeypatch.setattr("app.services.ai_summary.settings.GITHUB_TOKEN", "")
+        from app.services.ai_summary import list_models
+        assert list_models() == []
+
+    def test_falls_back_to_known_models_on_api_error(self, monkeypatch):
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_PROVIDER", "github")
+        monkeypatch.setattr("app.services.ai_summary.settings.GITHUB_TOKEN", "ghp_fake")
+
+        with patch("app.services.ai_summary.OpenAI") as mock_openai_cls:
+            mock_client = MagicMock()
+            mock_client.models.list.side_effect = Exception("network error")
+            mock_openai_cls.return_value = mock_client
+
+            from app.services.ai_summary import list_models, _GITHUB_KNOWN_MODELS
+            result = list_models()
+
+        assert result == _GITHUB_KNOWN_MODELS
+
+    def test_returns_live_models_from_api(self, monkeypatch):
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_PROVIDER", "github")
+        monkeypatch.setattr("app.services.ai_summary.settings.GITHUB_TOKEN", "ghp_fake")
+
+        fake_model = MagicMock()
+        fake_model.id = "gpt-4o"
+        fake_response = MagicMock()
+        fake_response.data = [fake_model]
+
+        with patch("app.services.ai_summary.OpenAI") as mock_openai_cls:
+            mock_client = MagicMock()
+            mock_client.models.list.return_value = fake_response
+            mock_openai_cls.return_value = mock_client
+
+            from app.services.ai_summary import list_models
+            result = list_models()
+
+        assert len(result) == 1
+        assert result[0].id == "gpt-4o"
+        assert result[0].provider == "github"
+
+
+class TestGetAiConfig:
+    def test_returns_openai_config(self, monkeypatch):
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_PROVIDER", "openai")
+        monkeypatch.setattr("app.services.ai_summary.settings.OPENAI_API_KEY", "key123")
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_MODEL", "")
+        monkeypatch.setattr("app.services.ai_summary.settings.OPENAI_MODEL", "gpt-4o-mini")
+
+        from app.services.ai_summary import get_ai_config
+        cfg = get_ai_config()
+        assert cfg.provider == "openai"
+        assert cfg.model == "gpt-4o-mini"
+        assert cfg.configured is True
+
+    def test_returns_github_config(self, monkeypatch):
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_PROVIDER", "github")
+        monkeypatch.setattr("app.services.ai_summary.settings.GITHUB_TOKEN", "ghp_fake")
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_MODEL", "gpt-4o")
+
+        from app.services.ai_summary import get_ai_config
+        cfg = get_ai_config()
+        assert cfg.provider == "github"
+        assert cfg.model == "gpt-4o"
+        assert cfg.configured is True

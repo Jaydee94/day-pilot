@@ -20,7 +20,22 @@ Every morning DayPilot brings all your information together — calendars, tasks
 **Example briefing:**
 > *"Good morning! Today is a full day — you have Sarah's school drop-off at 8:30, a video call at 10:00, and the dentist at 3:00 PM in town. The weather will be cloudy with a chance of rain in the afternoon, so pack an umbrella. Your most important task today is finishing the budget report."*
 
-**The AI is powered by OpenAI** (the same technology behind ChatGPT). The tone is calm and helpful — not alarming or robotic.
+**Supported AI providers:**
+
+| Provider | What you need | Set in `.env` |
+|---|---|---|
+| **OpenAI** (default) | OpenAI API key | `AI_PROVIDER=openai` + `OPENAI_API_KEY=…` |
+| **GitHub Copilot** | GitHub account + Copilot subscription | `AI_PROVIDER=github` + `GITHUB_TOKEN=…` |
+
+You can switch provider at any time by updating `.env` and restarting DayPilot.
+
+**Choosing a model:**
+
+Set `AI_MODEL` in `.env` to pick the exact model you want (e.g. `AI_MODEL=gpt-4o`).
+When `AI_MODEL` is empty, DayPilot uses a sensible default for the active provider (`gpt-4o-mini`).
+
+To see which models are available for the GitHub provider, visit `http://localhost:8000/api/ai/models` after DayPilot is running.
+To check your current provider and model, visit `http://localhost:8000/api/ai/config`.
 
 ---
 
