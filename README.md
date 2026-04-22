@@ -183,8 +183,11 @@ Full interactive docs at `http://localhost:8000/docs` (Swagger UI).
 | Guide | Description |
 |---|---|
 | [Getting Started](docs/getting-started.md) | Step-by-step setup guide |
+| [Configuration Reference](docs/configuration.md) | Every setting explained with examples |
 | [Daily Usage](docs/daily-usage.md) | How to use the dashboard every day |
 | [Features Explained](docs/features.md) | What each feature does |
+| [Voice Control](docs/voice-control.md) | Siri Shortcuts & Google Assistant setup |
+| [API Reference](docs/api-reference.md) | Complete REST API documentation |
 | [Troubleshooting](docs/troubleshooting.md) | Fixes for common problems |
 
 ---
