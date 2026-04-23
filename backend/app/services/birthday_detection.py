@@ -31,15 +31,19 @@ logger = logging.getLogger(__name__)
 # Keyword matching
 # ---------------------------------------------------------------------------
 
-# Birthday-related keywords (English and German).
-_BIRTHDAY_KEYWORDS = [
+# Birthday-related text keywords (English and German) – checked in both title and description.
+_BIRTHDAY_TEXT_KEYWORDS = [
     "birthday",
     "geburtstag",
     "bday",
     "b-day",
     "b'day",
+]
+
+# Emoji keywords that are unambiguously birthday-related – checked in title only.
+# 🎉 is intentionally excluded: it is too generic and matches any celebration event.
+_BIRTHDAY_EMOJI_KEYWORDS = [
     "🎂",
-    "🎉",
 ]
 
 # Patterns used to strip the keyword from the title to obtain the person's name.
@@ -53,7 +57,7 @@ _NAME_STRIP_PATTERNS = [
     # "Birthday: John" (keyword at start with colon)
     re.compile(r"^(?:birthday|geburtstag|bday)\s*:\s*", re.IGNORECASE),
     # Emoji
-    re.compile(r"[🎂🎉]", re.IGNORECASE),
+    re.compile(r"[🎂]", re.IGNORECASE),
 ]
 
 # Patterns for extracting ordinal age from titles like "John's 30th Birthday".
@@ -67,9 +71,22 @@ _AI_PROMPT_MAX_DESCRIPTION_LENGTH = 200
 
 
 def _matches_keyword(title: str, description: Optional[str] = None) -> bool:
-    """Return True if the event title (or description) contains a birthday keyword."""
-    combined = (title + " " + (description or "")).lower()
-    return any(kw in combined for kw in _BIRTHDAY_KEYWORDS)
+    """Return True if the event title (or description) contains a birthday keyword.
+
+    Text keywords (birthday, geburtstag, …) are checked in both the title and
+    description.  Emoji keywords (🎂) are only checked in the title to avoid
+    false positives from celebration or party event descriptions.
+    """
+    title_lower = title.lower()
+    if any(kw in title_lower for kw in _BIRTHDAY_TEXT_KEYWORDS):
+        return True
+    if any(kw in title for kw in _BIRTHDAY_EMOJI_KEYWORDS):
+        return True
+    if description:
+        desc_lower = description.lower()
+        if any(kw in desc_lower for kw in _BIRTHDAY_TEXT_KEYWORDS):
+            return True
+    return False
 
 
 def _extract_name(title: str) -> str:
