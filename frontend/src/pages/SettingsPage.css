@@ -397,6 +397,103 @@
   font-size: 0.88rem;
 }
 
+/* Guide toggle button */
+.settings-guide-toggle {
+  background: transparent;
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  border-radius: 999px;
+  padding: 0.32rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.settings-guide-toggle:hover {
+  background: rgba(79, 142, 247, 0.1);
+}
+
+.settings-group__head-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* Inline setup guide */
+.settings-guide {
+  margin: 0.75rem 0 1rem;
+  padding: 1rem 1.1rem;
+  background: rgba(79, 142, 247, 0.05);
+  border: 1px solid rgba(79, 142, 247, 0.18);
+  border-radius: var(--radius-sm);
+}
+
+.settings-guide__intro {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+  line-height: 1.5;
+}
+
+.settings-guide__steps {
+  list-style: decimal;
+  padding-left: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin: 0;
+}
+
+.settings-guide__step {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.settings-guide__step-title {
+  display: block;
+  color: var(--text);
+  font-size: 0.875rem;
+  margin-bottom: 0.2rem;
+}
+
+.settings-guide__step-text {
+  color: var(--text-muted);
+  margin: 0.2rem 0 0.3rem;
+}
+
+.settings-guide__api-list {
+  list-style: disc;
+  padding-left: 1.2rem;
+  margin: 0.25rem 0 0;
+  color: var(--text-muted);
+}
+
+.settings-guide__link {
+  display: inline-block;
+  margin-top: 0.3rem;
+  font-size: 0.82rem;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.settings-guide__link:hover {
+  text-decoration: underline;
+}
+
+.settings-guide__code {
+  display: block;
+  margin-top: 0.4rem;
+  background: rgba(79, 142, 247, 0.08);
+  padding: 0.4em 0.6em;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.82em;
+  color: var(--primary);
+  word-break: break-all;
+}
+
 .settings-add-account-form {
   display: flex;
   flex-direction: column;

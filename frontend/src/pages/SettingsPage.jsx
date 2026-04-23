@@ -464,15 +464,6 @@ export default function SettingsPage({ onLanguageChange }) {
         <p className="settings-note__text">
           {t('settingsGoogleCalendarMultiNote')}
         </p>
-        <p className="settings-note__text">
-          <a
-            href="docs/getting-started.md"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {t('settingsGoogleCalendarSetupLink')}
-          </a>
-        </p>
       </div>
 
       {/* Internal calendar info */}
@@ -658,6 +649,7 @@ function GoogleCalendarSection({ icon, values, onChange, onTest, connectionState
   const [uploadError, setUploadError] = useState(null)
   const [uploadSuccess, setUploadSuccess] = useState(null)
   const [deleting, setDeleting] = useState(null)
+  const [showGuide, setShowGuide] = useState(false)
 
   useEffect(() => {
     fetchGoogleCredentials()
@@ -710,21 +702,75 @@ function GoogleCalendarSection({ icon, values, onChange, onTest, connectionState
           <span className="settings-group__icon"><AppIcon name={icon} className="icon" /></span>
           {t('settingsGroupGoogleCalendar')}
         </h3>
-        <button
-          type="button"
-          className="settings-test-btn"
-          onClick={() => onTest('google_calendar')}
-          disabled={connectionState?.loading}
-          aria-label={t('testConnection')}
-        >
-          {connectionState?.loading ? t('testingConnection') : t('testConnection')}
-        </button>
+        <div className="settings-group__head-actions">
+          <button
+            type="button"
+            className="settings-guide-toggle"
+            onClick={() => setShowGuide(v => !v)}
+            aria-expanded={showGuide}
+          >
+            {showGuide ? t('hideSetupGuide') : t('showSetupGuide')}
+          </button>
+          <button
+            type="button"
+            className="settings-test-btn"
+            onClick={() => onTest('google_calendar')}
+            disabled={connectionState?.loading}
+            aria-label={t('testConnection')}
+          >
+            {connectionState?.loading ? t('testingConnection') : t('testConnection')}
+          </button>
+        </div>
       </div>
       {connectionState?.message && (
         <p className={`settings-test-result ${connectionState?.ok ? 'settings-test-result--success' : 'settings-test-result--error'}`} role="status">
           {connectionState?.ok ? t('connected') : t('notConnected')}: {connectionState?.message}
         </p>
       )}
+
+      {/* Inline step-by-step setup guide */}
+      {showGuide && (
+        <div className="settings-guide" role="region" aria-label={t('showSetupGuide')}>
+          <p className="settings-guide__intro">{t('gcGuideIntro')}</p>
+          <ol className="settings-guide__steps">
+            <li className="settings-guide__step">
+              <strong className="settings-guide__step-title">{t('gcGuideStep1Title')}</strong>
+              <p className="settings-guide__step-text">{t('gcGuideStep1Text')}</p>
+              <a
+                href="https://console.cloud.google.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="settings-guide__link"
+              >
+                {t('gcGuideStep1Link')}
+              </a>
+            </li>
+            <li className="settings-guide__step">
+              <strong className="settings-guide__step-title">{t('gcGuideStep2Title')}</strong>
+              <p className="settings-guide__step-text">{t('gcGuideStep2Text')}</p>
+              <ul className="settings-guide__api-list">
+                <li>{t('gcGuideStep2Api1')}</li>
+                <li>{t('gcGuideStep2Api2')}</li>
+                <li>{t('gcGuideStep2Api3')}</li>
+              </ul>
+            </li>
+            <li className="settings-guide__step">
+              <strong className="settings-guide__step-title">{t('gcGuideStep3Title')}</strong>
+              <p className="settings-guide__step-text">{t('gcGuideStep3Text')}</p>
+            </li>
+            <li className="settings-guide__step">
+              <strong className="settings-guide__step-title">{t('gcGuideStep4Title')}</strong>
+              <p className="settings-guide__step-text">{t('gcGuideStep4Text')}</p>
+            </li>
+            <li className="settings-guide__step">
+              <strong className="settings-guide__step-title">{t('gcGuideStep5Title')}</strong>
+              <p className="settings-guide__step-text">{t('gcGuideStep5Text')}</p>
+              <code className="settings-guide__code">{t('gcGuideStep5Hint')}</code>
+            </li>
+          </ol>
+        </div>
+      )}
+
       <div className="settings-group__fields">
         {/* Credentials file upload */}
         <div className="settings-field">
