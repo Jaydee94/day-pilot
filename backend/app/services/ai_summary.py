@@ -223,17 +223,56 @@ def _build_prompt(summary: DailySummary) -> str:
     if summary.weather:
         w = summary.weather
         unit_sym = "°C" if w.units == "metric" else "°F"
-        lines.append(
-            (
-                f"Wetter in {w.city}: {w.description}, {w.temperature}{unit_sym} "
-                f"(gefuehlt {w.feels_like}{unit_sym}), Luftfeuchte {w.humidity}%, "
-                f"Wind {w.wind_speed} {'m/s' if w.units == 'metric' else 'mph'}"
-                if is_de
-                else f"Weather in {w.city}: {w.description}, {w.temperature}{unit_sym} "
-                f"(feels like {w.feels_like}{unit_sym}), humidity {w.humidity}%, "
-                f"wind {w.wind_speed} {'m/s' if w.units == 'metric' else 'mph'}"
+
+        # Extract morning (~9h), noon (~12h), evening (~18h) from hourly forecast
+        morning_temp: Optional[float] = None
+        noon_temp: Optional[float] = None
+        evening_temp: Optional[float] = None
+        day_max_temp: Optional[float] = None
+
+        if w.hourly_forecast:
+            all_temps = [h.temperature for h in w.hourly_forecast]
+            day_max_temp = max(all_temps)
+            for h in w.hourly_forecast:
+                if morning_temp is None and h.time.hour >= 9:
+                    morning_temp = h.temperature
+                if noon_temp is None and h.time.hour >= 12:
+                    noon_temp = h.temperature
+                if evening_temp is None and h.time.hour >= 18:
+                    evening_temp = h.temperature
+
+        if is_de:
+            weather_line = (
+                f"Wetter in {w.city}: {w.description}, aktuell {w.temperature}{unit_sym}"
             )
-        )
+            if day_max_temp is not None:
+                weather_line += f", Tageshöchst {round(day_max_temp)}{unit_sym}"
+            time_parts: List[str] = []
+            if morning_temp is not None:
+                time_parts.append(f"Vormittag {round(morning_temp)}{unit_sym}")
+            if noon_temp is not None:
+                time_parts.append(f"Mittag {round(noon_temp)}{unit_sym}")
+            if evening_temp is not None:
+                time_parts.append(f"Abend {round(evening_temp)}{unit_sym}")
+            if time_parts:
+                weather_line += " | " + ", ".join(time_parts)
+        else:
+            weather_line = (
+                f"Weather in {w.city}: {w.description}, currently {w.temperature}{unit_sym}"
+            )
+            if day_max_temp is not None:
+                weather_line += f", daily high {round(day_max_temp)}{unit_sym}"
+            time_parts = []
+            if morning_temp is not None:
+                time_parts.append(f"morning {round(morning_temp)}{unit_sym}")
+            if noon_temp is not None:
+                time_parts.append(f"noon {round(noon_temp)}{unit_sym}")
+            if evening_temp is not None:
+                time_parts.append(f"evening {round(evening_temp)}{unit_sym}")
+            if time_parts:
+                weather_line += " | " + ", ".join(time_parts)
+
+        lines.append(weather_line)
         lines.append("")
 
     if summary.birthdays:
@@ -269,6 +308,9 @@ def _build_prompt(summary: DailySummary) -> str:
             "Du bist ein freundlicher persoenlicher Assistent fuer eine Familie. "
             "Schreibe auf Basis der folgenden Daten ein warmes, kurzes Tagesbriefing auf Deutsch "
             "(maximal 5 Saetze, beginne mit 'Guten Morgen'). "
+            "Das Briefing soll kurz auf das Wetter eingehen und dabei die Tageshöchsttemperatur "
+            "sowie die Temperaturen am Vormittag, Mittag und Abend erwaehnen. "
+            "Verwende KEIN Markdown (keine **, keine *, keine #). Schreibe nur normalen Text. "
             "Extrahiere danach die 3 wichtigsten Prioritaeten als nummerierte Liste.\n\n"
             "FORMAT:\nSUMMARY:\n<text>\n\nPRIORITIES:\n1. ...\n2. ...\n3. ...\n\n"
             f"DATA:\n{data_text}"
@@ -278,6 +320,9 @@ def _build_prompt(summary: DailySummary) -> str:
         "You are a friendly personal assistant for a family. "
         "Based on the following data, write a warm, concise daily briefing in English "
         "(maximum 5 sentences, starting with 'Good morning'). "
+        "Briefly mention the weather, including the daily high temperature and "
+        "the expected temperatures in the morning, at noon, and in the evening. "
+        "Use NO markdown formatting (no **, no *, no #). Plain text only. "
         "Then extract the 3 most important priorities for the day as a numbered list.\n\n"
         "FORMAT:\nSUMMARY:\n<text>\n\nPRIORITIES:\n1. ...\n2. ...\n3. ...\n\n"
         f"DATA:\n{data_text}"

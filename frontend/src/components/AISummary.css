@@ -3,10 +3,18 @@
 }
 
 .ai-summary__text {
-  font-size: 0.95rem;
-  line-height: 1.65;
   color: var(--text);
   margin-bottom: 1rem;
+}
+
+.ai-summary__text p {
+  font-size: 0.95rem;
+  line-height: 1.65;
+  margin: 0 0 0.5rem;
+}
+
+.ai-summary__text p:last-child {
+  margin-bottom: 0;
 }
 
 .ai-summary__priorities {

@@ -2,8 +2,25 @@ import './AISummary.css'
 import AppIcon from './AppIcon.jsx'
 import { useI18n } from '../i18n.jsx'
 
+/** Strip common markdown artefacts the AI might produce (bold, italic, headers). */
+function stripMarkdown(text) {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/^#+\s+/gm, '')
+    .replace(/^[-*]\s+/gm, '')
+    .trim()
+}
+
 export default function AISummary({ text, priorities }) {
   const { t } = useI18n()
+
+  const paragraphs = text
+    ? stripMarkdown(text)
+        .split(/\n+/)
+        .map(l => l.trim())
+        .filter(Boolean)
+    : []
 
   return (
     <div className="ai-summary card">
@@ -11,7 +28,13 @@ export default function AISummary({ text, priorities }) {
         <span className="card__icon"><AppIcon name="briefing" className="icon" /></span>
         <span className="card__title">{t('briefingTitle')}</span>
       </div>
-      {text && <p className="ai-summary__text">{text}</p>}
+      {paragraphs.length > 0 && (
+        <div className="ai-summary__text">
+          {paragraphs.map((line, i) => (
+            <p key={i}>{line}</p>
+          ))}
+        </div>
+      )}
       {priorities?.length > 0 && (
         <div className="ai-summary__priorities">
           <p className="ai-summary__prio-label">{t('topPriorities')}</p>
