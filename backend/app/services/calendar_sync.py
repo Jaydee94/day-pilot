@@ -24,6 +24,38 @@ from app.models.schemas import CalendarEvent, TodoItem, Birthday
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Sync state
+# ---------------------------------------------------------------------------
+
+_last_calendar_sync: Optional[datetime] = None
+
+
+def get_last_calendar_sync() -> Optional[datetime]:
+    """Return the timestamp of the most recent completed calendar sync."""
+    return _last_calendar_sync
+
+
+def sync_calendars() -> None:
+    """Fetch all configured calendars and record the sync timestamp.
+
+    This function is called by the background scheduler.  It intentionally
+    swallows per-source errors so that a failing iCal feed cannot prevent
+    the Apple/CalDAV fetch from running (and vice versa).
+    """
+    global _last_calendar_sync
+    logger.info("Running calendar sync…")
+    try:
+        fetch_ical_events()
+    except Exception as exc:
+        logger.error("Calendar sync: iCal fetch failed: %s", exc)
+    try:
+        fetch_apple_events()
+    except Exception as exc:
+        logger.error("Calendar sync: CalDAV fetch failed: %s", exc)
+    _last_calendar_sync = datetime.now(pytz.timezone(settings.APP_TIMEZONE))
+    logger.info("Calendar sync completed at %s", _last_calendar_sync.isoformat())
+
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -190,3 +190,13 @@ export async function deleteCalDAVAccount(index) {
   }
   return resp.json()
 }
+
+/**
+ * Fetch the current sync/service status (including last calendar sync time).
+ * @returns {Promise<{ical_calendar: boolean, apple_calendar: boolean, weather: boolean, last_sync: string|null, errors: string[]}>}
+ */
+export async function fetchSyncStatus() {
+  const resp = await fetch(`${API_BASE}/status`)
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  return resp.json()
+}

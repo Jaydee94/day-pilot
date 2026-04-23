@@ -24,6 +24,7 @@ from app.services.calendar_sync import (
     fetch_ical_events,
     fetch_apple_events,
     add_apple_event,
+    get_last_calendar_sync,
 )
 from app.services.local_calendar import (
     fetch_local_events,
@@ -78,8 +79,6 @@ def trigger_pipeline():
 @router.get("/status", response_model=SyncStatus, summary="Service health / sync status")
 def get_status():
     """Quick health check for each integration."""
-    from app.services.calendar_sync import fetch_ical_events, fetch_apple_events
-
     errors = []
     ical_ok = False
     apple_ok = False
@@ -102,7 +101,7 @@ def get_status():
         ical_calendar=ical_ok,
         apple_calendar=apple_ok,
         weather=weather_ok,
-        last_sync=datetime.now(pytz.timezone(settings.APP_TIMEZONE)),
+        last_sync=get_last_calendar_sync(),
         errors=errors,
     )
 
