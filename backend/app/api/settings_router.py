@@ -6,28 +6,26 @@ Endpoints
 GET  /api/settings          – return the current effective settings
 PUT  /api/settings          – save (partial) settings and apply them live
 GET  /api/settings/status   – return setup-wizard completion status
-POST /api/settings/google-credentials/upload – upload a credentials.json file
-GET  /api/settings/google-credentials        – list configured credentials
-DELETE /api/settings/google-credentials/{index} – remove a credentials entry
+GET  /api/settings/ical-urls            – list configured iCal feed URLs
+POST /api/settings/ical-urls            – add an iCal feed URL
+DELETE /api/settings/ical-urls/{index} – remove an iCal feed URL
 GET  /api/settings/caldav-accounts           – list CalDAV accounts
 POST /api/settings/caldav-accounts           – add a CalDAV account
 DELETE /api/settings/caldav-accounts/{index} – remove a CalDAV account
 """
 import json
 import logging
-import os
 from contextlib import contextmanager
 from datetime import datetime
 from typing import Any, Dict, Iterator, List
 
 import httpx
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException
 import pytz
 
 from app.config import settings as app_settings
 from app.models.schemas import (
     CalDAVAccount,
-    GoogleCredentialInfo,
     IntegrationTestRequest,
     IntegrationTestResult,
     SetupStatus,
@@ -35,7 +33,7 @@ from app.models.schemas import (
 )
 from app.services.ai_summary import _get_client as _get_ai_client
 from app.services.ai_summary import get_ai_config
-from app.services.calendar_sync import _get_caldav_client, _get_google_service, _get_caldav_configs
+from app.services.calendar_sync import _get_caldav_client, _get_caldav_configs
 from app.services.weather import fetch_weather
 from app.services.settings_store import (
     USER_CONFIGURABLE_KEYS,
@@ -49,7 +47,7 @@ settings_router = APIRouter(tags=["settings"])
 
 _TESTABLE_INTEGRATIONS = {
     "ai",
-    "google_calendar",
+    "ical_calendar",
     "apple_calendar",
     "weather",
     "notifications",
@@ -104,21 +102,38 @@ def _test_ai_connection() -> IntegrationTestResult:
         )
 
 
-def _test_google_calendar_connection() -> IntegrationTestResult:
-    try:
-        service, _ = _get_google_service()
-        service.calendarList().list(maxResults=1).execute()
+def _test_ical_calendar_connection() -> IntegrationTestResult:
+    """Test iCal feed URLs by attempting to fetch the first configured URL."""
+    from app.services.calendar_sync import _get_ical_urls
+    import requests as http_requests
+
+    urls = _get_ical_urls()
+    if not urls:
         return IntegrationTestResult(
-            integration="google_calendar",
-            ok=True,
-            message="Google Calendar connection is working.",
-        )
-    except Exception as exc:
-        return IntegrationTestResult(
-            integration="google_calendar",
+            integration="ical_calendar",
             ok=False,
-            message=f"Google Calendar connection failed: {exc}",
+            message="No iCal URLs configured. Add at least one iCal feed URL.",
         )
+
+    errors: List[str] = []
+    for url in urls:
+        try:
+            resp = http_requests.get(url, timeout=10)
+            resp.raise_for_status()
+        except Exception as exc:
+            errors.append(f"{url}: {exc}")
+
+    if errors:
+        return IntegrationTestResult(
+            integration="ical_calendar",
+            ok=False,
+            message="Some iCal feeds could not be reached: " + "; ".join(errors),
+        )
+    return IntegrationTestResult(
+        integration="ical_calendar",
+        ok=True,
+        message=f"Successfully reached {len(urls)} iCal feed(s).",
+    )
 
 
 def _test_apple_calendar_connection() -> IntegrationTestResult:
@@ -218,8 +233,8 @@ def _test_voice_webhook_connection() -> IntegrationTestResult:
 def _run_integration_test(integration: str) -> IntegrationTestResult:
     if integration == "ai":
         return _test_ai_connection()
-    if integration == "google_calendar":
-        return _test_google_calendar_connection()
+    if integration == "ical_calendar":
+        return _test_ical_calendar_connection()
     if integration == "apple_calendar":
         return _test_apple_calendar_connection()
     if integration == "weather":
@@ -328,121 +343,75 @@ def test_connection(integration: str, payload: IntegrationTestRequest) -> Integr
 
 
 # ---------------------------------------------------------------------------
-# Google credentials management
+# iCal URL management
 # ---------------------------------------------------------------------------
 
-def _google_credential_paths() -> List[str]:
-    """Return the current list of configured Google credential file paths."""
-    raw = (app_settings.GOOGLE_CREDENTIALS_JSON or "").strip()
-    return [p.strip() for p in raw.split(",") if p.strip()]
+def _parse_ical_urls() -> List[str]:
+    """Return the current list of configured iCal feed URLs."""
+    raw = (app_settings.ICAL_URLS or "").strip()
+    return [u.strip() for u in raw.split(",") if u.strip()]
 
 
-@settings_router.post(
-    "/settings/google-credentials/upload",
-    summary="Upload a Google credentials.json file",
-)
-async def upload_google_credentials(file: UploadFile = File(...)) -> dict:
-    """Upload a Google OAuth2 credentials.json file to the server.
-
-    The file is saved in the configured credentials directory and its path
-    is appended to ``GOOGLE_CREDENTIALS_JSON`` (comma-separated for
-    multi-account support).
-    """
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="No filename provided")
-
-    # Sanitize filename to prevent path traversal attacks
-    safe_filename = os.path.basename(file.filename)
-    if not safe_filename or safe_filename in {".", ".."}:
-        raise HTTPException(status_code=400, detail="Invalid filename")
-
-    # Only accept .json files
-    if not safe_filename.lower().endswith(".json"):
-        raise HTTPException(
-            status_code=400,
-            detail="Only JSON files (.json) are accepted as Google credentials",
-        )
-
-    creds_dir = app_settings.GOOGLE_CREDENTIALS_DIR
-    os.makedirs(creds_dir, exist_ok=True)
-
-    dest_path = os.path.join(creds_dir, safe_filename)
-
-    # Read and validate the file is parseable JSON before saving
-    try:
-        raw_content = await file.read()
-        json.loads(raw_content)  # raises ValueError if not valid JSON
-    except (ValueError, Exception) as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=f"File is not valid JSON: {exc}",
-        ) from exc
-
-    try:
-        with open(dest_path, "wb") as fh:
-            fh.write(raw_content)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to save file: {exc}") from exc
-
-    # Append path to GOOGLE_CREDENTIALS_JSON setting
-    existing_paths = _google_credential_paths()
-    if dest_path not in existing_paths:
-        existing_paths.append(dest_path)
-    new_value = ",".join(existing_paths)
-
-    try:
-        save_user_settings({"GOOGLE_CREDENTIALS_JSON": new_value})
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail="Failed to persist settings") from exc
-
-    app_settings.GOOGLE_CREDENTIALS_JSON = new_value
-    logger.info("Google credentials uploaded: %s", dest_path)
-    return {"status": "uploaded", "path": dest_path, "filename": safe_filename}
+def _save_ical_urls(urls: List[str]) -> None:
+    """Persist the iCal URL list to ``ICAL_URLS``."""
+    new_value = ",".join(urls)
+    save_user_settings({"ICAL_URLS": new_value})
+    app_settings.ICAL_URLS = new_value
 
 
 @settings_router.get(
-    "/settings/google-credentials",
-    response_model=List[GoogleCredentialInfo],
-    summary="List configured Google credentials files",
+    "/settings/ical-urls",
+    summary="List configured iCal feed URLs",
 )
-def list_google_credentials() -> List[GoogleCredentialInfo]:
-    """Return all configured Google credentials file paths with existence status."""
-    paths = _google_credential_paths()
-    return [
-        GoogleCredentialInfo(
-            index=i,
-            path=p,
-            filename=os.path.basename(p),
-            exists=os.path.exists(p),
-        )
-        for i, p in enumerate(paths)
-    ]
+def list_ical_urls() -> List[dict]:
+    """Return all configured iCal feed URLs with their zero-based index."""
+    urls = _parse_ical_urls()
+    return [{"index": i, "url": u} for i, u in enumerate(urls)]
+
+
+@settings_router.post(
+    "/settings/ical-urls",
+    summary="Add an iCal feed URL",
+)
+def add_ical_url(payload: dict) -> dict:
+    """Add a new iCal feed URL.
+
+    Expects a JSON body with a ``url`` field, e.g.:
+    ``{"url": "https://calendar.google.com/calendar/ical/…/basic.ics"}``
+    """
+    url = (payload.get("url") or "").strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="'url' field is required")
+    if not url.startswith(("http://", "https://")):
+        raise HTTPException(status_code=400, detail="URL must start with http:// or https://")
+
+    urls = _parse_ical_urls()
+    if url in urls:
+        return {"status": "already_exists", "index": urls.index(url), "url": url}
+    urls.append(url)
+    try:
+        _save_ical_urls(urls)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Failed to persist settings") from exc
+    return {"status": "added", "index": len(urls) - 1, "url": url}
 
 
 @settings_router.delete(
-    "/settings/google-credentials/{index}",
-    summary="Remove a Google credentials entry",
+    "/settings/ical-urls/{index}",
+    summary="Remove an iCal feed URL",
 )
-def delete_google_credentials(index: int) -> dict:
-    """Remove a Google credentials file entry by its zero-based index.
+def delete_ical_url(index: int) -> dict:
+    """Remove an iCal feed URL entry by its zero-based index."""
+    urls = _parse_ical_urls()
+    if index < 0 or index >= len(urls):
+        raise HTTPException(status_code=404, detail=f"No iCal URL at index {index}")
 
-    The file itself is not deleted from disk – only the path is removed from
-    the ``GOOGLE_CREDENTIALS_JSON`` setting.
-    """
-    paths = _google_credential_paths()
-    if index < 0 or index >= len(paths):
-        raise HTTPException(status_code=404, detail=f"No credentials entry at index {index}")
-
-    removed = paths.pop(index)
-    new_value = ",".join(paths)
-
+    removed = urls.pop(index)
     try:
-        save_user_settings({"GOOGLE_CREDENTIALS_JSON": new_value})
+        _save_ical_urls(urls)
     except Exception as exc:
         raise HTTPException(status_code=500, detail="Failed to persist settings") from exc
-
-    app_settings.GOOGLE_CREDENTIALS_JSON = new_value
-    return {"status": "removed", "path": removed}
+    return {"status": "removed", "url": removed}
 
 
 # ---------------------------------------------------------------------------

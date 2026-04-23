@@ -100,7 +100,7 @@ class VoiceCommand(BaseModel):
 
 
 class SyncStatus(BaseModel):
-    google_calendar: bool = False
+    ical_calendar: bool = False
     apple_calendar: bool = False
     weather: bool = False
     last_sync: Optional[datetime] = None
@@ -155,8 +155,7 @@ class UserSettings(BaseModel):
     WEATHERAPI_API_KEY: Optional[str] = None
     WEATHER_CITY: Optional[str] = None
     WEATHER_UNITS: Optional[str] = None
-    GOOGLE_CREDENTIALS_JSON: Optional[str] = None
-    GOOGLE_TOKEN_JSON: Optional[str] = None
+    ICAL_URLS: Optional[str] = None
     CALDAV_URL: Optional[str] = None
     CALDAV_USERNAME: Optional[str] = None
     CALDAV_PASSWORD: Optional[str] = None

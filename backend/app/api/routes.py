@@ -21,13 +21,9 @@ from app.models.schemas import (
 )
 from app.services.scheduler import build_daily_summary, run_daily_pipeline, get_jobs, trigger_job
 from app.services.calendar_sync import (
-    fetch_google_events,
+    fetch_ical_events,
     fetch_apple_events,
-    fetch_google_tasks,
-    fetch_google_birthdays,
-    add_google_event,
     add_apple_event,
-    add_google_task,
 )
 from app.services.local_calendar import (
     fetch_local_events,
@@ -82,17 +78,17 @@ def trigger_pipeline():
 @router.get("/status", response_model=SyncStatus, summary="Service health / sync status")
 def get_status():
     """Quick health check for each integration."""
-    from app.services.calendar_sync import fetch_google_events, fetch_apple_events
+    from app.services.calendar_sync import fetch_ical_events, fetch_apple_events
 
     errors = []
-    google_ok = False
+    ical_ok = False
     apple_ok = False
 
     try:
-        fetch_google_events()
-        google_ok = True
+        fetch_ical_events()
+        ical_ok = True
     except Exception as exc:
-        errors.append(f"Google Calendar: {exc}")
+        errors.append(f"iCal Calendar: {exc}")
 
     try:
         fetch_apple_events()
@@ -103,7 +99,7 @@ def get_status():
     weather_ok = fetch_weather() is not None
 
     return SyncStatus(
-        google_calendar=google_ok,
+        ical_calendar=ical_ok,
         apple_calendar=apple_ok,
         weather=weather_ok,
         last_sync=datetime.now(pytz.timezone(settings.APP_TIMEZONE)),
@@ -122,18 +118,17 @@ def list_events(
             target = datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=tz)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid date format.")
-    google = fetch_google_events(date=target)
+    ical = fetch_ical_events(date=target)
     apple = fetch_apple_events(date=target)
     local = fetch_local_events(date=target)
-    all_events = sorted(google + apple + local, key=lambda e: e.start)
+    all_events = sorted(ical + apple + local, key=lambda e: e.start)
     return all_events
 
 
 @router.get("/todos", summary="List open to-dos")
 def list_todos():
-    google_tasks = fetch_google_tasks()
     local_tasks = fetch_local_todos()
-    return google_tasks + local_tasks
+    return local_tasks
 
 
 @router.get("/weather", summary="Current weather")
@@ -146,7 +141,7 @@ def get_weather():
 
 @router.get("/birthdays", summary="Today's birthdays")
 def list_birthdays():
-    return fetch_google_birthdays()
+    return []
 
 
 @router.post("/events", summary="Create a calendar event")
@@ -155,20 +150,10 @@ def create_event(payload: CreateEventRequest):
 
     The event is written to the first calendar provider that accepts it,
     tried in priority order:
-    1. Google Calendar (primary account)
-    2. Apple / CalDAV calendar (first configured account)
-    3. Internal local calendar (always available, no external credentials needed)
+    1. Apple / CalDAV calendar (first configured account)
+    2. Internal local calendar (always available, no external credentials needed)
     """
     end = payload.end or payload.start + timedelta(hours=1)
-
-    event = add_google_event(
-        title=payload.title,
-        start=payload.start,
-        end=end,
-        location=payload.location,
-    )
-    if event:
-        return event
 
     ok = add_apple_event(
         title=payload.title,
@@ -210,16 +195,7 @@ def delete_event(event_id: str):
 
 @router.post("/todos", summary="Create a task")
 def create_todo(payload: CreateTodoRequest):
-    """Add a new task.
-
-    The task is written to Google Tasks when configured; otherwise it falls
-    back to the internal local store so that Quick Capture always succeeds.
-    """
-    todo = add_google_task(title=payload.title, due=payload.due)
-    if todo:
-        return todo
-    # Fall back to the internal local store so users can always create tasks
-    # even without Google Tasks configured.
+    """Add a new task to the internal local store."""
     local_todo = add_local_todo(title=payload.title, due=payload.due)
     return local_todo
 

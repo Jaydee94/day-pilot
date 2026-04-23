@@ -11,7 +11,8 @@ from fastapi import APIRouter, HTTPException
 
 from app.config import settings
 from app.models.schemas import VoiceCommand
-from app.services.calendar_sync import add_google_event, add_apple_event
+from app.services.calendar_sync import add_apple_event
+from app.services.local_calendar import add_local_event
 
 logger = logging.getLogger(__name__)
 voice_router = APIRouter()
@@ -43,16 +44,7 @@ def voice_command(cmd: VoiceCommand):
             raise HTTPException(status_code=400, detail="'start' is required for add_event")
         end = cmd.end or cmd.start + timedelta(hours=1)
 
-        # Try Google first, fall back to Apple
-        event = add_google_event(
-            title=cmd.title,
-            start=cmd.start,
-            end=end,
-            location=cmd.location,
-        )
-        if event:
-            return {"status": "created", "source": "google", "event": event}
-
+        # Try Apple CalDAV first, fall back to local calendar
         ok = add_apple_event(
             title=cmd.title,
             start=cmd.start,
@@ -62,6 +54,12 @@ def voice_command(cmd: VoiceCommand):
         if ok:
             return {"status": "created", "source": "apple"}
 
-        raise HTTPException(status_code=503, detail="Could not add event to any calendar")
+        event = add_local_event(
+            title=cmd.title,
+            start=cmd.start,
+            end=end,
+            location=cmd.location,
+        )
+        return {"status": "created", "source": "local", "event": event}
 
     raise HTTPException(status_code=400, detail=f"Unknown command: {cmd.command}")

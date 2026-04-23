@@ -35,7 +35,7 @@ BERLIN_TZ = pytz.timezone("Europe/Berlin")
 def _make_event(
     eid: str = "e1",
     title: str = "Team Standup",
-    source: str = "google",
+    source: str = "ical",
     offset_hours: int = 9,
 ) -> CalendarEvent:
     now = datetime.now(BERLIN_TZ).replace(hour=offset_hours, minute=0, second=0, microsecond=0)

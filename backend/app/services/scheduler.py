@@ -14,9 +14,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from app.config import settings
 from app.models.schemas import DailySummary
 from app.services.calendar_sync import (
-    fetch_google_events,
-    fetch_google_tasks,
-    fetch_google_birthdays,
+    fetch_ical_events,
     fetch_apple_events,
 )
 from app.services.local_calendar import fetch_local_events
@@ -36,26 +34,23 @@ def build_daily_summary(date: Optional[datetime] = None) -> DailySummary:
     tz = pytz.timezone(settings.APP_TIMEZONE)
     target_date = date or datetime.now(tz)
 
-    google_events = fetch_google_events(date=target_date)
+    ical_events = fetch_ical_events(date=target_date)
     apple_events = fetch_apple_events(date=target_date)
     local_events = fetch_local_events(date=target_date)
     all_events = sorted(
-        google_events + apple_events + local_events, key=lambda e: e.start
+        ical_events + apple_events + local_events, key=lambda e: e.start
     )
 
-    google_tasks = fetch_google_tasks()
     local_tasks = fetch_local_todos()
-    all_todos = google_tasks + local_tasks
 
     weather = fetch_weather()
-    birthdays = fetch_google_birthdays()
 
     summary = DailySummary(
         date=target_date,
         events=all_events,
-        todos=all_todos,
+        todos=local_tasks,
         weather=weather,
-        birthdays=birthdays,
+        birthdays=[],
     )
 
     summary = generate_summary(summary)
