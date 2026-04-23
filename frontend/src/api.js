@@ -104,16 +104,25 @@ export async function fetchTodos() {
 }
 
 /**
- * Upload a Google credentials.json file to the backend.
- * @param {File} file
- * @returns {Promise<{status: string, path: string, filename: string}>}
+ * List all configured iCal feed URLs.
+ * @returns {Promise<Array<{index: number, url: string}>>}
  */
-export async function uploadGoogleCredentials(file) {
-  const formData = new FormData()
-  formData.append('file', file)
-  const resp = await fetch(`${API_BASE}/settings/google-credentials/upload`, {
+export async function fetchICalUrls() {
+  const resp = await fetch(`${API_BASE}/settings/ical-urls`)
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  return resp.json()
+}
+
+/**
+ * Add a new iCal feed URL.
+ * @param {string} url
+ * @returns {Promise<{status: string, index: number, url: string}>}
+ */
+export async function addICalUrl(url) {
+  const resp = await fetch(`${API_BASE}/settings/ical-urls`, {
     method: 'POST',
-    body: formData,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
   })
   if (!resp.ok) {
     const data = await resp.json().catch(() => ({}))
@@ -123,22 +132,12 @@ export async function uploadGoogleCredentials(file) {
 }
 
 /**
- * List all configured Google credentials entries.
- * @returns {Promise<Array<{index: number, path: string, filename: string, exists: boolean}>>}
- */
-export async function fetchGoogleCredentials() {
-  const resp = await fetch(`${API_BASE}/settings/google-credentials`)
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-  return resp.json()
-}
-
-/**
- * Remove a Google credentials entry by index.
+ * Remove an iCal feed URL by index.
  * @param {number} index
- * @returns {Promise<{status: string, path: string}>}
+ * @returns {Promise<{status: string, url: string}>}
  */
-export async function deleteGoogleCredential(index) {
-  const resp = await fetch(`${API_BASE}/settings/google-credentials/${index}`, {
+export async function deleteICalUrl(index) {
+  const resp = await fetch(`${API_BASE}/settings/ical-urls/${index}`, {
     method: 'DELETE',
   })
   if (!resp.ok) {

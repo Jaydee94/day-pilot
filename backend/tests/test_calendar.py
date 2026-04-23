@@ -13,7 +13,7 @@ from app.models.schemas import CalendarEvent, TodoItem
 BERLIN_TZ = pytz.timezone("Europe/Berlin")
 
 
-def _make_event(title="Test Event", source="google"):
+def _make_event(title="Test Event", source="ical"):
     now = datetime.now(BERLIN_TZ)
     return CalendarEvent(
         id="evt-1",
@@ -25,94 +25,115 @@ def _make_event(title="Test Event", source="google"):
 
 
 # ---------------------------------------------------------------------------
-# Google Calendar
+# iCal feed – fetch_ical_events
 # ---------------------------------------------------------------------------
 
-class TestFetchGoogleEvents:
+class TestFetchIcalEvents:
     def test_returns_empty_when_not_configured(self, monkeypatch):
-        """Should return [] silently when credentials are missing."""
-        monkeypatch.setattr("app.services.calendar_sync.settings.GOOGLE_CREDENTIALS_JSON", "")
-        monkeypatch.setattr(
-            "app.services.calendar_sync.os.path.exists", lambda p: False
-        )
-        from app.services.calendar_sync import fetch_google_events
-        result = fetch_google_events()
+        """Should return [] silently when no iCal URLs are configured."""
+        monkeypatch.setattr("app.services.calendar_sync.settings.ICAL_URLS", "")
+        from app.services.calendar_sync import fetch_ical_events
+        result = fetch_ical_events()
         assert result == []
 
-    def test_returns_events_when_service_works(self, monkeypatch):
-        """Should parse and return CalendarEvent objects from Google API response."""
-        fake_event = {
-            "id": "abc123",
-            "summary": "Standup",
-            "start": {"dateTime": "2024-06-01T09:00:00+02:00"},
-            "end": {"dateTime": "2024-06-01T09:30:00+02:00"},
-            "location": "Office",
-        }
-        fake_cal_list = {"items": [{"id": "primary"}]}
-        fake_events_result = {"items": [fake_event]}
-
-        mock_service = MagicMock()
-        mock_service.calendarList.return_value.list.return_value.execute.return_value = (
-            fake_cal_list
-        )
-        mock_service.events.return_value.list.return_value.execute.return_value = (
-            fake_events_result
-        )
-
-        with patch(
-            "app.services.calendar_sync._get_google_service",
-            return_value=(mock_service, MagicMock()),
-        ), patch(
-            "app.services.calendar_sync.os.path.exists", return_value=True
-        ):
-            from app.services.calendar_sync import fetch_google_events
-            result = fetch_google_events()
-
-        assert len(result) == 1
-        assert result[0].title == "Standup"
-        assert result[0].location == "Office"
-        assert result[0].source == "google"
-
-
-class TestFetchGoogleTasks:
-    def test_returns_empty_when_not_configured(self, monkeypatch):
-        monkeypatch.setattr("app.services.calendar_sync.settings.GOOGLE_CREDENTIALS_JSON", "")
-        monkeypatch.setattr(
-            "app.services.calendar_sync.os.path.exists", lambda p: False
-        )
-        from app.services.calendar_sync import fetch_google_tasks
-        result = fetch_google_tasks()
+    def test_returns_empty_when_urls_are_blank(self, monkeypatch):
+        monkeypatch.setattr("app.services.calendar_sync.settings.ICAL_URLS", "  ,  ")
+        from app.services.calendar_sync import fetch_ical_events
+        result = fetch_ical_events()
         assert result == []
 
-    def test_returns_tasks(self, monkeypatch):
-        fake_task = {"id": "task1", "title": "Buy milk", "status": "needsAction"}
-        fake_tasklists = {"items": [{"id": "list1"}]}
-        fake_tasks_result = {"items": [fake_task]}
+    def test_returns_events_from_ical_feed(self, monkeypatch):
+        """Should parse and return CalendarEvent objects from an iCal feed."""
+        ical_content = b"""BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:test-uid-1@example.com
+SUMMARY:Team Standup
+DTSTART;TZID=Europe/Berlin:20240601T090000
+DTEND;TZID=Europe/Berlin:20240601T093000
+LOCATION:Office
+END:VEVENT
+END:VCALENDAR
+"""
+        mock_response = MagicMock()
+        mock_response.content = ical_content
+        mock_response.raise_for_status = MagicMock()
 
-        mock_task_service = MagicMock()
-        mock_task_service.tasklists.return_value.list.return_value.execute.return_value = (
-            fake_tasklists
-        )
-        mock_task_service.tasks.return_value.list.return_value.execute.return_value = (
-            fake_tasks_result
+        monkeypatch.setattr(
+            "app.services.calendar_sync.settings.ICAL_URLS",
+            "https://example.com/calendar.ics",
         )
 
-        with patch(
-            "app.services.calendar_sync._get_google_service",
-            return_value=(MagicMock(), MagicMock()),
-        ), patch(
-            "app.services.calendar_sync.os.path.exists", return_value=True
-        ), patch(
-            "app.services.calendar_sync.gapi_build",
-            return_value=mock_task_service,
-        ):
-            from app.services.calendar_sync import fetch_google_tasks
-            result = fetch_google_tasks()
+        import recurring_ical_events
+        from icalendar import Calendar as ICalendar
+
+        cal = ICalendar.from_ical(ical_content)
+        fake_occurrences = list(recurring_ical_events.of(cal).between(
+            datetime(2024, 6, 1, 0, 0, tzinfo=BERLIN_TZ),
+            datetime(2024, 6, 2, 0, 0, tzinfo=BERLIN_TZ),
+        ))
+
+        with patch("app.services.calendar_sync.http_requests.get", return_value=mock_response), \
+             patch("app.services.calendar_sync.recurring_ical_events.of") as mock_ri:
+            mock_ri.return_value.between.return_value = fake_occurrences
+            from app.services.calendar_sync import fetch_ical_events
+            result = fetch_ical_events()
 
         assert isinstance(result, list)
-        assert len(result) == 1
-        assert result[0].title == "Buy milk"
-        assert result[0].source == "google"
+
+    def test_logs_error_and_continues_on_bad_url(self, monkeypatch):
+        """A failing URL must be skipped; other URLs still succeed."""
+        monkeypatch.setattr(
+            "app.services.calendar_sync.settings.ICAL_URLS",
+            "https://bad.example.com/fail.ics",
+        )
+        with patch(
+            "app.services.calendar_sync.http_requests.get",
+            side_effect=Exception("connection refused"),
+        ):
+            from app.services.calendar_sync import fetch_ical_events
+            result = fetch_ical_events()
+        assert result == []
+
+
+# ---------------------------------------------------------------------------
+# iCal URL helpers
+# ---------------------------------------------------------------------------
+
+class TestGetIcalUrls:
+    def test_parses_single_url(self, monkeypatch):
+        monkeypatch.setattr(
+            "app.services.calendar_sync.settings.ICAL_URLS",
+            "https://example.com/calendar.ics",
+        )
+        from app.services.calendar_sync import _get_ical_urls
+        urls = _get_ical_urls()
+        assert urls == ["https://example.com/calendar.ics"]
+
+    def test_parses_comma_separated_urls(self, monkeypatch):
+        monkeypatch.setattr(
+            "app.services.calendar_sync.settings.ICAL_URLS",
+            "https://a.example.com/a.ics , https://b.example.com/b.ics",
+        )
+        from app.services.calendar_sync import _get_ical_urls
+        urls = _get_ical_urls()
+        assert len(urls) == 2
+        assert "https://a.example.com/a.ics" in urls
+        assert "https://b.example.com/b.ics" in urls
+
+    def test_ignores_blank_entries(self, monkeypatch):
+        monkeypatch.setattr(
+            "app.services.calendar_sync.settings.ICAL_URLS",
+            " , https://example.com/calendar.ics , ",
+        )
+        from app.services.calendar_sync import _get_ical_urls
+        urls = _get_ical_urls()
+        assert len(urls) == 1
+
+    def test_returns_empty_list_when_not_set(self, monkeypatch):
+        monkeypatch.setattr("app.services.calendar_sync.settings.ICAL_URLS", "")
+        from app.services.calendar_sync import _get_ical_urls
+        assert _get_ical_urls() == []
 
 
 # ---------------------------------------------------------------------------
@@ -180,48 +201,6 @@ class TestGetCaldavConfigs:
         monkeypatch.setattr("app.services.calendar_sync.settings.CALDAV_CONFIGS", "")
         from app.services.calendar_sync import _get_caldav_configs
         assert _get_caldav_configs() == []
-
-
-# ---------------------------------------------------------------------------
-# Multiple Google accounts
-# ---------------------------------------------------------------------------
-
-class TestIterGoogleAccounts:
-    def test_returns_empty_when_not_configured(self, monkeypatch):
-        monkeypatch.setattr("app.services.calendar_sync.settings.GOOGLE_CREDENTIALS_JSON", "")
-        monkeypatch.setattr("app.services.calendar_sync.settings.GOOGLE_TOKEN_JSON", "/tmp/nonexistent_token.json")
-        from app.services.calendar_sync import _iter_google_accounts
-        result = _iter_google_accounts()
-        assert result == []
-
-    def test_includes_account_with_existing_token(self, monkeypatch, tmp_path):
-        token = tmp_path / "google_token.json"
-        token.write_text("{}")
-        monkeypatch.setattr("app.services.calendar_sync.settings.GOOGLE_CREDENTIALS_JSON", "")
-        monkeypatch.setattr("app.services.calendar_sync.settings.GOOGLE_TOKEN_JSON", str(token))
-        from app.services.calendar_sync import _iter_google_accounts
-        result = _iter_google_accounts()
-        assert len(result) == 1
-        assert result[0][1] == str(token)
-
-    def test_parses_comma_separated_credentials(self, monkeypatch, tmp_path):
-        creds1 = tmp_path / "creds1.json"
-        creds2 = tmp_path / "creds2.json"
-        creds1.write_text("{}")
-        creds2.write_text("{}")
-        token_dir = tmp_path / "tokens"
-        token_dir.mkdir()
-        token1 = token_dir / "google_token.json"
-        token1.write_text("{}")
-        monkeypatch.setattr(
-            "app.services.calendar_sync.settings.GOOGLE_CREDENTIALS_JSON",
-            f"{creds1},{creds2}",
-        )
-        monkeypatch.setattr("app.services.calendar_sync.settings.GOOGLE_TOKEN_JSON", str(token1))
-        from app.services.calendar_sync import _iter_google_accounts
-        result = _iter_google_accounts()
-        # Both credential files exist, so both accounts should be listed.
-        assert len(result) == 2
 
 
 # ---------------------------------------------------------------------------

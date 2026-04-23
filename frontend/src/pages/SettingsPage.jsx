@@ -3,9 +3,9 @@ import {
   fetchSettings,
   saveSettings,
   testIntegrationConnection,
-  uploadGoogleCredentials,
-  fetchGoogleCredentials,
-  deleteGoogleCredential,
+  fetchICalUrls,
+  addICalUrl,
+  deleteICalUrl,
   fetchCalDAVAccounts,
   addCalDAVAccount,
   deleteCalDAVAccount,
@@ -17,7 +17,7 @@ import './SettingsPage.css'
 
 const TESTABLE_INTEGRATIONS = [
   'ai',
-  'google_calendar',
+  'ical_calendar',
   'apple_calendar',
   'weather',
   'notifications',
@@ -28,7 +28,7 @@ const GROUP_TITLE_KEYS = {
   General: 'settingsGroupGeneral',
   Weather: 'settingsGroupWeather',
   'Push Notifications (ntfy)': 'settingsGroupNotifications',
-  'Google Calendar': 'settingsGroupGoogleCalendar',
+  'iCal Calendar': 'settingsGroupICalCalendar',
   'Apple Calendar (iCloud)': 'settingsGroupAppleCalendar',
   'Voice Control': 'settingsGroupVoiceControl',
 }
@@ -44,8 +44,7 @@ const FIELD_LABEL_KEYS = {
   NTFY_SERVER: 'settingsFieldNtfyServer',
   NTFY_TOPIC: 'settingsFieldTopic',
   NTFY_TOKEN: 'settingsFieldTokenOptional',
-  GOOGLE_CREDENTIALS_JSON: 'settingsFieldGoogleCredentialsJson',
-  GOOGLE_TOKEN_JSON: 'settingsFieldGoogleTokenJson',
+  ICAL_URLS: 'settingsFieldICalUrls',
   CALDAV_URL: 'settingsFieldCaldavUrl',
   CALDAV_USERNAME: 'settingsFieldUsername',
   CALDAV_PASSWORD: 'settingsFieldAppSpecificPassword',
@@ -64,8 +63,7 @@ const FIELD_DESC_KEYS = {
   NTFY_SERVER: 'settingsFieldNtfyServerDesc',
   NTFY_TOPIC: 'settingsFieldTopicDesc',
   NTFY_TOKEN: 'settingsFieldTokenOptionalDesc',
-  GOOGLE_CREDENTIALS_JSON: 'settingsFieldGoogleCredentialsJsonDesc',
-  GOOGLE_TOKEN_JSON: 'settingsFieldGoogleTokenJsonDesc',
+  ICAL_URLS: 'settingsFieldICalUrlsDesc',
   CALDAV_URL: 'settingsFieldCaldavUrlDesc',
   CALDAV_USERNAME: 'settingsFieldUsernameDesc',
   CALDAV_PASSWORD: 'settingsFieldAppSpecificPasswordDesc',
@@ -152,13 +150,10 @@ const SETTING_GROUPS = [
     ],
   },
   {
-    group: 'Google Calendar',
+    group: 'iCal Calendar',
     icon: 'calendar',
-    integration: 'google_calendar',
-    items: [
-      { key: 'GOOGLE_CREDENTIALS_JSON', label: 'Credentials file path', desc: 'Path to your OAuth2 credentials.json file on the server', type: 'text' },
-      { key: 'GOOGLE_TOKEN_JSON', label: 'Token file path', desc: 'Path where the OAuth2 token is stored', type: 'text' },
-    ],
+    integration: 'ical_calendar',
+    items: [],
   },
   {
     group: 'Apple Calendar (iCloud)',
@@ -374,14 +369,13 @@ export default function SettingsPage({ onLanguageChange }) {
           t={t}
         />
 
-        {/* Remaining groups (Notifications, Google Calendar, Apple Calendar, Voice) */}
+        {/* Remaining groups (Notifications, iCal Calendar, Apple Calendar, Voice) */}
         {SETTING_GROUPS.slice(2).map(({ group, icon, items, integration }) => {
-          if (group === 'Google Calendar') {
+          if (group === 'iCal Calendar') {
             return (
-              <GoogleCalendarSection
+              <ICalCalendarSection
                 key={group}
                 icon={icon}
-                items={items}
                 values={values}
                 onChange={handleChange}
                 onTest={handleTestConnection}
@@ -452,17 +446,17 @@ export default function SettingsPage({ onLanguageChange }) {
 
       </div>
 
-      {/* Google Calendar setup info */}
+      {/* iCal Calendar setup info */}
       <div className="settings-note card">
         <h3 className="settings-group__title">
           <span className="settings-group__icon"><AppIcon name="pin" className="icon" /></span>
-          {t('settingsGoogleCalendarTitle')}
+          {t('settingsICalCalendarTitle')}
         </h3>
         <p className="settings-note__text">
-          {t('settingsGoogleCalendarSetupNote')}
+          {t('settingsICalCalendarSetupNote')}
         </p>
         <p className="settings-note__text">
-          {t('settingsGoogleCalendarMultiNote')}
+          {t('settingsICalCalendarMultiNote')}
         </p>
       </div>
 
@@ -641,55 +635,49 @@ function AIProviderSection({ values, onChange, onTest, connectionState, t }) {
   )
 }
 
-/* ── Google Calendar section ─────────────────────────────────────────────── */
+/* ── iCal Calendar section ──────────────────────────────────────────────── */
 
-function GoogleCalendarSection({ icon, values, onChange, onTest, connectionState, t }) {
-  const [credentials, setCredentials] = useState([])
-  const [uploading, setUploading] = useState(false)
-  const [uploadError, setUploadError] = useState(null)
-  const [uploadSuccess, setUploadSuccess] = useState(null)
+function ICalCalendarSection({ icon, values, onChange, onTest, connectionState, t }) {
+  const [urls, setUrls] = useState([])
+  const [newUrl, setNewUrl] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [addError, setAddError] = useState(null)
   const [deleting, setDeleting] = useState(null)
   const [showGuide, setShowGuide] = useState(false)
 
   useEffect(() => {
-    fetchGoogleCredentials()
-      .then(setCredentials)
-      .catch(() => setCredentials([]))
+    fetchICalUrls()
+      .then(setUrls)
+      .catch(() => setUrls([]))
   }, [])
 
-  async function handleFileUpload(e) {
-    const file = e.target.files[0]
-    if (!file) return
-    setUploading(true)
-    setUploadError(null)
-    setUploadSuccess(null)
+  async function handleAdd(e) {
+    e.preventDefault()
+    if (!newUrl.trim()) return
+    setAdding(true)
+    setAddError(null)
     try {
-      await uploadGoogleCredentials(file)
-      const updated = await fetchGoogleCredentials()
-      setCredentials(updated)
-      // Sync the path setting value
-      const paths = updated.map(c => c.path).join(',')
-      onChange('GOOGLE_CREDENTIALS_JSON', paths)
-      setUploadSuccess(t('googleCredentialsUploaded') || 'Credentials file uploaded successfully.')
-      setTimeout(() => setUploadSuccess(null), 5000)
+      await addICalUrl(newUrl.trim())
+      const updated = await fetchICalUrls()
+      setUrls(updated)
+      onChange('ICAL_URLS', updated.map(u => u.url).join(','))
+      setNewUrl('')
     } catch (err) {
-      setUploadError(err.message)
+      setAddError(err.message)
     } finally {
-      setUploading(false)
-      e.target.value = ''
+      setAdding(false)
     }
   }
 
   async function handleDelete(index) {
     setDeleting(index)
     try {
-      await deleteGoogleCredential(index)
-      const updated = await fetchGoogleCredentials()
-      setCredentials(updated)
-      const paths = updated.map(c => c.path).join(',')
-      onChange('GOOGLE_CREDENTIALS_JSON', paths)
-    } catch (err) {
-      setUploadError(err.message)
+      await deleteICalUrl(index)
+      const updated = await fetchICalUrls()
+      setUrls(updated)
+      onChange('ICAL_URLS', updated.map(u => u.url).join(','))
+    } catch (_) {
+      // ignore
     } finally {
       setDeleting(null)
     }
@@ -700,7 +688,7 @@ function GoogleCalendarSection({ icon, values, onChange, onTest, connectionState
       <div className="settings-group__head">
         <h3 className="settings-group__title">
           <span className="settings-group__icon"><AppIcon name={icon} className="icon" /></span>
-          {t('settingsGroupGoogleCalendar')}
+          {t('settingsGroupICalCalendar')}
         </h3>
         <div className="settings-group__head-actions">
           <button
@@ -714,7 +702,7 @@ function GoogleCalendarSection({ icon, values, onChange, onTest, connectionState
           <button
             type="button"
             className="settings-test-btn"
-            onClick={() => onTest('google_calendar')}
+            onClick={() => onTest('ical_calendar')}
             disabled={connectionState?.loading}
             aria-label={t('testConnection')}
           >
@@ -728,102 +716,48 @@ function GoogleCalendarSection({ icon, values, onChange, onTest, connectionState
         </p>
       )}
 
-      {/* Inline step-by-step setup guide */}
+      {/* Inline setup guide */}
       {showGuide && (
         <div className="settings-guide" role="region" aria-label={t('showSetupGuide')}>
-          <p className="settings-guide__intro">{t('gcGuideIntro')}</p>
+          <p className="settings-guide__intro">{t('icalGuideIntro')}</p>
           <ol className="settings-guide__steps">
             <li className="settings-guide__step">
-              <strong className="settings-guide__step-title">{t('gcGuideStep1Title')}</strong>
-              <p className="settings-guide__step-text">{t('gcGuideStep1Text')}</p>
-              <a
-                href="https://console.cloud.google.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="settings-guide__link"
-              >
-                {t('gcGuideStep1Link')}
-              </a>
+              <strong className="settings-guide__step-title">{t('icalGuideStep1Title')}</strong>
+              <p className="settings-guide__step-text">{t('icalGuideStep1Text')}</p>
             </li>
             <li className="settings-guide__step">
-              <strong className="settings-guide__step-title">{t('gcGuideStep2Title')}</strong>
-              <p className="settings-guide__step-text">{t('gcGuideStep2Text')}</p>
-              <ul className="settings-guide__api-list">
-                <li>{t('gcGuideStep2Api1')}</li>
-                <li>{t('gcGuideStep2Api2')}</li>
-                <li>{t('gcGuideStep2Api3')}</li>
-              </ul>
+              <strong className="settings-guide__step-title">{t('icalGuideStep2Title')}</strong>
+              <p className="settings-guide__step-text">{t('icalGuideStep2Text')}</p>
             </li>
             <li className="settings-guide__step">
-              <strong className="settings-guide__step-title">{t('gcGuideStep3Title')}</strong>
-              <p className="settings-guide__step-text">{t('gcGuideStep3Text')}</p>
-            </li>
-            <li className="settings-guide__step">
-              <strong className="settings-guide__step-title">{t('gcGuideStep4Title')}</strong>
-              <p className="settings-guide__step-text">{t('gcGuideStep4Text')}</p>
-            </li>
-            <li className="settings-guide__step">
-              <strong className="settings-guide__step-title">{t('gcGuideStep5Title')}</strong>
-              <p className="settings-guide__step-text">{t('gcGuideStep5Text')}</p>
-              <code className="settings-guide__code">{t('gcGuideStep5Hint')}</code>
+              <strong className="settings-guide__step-title">{t('icalGuideStep3Title')}</strong>
+              <p className="settings-guide__step-text">{t('icalGuideStep3Text')}</p>
             </li>
           </ol>
         </div>
       )}
 
       <div className="settings-group__fields">
-        {/* Credentials file upload */}
-        <div className="settings-field">
-          <label className="settings-field__label">
-            {t('settingsFieldGoogleCredentialsJson') || 'Google Credentials File'}
-          </label>
-          <span className="settings-field__desc">
-            {t('settingsFieldGoogleCredentialsJsonDesc') || 'Upload your OAuth2 credentials.json file from Google Cloud Console.'}
-          </span>
-          <div className="settings-upload-row">
-            <label className="btn settings-upload-btn" aria-label={t('uploadFile') || 'Upload file'}>
-              <AppIcon name="upload" className="settings-upload__icon" />
-              {uploading ? (t('uploading') || 'Uploading…') : (t('uploadCredentialsFile') || 'Upload credentials.json')}
-              <input
-                type="file"
-                accept=".json,application/json"
-                style={{ display: 'none' }}
-                onChange={handleFileUpload}
-                disabled={uploading}
-              />
-            </label>
-          </div>
-          {uploadSuccess && (
-            <p className="settings-test-result settings-test-result--success">{uploadSuccess}</p>
-          )}
-          {uploadError && (
-            <p className="settings-test-result settings-test-result--error">{uploadError}</p>
-          )}
-        </div>
-
-        {/* List of configured credentials */}
-        {credentials.length > 0 && (
+        {/* List of configured iCal URLs */}
+        {urls.length > 0 && (
           <div className="settings-field">
             <span className="settings-field__label">
-              {t('configuredGoogleAccounts') || 'Configured Google accounts'}
+              {t('configuredICalFeeds') || 'Configured iCal feeds'}
             </span>
             <div className="settings-account-list">
-              {credentials.map((cred) => (
-                <div key={cred.index} className="settings-account-item">
+              {urls.map((entry) => (
+                <div key={entry.index} className="settings-account-item">
                   <div className="settings-account-item__info">
                     <AppIcon name="calendar" className="settings-account-item__icon" />
-                    <div>
-                      <span className="settings-account-item__name">{cred.filename}</span>
-                      <span className={`settings-account-item__status ${cred.exists ? 'settings-account-item__status--ok' : 'settings-account-item__status--missing'}`}>
-                        {cred.exists ? (t('fileFound') || '✓ File found') : (t('fileMissing') || '⚠ File missing')}
-                      </span>
-                    </div>
+                    <span className="settings-account-item__name" title={entry.url}>
+                      {entry.url.length > 60 ? `${entry.url.slice(0, 57)}…` : entry.url}
+                    </span>
                   </div>
                   <button
                     type="button"
                     className="settings-account-item__delete"
-                    onClick={() => handleDelete(cred.index)}
-                    disabled={deleting === cred.index}
+                    onClick={() => handleDelete(entry.index)}
+                    disabled={deleting === entry.index}
                     aria-label={t('removeAccount') || 'Remove'}
                   >
                     <AppIcon name="trash" className="settings-account-item__delete-icon" />
@@ -834,15 +768,32 @@ function GoogleCalendarSection({ icon, values, onChange, onTest, connectionState
           </div>
         )}
 
-        {/* Token file path */}
-        <SettingField
-          fieldKey="GOOGLE_TOKEN_JSON"
-          label={t('settingsFieldGoogleTokenJson') || 'Token file path'}
-          desc={t('settingsFieldGoogleTokenJsonDesc') || 'Path where the OAuth2 token is stored'}
-          type="text"
-          value={values.GOOGLE_TOKEN_JSON ?? ''}
-          onChange={v => onChange('GOOGLE_TOKEN_JSON', v)}
-        />
+        {/* Add new iCal URL */}
+        <div className="settings-field">
+          <label className="settings-field__label">
+            {t('addICalFeedUrl') || 'Add iCal feed URL'}
+          </label>
+          <span className="settings-field__desc">
+            {t('addICalFeedUrlDesc') || 'Paste the iCal (.ics) URL from your calendar provider.'}
+          </span>
+          <form className="settings-inline-form" onSubmit={handleAdd}>
+            <input
+              type="url"
+              className="settings-field__input"
+              placeholder="https://calendar.google.com/calendar/ical/…/basic.ics"
+              value={newUrl}
+              onChange={e => setNewUrl(e.target.value)}
+              disabled={adding}
+              required
+            />
+            <button type="submit" className="btn" disabled={adding || !newUrl.trim()}>
+              {adding ? (t('adding') || 'Adding…') : (t('addFeed') || 'Add feed')}
+            </button>
+          </form>
+          {addError && (
+            <p className="settings-test-result settings-test-result--error">{addError}</p>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -2,7 +2,7 @@
 End-to-end tests for Day Pilot.
 
 These tests cover complete user journeys through the API.  All external
-dependencies (Google Calendar, Apple CalDAV, weather API, AI provider,
+dependencies (iCal feeds, Apple CalDAV, weather API, AI provider,
 notifications) are mocked so that the test suite runs without any live
 credentials or network access.
 
@@ -53,7 +53,7 @@ def _make_todo(
     title: str = "Finish report",
     completed: bool = False,
 ) -> TodoItem:
-    return TodoItem(id=tid, title=title, completed=completed, source="google")
+    return TodoItem(id=tid, title=title, completed=completed, source="local")
 
 
 def _make_weather() -> WeatherInfo:
@@ -196,9 +196,8 @@ class TestWeatherJourney:
 class TestEventCreationJourney:
     """A user creates a new calendar event via the API."""
 
-    def test_create_event_via_google(self, client):
-        fake_event = _make_event(eid="new-ev", title="Doctor", source="google")
-        with patch("app.api.routes.add_google_event", return_value=fake_event):
+    def test_create_event_via_apple(self, client):
+        with patch("app.api.routes.add_apple_event", return_value=True):
             resp = client.post(
                 "/api/events",
                 json={
@@ -210,30 +209,14 @@ class TestEventCreationJourney:
 
         assert resp.status_code == 200
         data = resp.json()
-        assert data["title"] == "Doctor"
-        assert data["source"] == "google"
+        assert data["source"] == "apple"
 
-    def test_create_event_falls_back_to_apple(self, client):
-        with patch("app.api.routes.add_google_event", return_value=None), patch(
-            "app.api.routes.add_apple_event", return_value=True
-        ):
-            resp = client.post(
-                "/api/events",
-                json={
-                    "title": "Yoga class",
-                    "start": "2024-06-01T07:00:00+02:00",
-                },
-            )
-
-        assert resp.status_code == 200
-        assert resp.json()["source"] == "apple"
-
-    def test_create_event_falls_back_to_local_when_all_external_fail(self, client):
-        """When Google and Apple both fail, the event is saved in the local calendar."""
+    def test_create_event_falls_back_to_local_when_apple_fails(self, client):
+        """When Apple CalDAV fails, the event is saved in the local calendar."""
         fake_local = _make_event(eid="local-ev", title="Mystery event", source="local")
-        with patch("app.api.routes.add_google_event", return_value=None), patch(
-            "app.api.routes.add_apple_event", return_value=False
-        ), patch("app.api.routes.add_local_event", return_value=fake_local):
+        with patch("app.api.routes.add_apple_event", return_value=False), patch(
+            "app.api.routes.add_local_event", return_value=fake_local
+        ):
             resp = client.post(
                 "/api/events",
                 json={
@@ -249,19 +232,8 @@ class TestEventCreationJourney:
 
     def test_created_event_appears_in_event_list(self, client):
         """Creating and then listing events returns the new event."""
-        fake_event = _make_event(eid="ev-list", title="Dentist", source="google")
-        with patch("app.api.routes.add_google_event", return_value=fake_event):
-            create_resp = client.post(
-                "/api/events",
-                json={
-                    "title": "Dentist",
-                    "start": "2024-06-01T14:00:00+02:00",
-                    "end": "2024-06-01T15:00:00+02:00",
-                },
-            )
-        assert create_resp.status_code == 200
-
-        with patch("app.api.routes.fetch_google_events", return_value=[fake_event]), patch(
+        fake_event = _make_event(eid="ev-list", title="Dentist", source="ical")
+        with patch("app.api.routes.fetch_ical_events", return_value=[fake_event]), patch(
             "app.api.routes.fetch_apple_events", return_value=[]
         ), patch("app.api.routes.fetch_local_events", return_value=[]):
             list_resp = client.get("/api/events")
@@ -287,7 +259,7 @@ class TestLocalCalendarJourney:
 
     def test_local_events_included_in_event_list(self, client):
         local_ev = _make_event(eid="loc-1", title="Local meeting", source="local")
-        with patch("app.api.routes.fetch_google_events", return_value=[]), patch(
+        with patch("app.api.routes.fetch_ical_events", return_value=[]), patch(
             "app.api.routes.fetch_apple_events", return_value=[]
         ), patch("app.api.routes.fetch_local_events", return_value=[local_ev]):
             resp = client.get("/api/events")
@@ -303,37 +275,24 @@ class TestLocalCalendarJourney:
 class TestTodoCreationJourney:
     """A user adds a task via Quick Capture."""
 
-    def test_create_todo_succeeds(self, client):
-        fake_todo = _make_todo(tid="new-task", title="Buy groceries")
-        with patch("app.api.routes.add_google_task", return_value=fake_todo):
+    def test_create_todo_succeeds(self, client, tmp_path):
+        local_todos_file = str(tmp_path / "local_todos.json")
+        with patch("app.config.settings.LOCAL_TODOS_FILE", local_todos_file), \
+             patch("app.services.local_todos.settings.LOCAL_TODOS_FILE", local_todos_file):
             resp = client.post("/api/todos", json={"title": "Buy groceries"})
 
         assert resp.status_code == 200
         assert resp.json()["title"] == "Buy groceries"
+        assert resp.json()["source"] == "local"
 
-    def test_create_todo_falls_back_to_local_when_google_fails(self, client, tmp_path):
-        """When Google Tasks is unavailable the task must be saved in local storage."""
-        local_todos_file = str(tmp_path / "local_todos.json")
-        with patch("app.api.routes.add_google_task", return_value=None), patch(
-            "app.config.settings.LOCAL_TODOS_FILE", local_todos_file
-        ), patch("app.services.local_todos.settings.LOCAL_TODOS_FILE", local_todos_file):
-            resp = client.post("/api/todos", json={"title": "Offline task"})
-
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["title"] == "Offline task"
-        assert data["source"] == "local"
-
-    def test_created_todo_appears_in_todo_list(self, client):
+    def test_created_todo_appears_in_todo_list(self, client, tmp_path):
         """Creating and then listing todos returns the new task."""
-        fake_todo = _make_todo(tid="listed-task", title="Call mum")
-        with patch("app.api.routes.add_google_task", return_value=fake_todo):
+        local_todos_file = str(tmp_path / "local_todos.json")
+        with patch("app.config.settings.LOCAL_TODOS_FILE", local_todos_file), \
+             patch("app.services.local_todos.settings.LOCAL_TODOS_FILE", local_todos_file):
             create_resp = client.post("/api/todos", json={"title": "Call mum"})
-        assert create_resp.status_code == 200
+            assert create_resp.status_code == 200
 
-        with patch("app.api.routes.fetch_google_tasks", return_value=[fake_todo]), patch(
-            "app.api.routes.fetch_local_todos", return_value=[]
-        ):
             list_resp = client.get("/api/todos")
 
         assert list_resp.status_code == 200
@@ -341,12 +300,10 @@ class TestTodoCreationJourney:
         assert "Call mum" in titles
 
     def test_local_todos_included_in_todo_list(self, client):
-        """Local todos must appear in the todo list alongside external ones."""
+        """Local todos must appear in the todo list."""
         local_todo = _make_todo(tid="loc-t1", title="Local task")
         local_todo.source = "local"
-        with patch("app.api.routes.fetch_google_tasks", return_value=[]), patch(
-            "app.api.routes.fetch_local_todos", return_value=[local_todo]
-        ):
+        with patch("app.api.routes.fetch_local_todos", return_value=[local_todo]):
             resp = client.get("/api/todos")
 
         assert resp.status_code == 200
@@ -374,7 +331,7 @@ class TestServiceStatusJourney:
 
     def test_all_services_healthy(self, client):
         with patch(
-            "app.services.calendar_sync.fetch_google_events", return_value=[]
+            "app.services.calendar_sync.fetch_ical_events", return_value=[]
         ), patch(
             "app.services.calendar_sync.fetch_apple_events", return_value=[]
         ), patch("app.api.routes.fetch_weather", return_value=_make_weather()):
@@ -382,15 +339,15 @@ class TestServiceStatusJourney:
 
         assert resp.status_code == 200
         data = resp.json()
-        assert data["google_calendar"] is True
+        assert data["ical_calendar"] is True
         assert data["apple_calendar"] is True
         assert data["weather"] is True
         assert data["errors"] == []
 
-    def test_status_reports_google_failure(self, client):
+    def test_status_reports_ical_failure(self, client):
         with patch(
-            "app.services.calendar_sync.fetch_google_events",
-            side_effect=Exception("auth error"),
+            "app.services.calendar_sync.fetch_ical_events",
+            side_effect=Exception("network error"),
         ), patch(
             "app.services.calendar_sync.fetch_apple_events", return_value=[]
         ), patch("app.api.routes.fetch_weather", return_value=_make_weather()):
@@ -398,12 +355,12 @@ class TestServiceStatusJourney:
 
         assert resp.status_code == 200
         data = resp.json()
-        assert data["google_calendar"] is False
-        assert any("Google Calendar" in e for e in data["errors"])
+        assert data["ical_calendar"] is False
+        assert any("iCal Calendar" in e for e in data["errors"])
 
     def test_status_reports_weather_failure(self, client):
         with patch(
-            "app.services.calendar_sync.fetch_google_events", return_value=[]
+            "app.services.calendar_sync.fetch_ical_events", return_value=[]
         ), patch(
             "app.services.calendar_sync.fetch_apple_events", return_value=[]
         ), patch("app.api.routes.fetch_weather", return_value=None):
@@ -459,10 +416,9 @@ class TestAIConfigurationJourney:
 class TestVoiceCommandJourney:
     """A user triggers an action via the voice/webhook endpoint."""
 
-    def test_add_event_via_voice(self, client):
-        fake_event = _make_event(eid="voice-ev", title="Voice appointment", source="google")
+    def test_add_event_via_voice_apple(self, client):
         with patch("app.api.voice.settings.VOICE_WEBHOOK_SECRET", "s3cr3t"), patch(
-            "app.api.voice.add_google_event", return_value=fake_event
+            "app.api.voice.add_apple_event", return_value=True
         ):
             resp = client.post(
                 "/api/voice/command",
@@ -477,8 +433,28 @@ class TestVoiceCommandJourney:
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "created"
-        assert data["source"] == "google"
-        assert data["event"]["title"] == "Voice appointment"
+        assert data["source"] == "apple"
+
+    def test_add_event_via_voice_falls_back_to_local(self, client, tmp_path):
+        local_events_file = str(tmp_path / "local_events.json")
+        fake_event = _make_event(eid="voice-ev", title="Voice appointment", source="local")
+        with patch("app.api.voice.settings.VOICE_WEBHOOK_SECRET", "s3cr3t"), patch(
+            "app.api.voice.add_apple_event", return_value=False
+        ), patch("app.api.voice.add_local_event", return_value=fake_event):
+            resp = client.post(
+                "/api/voice/command",
+                json={
+                    "secret": "s3cr3t",
+                    "command": "add_event",
+                    "title": "Voice appointment",
+                    "start": "2024-06-01T10:00:00+02:00",
+                },
+            )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "created"
+        assert data["source"] == "local"
 
     def test_wrong_secret_rejected(self, client):
         resp = client.post(
@@ -689,79 +665,64 @@ class TestSchedulerJobsJourney:
 
 
 # ---------------------------------------------------------------------------
-# Journey 10: Google credentials management
+# Journey 10: iCal URL management
 # ---------------------------------------------------------------------------
 
-class TestGoogleCredentialsManagementJourney:
-    """A user uploads and manages Google Calendar credentials files."""
+class TestICalURLManagementJourney:
+    """A user adds and removes iCal feed URLs in settings."""
 
-    def test_list_credentials_returns_empty_when_none_configured(self, client):
-        with patch("app.api.settings_router.app_settings.GOOGLE_CREDENTIALS_JSON", ""):
-            resp = client.get("/api/settings/google-credentials")
+    def test_list_ical_urls_empty_when_none_configured(self, client):
+        with patch("app.api.settings_router.app_settings.ICAL_URLS", ""):
+            resp = client.get("/api/settings/ical-urls")
         assert resp.status_code == 200
         assert resp.json() == []
 
-    def test_list_credentials_returns_configured_paths(self, client, tmp_path):
-        creds_file = tmp_path / "credentials.json"
-        creds_file.write_text('{"installed":{}}')
-        creds_path = str(creds_file)
-        with patch("app.api.settings_router.app_settings.GOOGLE_CREDENTIALS_JSON", creds_path):
-            resp = client.get("/api/settings/google-credentials")
+    def test_list_ical_urls_returns_configured_urls(self, client, tmp_path):
+        settings_file = str(tmp_path / "settings.json")
+        url = "https://calendar.google.com/calendar/ical/test/basic.ics"
+        with patch("app.api.settings_router.app_settings.ICAL_URLS", url), \
+             patch("app.services.settings_store.SETTINGS_FILE", settings_file):
+            resp = client.get("/api/settings/ical-urls")
         assert resp.status_code == 200
         data = resp.json()
         assert len(data) == 1
-        assert data[0]["filename"] == "credentials.json"
-        assert data[0]["exists"] is True
+        assert data[0]["url"] == url
+        assert data[0]["index"] == 0
 
-    def test_upload_credentials_file(self, client, tmp_path):
-        creds_dir = str(tmp_path / "creds")
+    def test_add_ical_url(self, client, tmp_path):
         settings_file = str(tmp_path / "settings.json")
-        with patch("app.api.settings_router.app_settings.GOOGLE_CREDENTIALS_DIR", creds_dir), \
-             patch("app.api.settings_router.app_settings.GOOGLE_CREDENTIALS_JSON", ""), \
+        url = "https://calendar.google.com/calendar/ical/test/basic.ics"
+        with patch("app.api.settings_router.app_settings.ICAL_URLS", ""), \
              patch("app.services.settings_store.SETTINGS_FILE", settings_file):
             resp = client.post(
-                "/api/settings/google-credentials/upload",
-                files={"file": ("credentials.json", b'{"installed":{"client_id":"x"}}', "application/json")},
+                "/api/settings/ical-urls",
+                json={"url": url},
             )
         assert resp.status_code == 200
         data = resp.json()
-        assert data["status"] == "uploaded"
-        assert data["filename"] == "credentials.json"
+        assert data["status"] == "added"
+        assert data["url"] == url
 
-    def test_upload_rejects_non_json_file(self, client, tmp_path):
-        creds_dir = str(tmp_path / "creds")
-        with patch("app.api.settings_router.app_settings.GOOGLE_CREDENTIALS_DIR", creds_dir), \
-             patch("app.api.settings_router.app_settings.GOOGLE_CREDENTIALS_JSON", ""):
-            resp = client.post(
-                "/api/settings/google-credentials/upload",
-                files={"file": ("credentials.txt", b"not json", "text/plain")},
-            )
+    def test_add_ical_url_rejects_missing_url(self, client):
+        resp = client.post("/api/settings/ical-urls", json={})
         assert resp.status_code == 400
 
-    def test_upload_rejects_invalid_json_content(self, client, tmp_path):
-        creds_dir = str(tmp_path / "creds")
-        with patch("app.api.settings_router.app_settings.GOOGLE_CREDENTIALS_DIR", creds_dir), \
-             patch("app.api.settings_router.app_settings.GOOGLE_CREDENTIALS_JSON", ""):
-            resp = client.post(
-                "/api/settings/google-credentials/upload",
-                files={"file": ("bad.json", b"this is not json", "application/json")},
-            )
+    def test_add_ical_url_rejects_non_http_url(self, client):
+        resp = client.post("/api/settings/ical-urls", json={"url": "ftp://bad-url.com/cal.ics"})
         assert resp.status_code == 400
 
-    def test_delete_credentials_entry(self, client, tmp_path):
-        creds_file = tmp_path / "credentials.json"
-        creds_file.write_text('{"installed":{}}')
-        creds_path = str(creds_file)
+    def test_delete_ical_url(self, client, tmp_path):
         settings_file = str(tmp_path / "settings.json")
-        with patch("app.api.settings_router.app_settings.GOOGLE_CREDENTIALS_JSON", creds_path), \
+        url = "https://calendar.google.com/calendar/ical/test/basic.ics"
+        with patch("app.api.settings_router.app_settings.ICAL_URLS", url), \
              patch("app.services.settings_store.SETTINGS_FILE", settings_file):
-            resp = client.delete("/api/settings/google-credentials/0")
+            resp = client.delete("/api/settings/ical-urls/0")
         assert resp.status_code == 200
         assert resp.json()["status"] == "removed"
 
-    def test_delete_out_of_range_index_returns_404(self, client):
-        with patch("app.api.settings_router.app_settings.GOOGLE_CREDENTIALS_JSON", ""):
-            resp = client.delete("/api/settings/google-credentials/5")
+    def test_delete_out_of_range_ical_url_returns_404(self, client):
+        with patch("app.api.settings_router.app_settings.ICAL_URLS", ""):
+            resp = client.delete("/api/settings/ical-urls/5")
         assert resp.status_code == 404
 
 

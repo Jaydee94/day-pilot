@@ -373,11 +373,11 @@ function StepCalendar({ form, set, t }) {
       <div className="wizard-step__note">
         <span>📌</span>
         <span>
-          <strong>{t('settingsGoogleCalendarTitle')}</strong> {t('setupCalendarGoogleNote1')}{' '}
+          <strong>{t('settingsICalCalendarTitle')}</strong> {t('setupCalendarICalNote1')}{' '}
           <a href="/docs/features/briefing.md" target="_blank" rel="noreferrer">
             {t('setupCalendarDocs')}
           </a>{' '}
-          {t('setupCalendarGoogleNote2')}
+          {t('setupCalendarICalNote2')}
         </span>
       </div>
       <div className="wizard-step__fields">

@@ -211,6 +211,9 @@ def _build_prompt(summary: DailySummary) -> str:
     lang = settings.APP_LANGUAGE if settings.APP_LANGUAGE in {"en", "de"} else "en"
     is_de = lang == "de"
 
+    import pytz as _pytz
+    local_tz = _pytz.timezone(settings.APP_TIMEZONE)
+
     lines: List[str] = [
         (
             f"Datum: {summary.date.strftime('%A, %B %d, %Y')}"
@@ -288,7 +291,8 @@ def _build_prompt(summary: DailySummary) -> str:
     if summary.events:
         lines.append("Termine heute:" if is_de else "Events today:")
         for ev in summary.events:
-            time_str = ev.start.strftime("%H:%M")
+            local_start = ev.start.astimezone(local_tz)
+            time_str = local_start.strftime("%H:%M")
             loc_str = f" @ {ev.location}" if ev.location else ""
             lines.append(f"  • {time_str} – {ev.title}{loc_str}")
         lines.append("")
@@ -296,11 +300,14 @@ def _build_prompt(summary: DailySummary) -> str:
     if summary.todos:
         lines.append("Aufgaben:" if is_de else "Tasks:")
         for td in summary.todos:
-            due_str = (
-                f" (faellig: {td.due.strftime('%b %d')})"
-                if (is_de and td.due)
-                else (f" (due: {td.due.strftime('%b %d')})" if td.due else "")
-            )
+            due_str = ""
+            if td.due:
+                local_due = td.due.astimezone(local_tz)
+                due_str = (
+                    f" (faellig: {local_due.strftime('%b %d')})"
+                    if is_de
+                    else f" (due: {local_due.strftime('%b %d')})"
+                )
             lines.append(f"  • {td.title}{due_str}")
         lines.append("")
 
