@@ -129,10 +129,14 @@ def start_scheduler() -> None:
         settings.APP_TIMEZONE,
         settings.CALENDAR_SYNC_INTERVAL_HOURS,
     )
-    # Run an initial calendar sync immediately so data is available without
-    # waiting for the first scheduled interval.
-    import threading
-    threading.Thread(target=run_calendar_sync, daemon=True).start()
+    # Schedule an immediate calendar sync so data is available on startup
+    # without waiting for the first hourly interval to fire.
+    _scheduler.add_job(
+        run_calendar_sync,
+        "date",
+        id="calendar_sync_startup",
+        replace_existing=True,
+    )
 
 
 def stop_scheduler() -> None:

@@ -53,7 +53,7 @@ def sync_calendars() -> None:
         fetch_apple_events()
     except Exception as exc:
         logger.error("Calendar sync: CalDAV fetch failed: %s", exc)
-    _last_calendar_sync = datetime.now(pytz.utc)
+    _last_calendar_sync = datetime.now(pytz.timezone(settings.APP_TIMEZONE))
     logger.info("Calendar sync completed at %s", _last_calendar_sync.isoformat())
 
 

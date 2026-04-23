@@ -7,6 +7,25 @@ import './Page.css'
 import './CalendarPage.css'
 
 /**
+ * How long to wait (ms) after triggering a calendar sync before reloading
+ * the events list. The sync job runs asynchronously in the backend so a small
+ * delay is needed to allow it to complete before the client refetches.
+ */
+const SYNC_RELOAD_DELAY_MS = 2000
+
+/** Format a UTC ISO timestamp as a short local date+time string. */
+function formatLastSync(isoString, locale, neverSyncedLabel) {
+  if (!isoString) return neverSyncedLabel
+  const d = new Date(isoString)
+  return d.toLocaleString(locale, {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+/**
  * CalendarPage fetches its own event data from /api/events.
  * This endpoint never triggers an AI call – it only reads calendar data.
  */
@@ -47,10 +66,10 @@ export default function CalendarPage() {
     try {
       await triggerSchedulerJob('calendar_sync')
       setSyncFeedback('ok')
-      // Give the sync job a moment to complete before reloading data
+      // Give the async sync job time to complete before reloading data
       setTimeout(async () => {
         await Promise.all([loadEvents(), loadSyncStatus()])
-      }, 2000)
+      }, SYNC_RELOAD_DELAY_MS)
     } catch {
       setSyncFeedback('error')
     } finally {
@@ -63,17 +82,6 @@ export default function CalendarPage() {
     loadSyncStatus()
   }, [])
 
-  function formatLastSync(isoString) {
-    if (!isoString) return t('calendarNeverSynced')
-    const d = new Date(isoString)
-    return d.toLocaleString(locale, {
-      day: '2-digit',
-      month: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
-
   return (
     <div className="page">
       <h2 className="page__title">{t('calendarTitle')}</h2>
@@ -81,7 +89,7 @@ export default function CalendarPage() {
 
       <div className="calendar-sync-bar">
         <span className="calendar-sync-bar__status">
-          {t('calendarLastSync', { time: formatLastSync(lastSync) })}
+          {t('calendarLastSync', { time: formatLastSync(lastSync, locale, t('calendarNeverSynced')) })}
         </span>
         <div className="calendar-sync-bar__actions">
           {syncFeedback === 'ok' && (
