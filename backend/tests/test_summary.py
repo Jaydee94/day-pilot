@@ -7,7 +7,7 @@ from unittest.mock import patch, MagicMock
 import pytz
 import pytest
 
-from app.models.schemas import DailySummary, CalendarEvent, WeatherInfo, TodoItem, Birthday
+from app.models.schemas import DailySummary, CalendarEvent, WeatherInfo, TodoItem, Birthday, HourlyForecastPoint
 
 
 BERLIN_TZ = pytz.timezone("Europe/Berlin")
@@ -391,4 +391,131 @@ class TestBuildPromptTimezone:
         prompt = _build_prompt(summary)
 
         assert "10:00" in prompt, "Expected local time 10:00 (Berlin) in prompt, got UTC time"
-        assert "08:00" not in prompt, "UTC time 08:00 must not appear in prompt"
+        assert "10:00 – Morning meeting" in prompt
+        assert "08:00 – Morning meeting" not in prompt, "UTC event time must not appear in prompt"
+
+
+class TestBuildPromptContent:
+    """Prompt should enforce the updated daily-briefing content requirements."""
+
+    def test_events_are_listed_in_chronological_order(self, monkeypatch):
+        from app.services.ai_summary import _build_prompt
+
+        now = datetime.now(BERLIN_TZ)
+        later = CalendarEvent(
+            id="e-later",
+            title="Late event",
+            start=now.replace(hour=18, minute=0),
+            end=now.replace(hour=19, minute=0),
+            source="ical",
+        )
+        earlier = CalendarEvent(
+            id="e-earlier",
+            title="Early event",
+            start=now.replace(hour=9, minute=0),
+            end=now.replace(hour=10, minute=0),
+            source="ical",
+        )
+        summary = DailySummary(
+            date=now,
+            events=[later, earlier],
+            todos=[],
+            birthdays=[],
+        )
+
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_LANGUAGE", "en")
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_TIMEZONE", "Europe/Berlin")
+
+        prompt = _build_prompt(summary)
+
+        assert prompt.find("09:00") < prompt.find("18:00")
+
+    def test_prompt_includes_weather_precautions_section_when_rainy(self, monkeypatch):
+        from app.services.ai_summary import _build_prompt
+
+        now = datetime.now(BERLIN_TZ)
+        summary = _make_summary()
+        summary.date = now
+        summary.weather.description = "heavy rain"
+        summary.weather.hourly_forecast = [
+            HourlyForecastPoint(
+                time=now,
+                temperature=15,
+                icon="10d",
+                description="rain",
+                chance_of_rain=80,
+            )
+        ]
+
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_LANGUAGE", "en")
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_TIMEZONE", "Europe/Berlin")
+
+        prompt = _build_prompt(summary)
+
+        assert "Weather precautions:" in prompt
+        assert "Bring rain gear" in prompt
+
+    def test_prompt_uses_weekday_and_weekend_activity_instructions(self, monkeypatch):
+        from app.services.ai_summary import _build_prompt
+
+        weekday = BERLIN_TZ.localize(datetime(2026, 4, 22, 8, 0, 0))  # Wednesday
+        weekend = BERLIN_TZ.localize(datetime(2026, 4, 26, 8, 0, 0))  # Sunday
+
+        weekday_summary = _make_summary()
+        weekday_summary.date = weekday
+        weekend_summary = _make_summary()
+        weekend_summary.date = weekend
+
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_LANGUAGE", "en")
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_TIMEZONE", "Europe/Berlin")
+
+        weekday_prompt = _build_prompt(weekday_summary)
+        weekend_prompt = _build_prompt(weekend_summary)
+
+        assert "Day type: Weekday" in weekday_prompt
+        assert "on weekdays as after-work ideas" in weekday_prompt
+        assert "Day type: Weekend" in weekend_prompt
+        assert "on weekends as daytime ideas" in weekend_prompt
+
+    def test_prompt_contains_suggested_time_windows_section(self, monkeypatch):
+        from app.services.ai_summary import _build_prompt
+
+        base = BERLIN_TZ.localize(datetime(2026, 4, 24, 8, 0, 0))
+        summary = DailySummary(
+            date=base,
+            events=[
+                CalendarEvent(
+                    id="e1",
+                    title="Morning meeting",
+                    start=base.replace(hour=9, minute=0),
+                    end=base.replace(hour=10, minute=0),
+                    source="ical",
+                ),
+                CalendarEvent(
+                    id="e2",
+                    title="Afternoon sync",
+                    start=base.replace(hour=14, minute=0),
+                    end=base.replace(hour=15, minute=0),
+                    source="ical",
+                ),
+            ],
+            todos=[],
+        )
+
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_LANGUAGE", "en")
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_TIMEZONE", "Europe/Berlin")
+
+        prompt = _build_prompt(summary)
+
+        assert "Suggested time windows:" in prompt
+        assert "10:00-14:00" in prompt
+
+    def test_prompt_requires_time_window_recommendation(self, monkeypatch):
+        from app.services.ai_summary import _build_prompt
+
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_LANGUAGE", "en")
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_TIMEZONE", "Europe/Berlin")
+
+        prompt = _build_prompt(_make_summary())
+
+        assert "at least one concrete time-window recommendation" in prompt

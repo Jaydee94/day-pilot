@@ -11,6 +11,7 @@ The model to use is read from ``AI_MODEL``.  When ``AI_MODEL`` is empty the
 service falls back to the provider-specific default defined in ``_PROVIDER_DEFAULTS``.
 """
 import logging
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 try:
@@ -213,12 +214,125 @@ def _build_prompt(summary: DailySummary) -> str:
 
     import pytz as _pytz
     local_tz = _pytz.timezone(settings.APP_TIMEZONE)
+    local_date = summary.date.astimezone(local_tz)
+    is_weekend = local_date.weekday() >= 5
+
+    def _weather_cautions() -> List[str]:
+        if not summary.weather:
+            return []
+        w = summary.weather
+        cautions: List[str] = []
+        desc = (w.description or "").lower()
+
+        rain_chances = [h.chance_of_rain for h in (w.hourly_forecast or [])]
+        max_rain = max(rain_chances) if rain_chances else 0
+
+        if max_rain >= 60 or any(k in desc for k in ["rain", "shower", "storm", "regen", "gewitter"]):
+            cautions.append(
+                "Regenschutz mitnehmen und Outdoor-Plan flexibel halten"
+                if is_de
+                else "Bring rain gear and keep outdoor plans flexible"
+            )
+
+        if w.wind_speed >= 10:
+            cautions.append(
+                "Wind beachten: draussen waermere Schichten einplanen"
+                if is_de
+                else "Expect wind: plan warmer outdoor layers"
+            )
+
+        if w.temperature >= 28:
+            cautions.append(
+                "Ausreichend trinken und direkte Mittagssonne vermeiden"
+                if is_de
+                else "Stay hydrated and avoid direct midday sun"
+            )
+
+        if w.temperature <= 3:
+            cautions.append(
+                "Warme Kleidung und mehr Zeit fuer Wege einplanen"
+                if is_de
+                else "Wear warm clothing and allow extra travel time"
+            )
+
+        return cautions[:2]
+
+    def _recommended_time_windows() -> List[str]:
+        if not summary.events:
+            return []
+
+        day_start = local_date.replace(hour=8, minute=0, second=0, microsecond=0)
+        day_end = local_date.replace(hour=20, minute=0, second=0, microsecond=0)
+
+        busy: List[tuple[datetime, datetime]] = []
+        for ev in summary.events:
+            start = ev.start.astimezone(local_tz)
+            end = ev.end.astimezone(local_tz)
+            if end <= day_start or start >= day_end:
+                continue
+            busy.append((max(start, day_start), min(end, day_end)))
+
+        if not busy:
+            if is_de:
+                return ["08:00-10:00 fuer wichtige Aufgabe", "17:00-18:00 fuer Familienorga"]
+            return ["08:00-10:00 for a focused task", "17:00-18:00 for family planning"]
+
+        busy.sort(key=lambda x: x[0])
+        merged: List[tuple[datetime, datetime]] = []
+        for start, end in busy:
+            if not merged or start > merged[-1][1]:
+                merged.append((start, end))
+            else:
+                merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+
+        free: List[tuple[datetime, datetime]] = []
+        cursor = day_start
+        for start, end in merged:
+            if start > cursor:
+                free.append((cursor, start))
+            cursor = max(cursor, end)
+        if cursor < day_end:
+            free.append((cursor, day_end))
+
+        candidates = []
+        for start, end in free:
+            duration = (end - start).total_seconds() / 60
+            if duration >= 30:
+                candidates.append((start, end, duration))
+
+        # Prefer the longest free windows; tie-break by earlier time.
+        candidates.sort(key=lambda x: (-x[2], x[0]))
+        top = candidates[:2]
+
+        windows: List[str] = []
+        for start, end, duration in top:
+            slot = f"{start.strftime('%H:%M')}-{end.strftime('%H:%M')}"
+            if is_de:
+                label = "fuer Fokusaufgabe" if duration >= 90 else "fuer kurze Erledigungen"
+            else:
+                label = "for focused work" if duration >= 90 else "for quick errands"
+            windows.append(f"{slot} {label}")
+        return windows
 
     lines: List[str] = [
         (
             f"Datum: {summary.date.strftime('%A, %B %d, %Y')}"
             if is_de
             else f"Date: {summary.date.strftime('%A, %B %d, %Y')}"
+        ),
+        (
+            "Kontext: Familie mit Kleinkind (3 Jahre)"
+            if is_de
+            else "Context: Family with a 3-year-old toddler"
+        ),
+        (
+            "Tagesart: Wochenende"
+            if is_de and is_weekend
+            else (
+                "Tagesart: Werktag"
+                if is_de
+                else ("Day type: Weekend" if is_weekend else "Day type: Weekday")
+            )
         ),
         "",
     ]
@@ -279,6 +393,11 @@ def _build_prompt(summary: DailySummary) -> str:
                 weather_line += " | " + ", ".join(time_parts)
 
         lines.append(weather_line)
+        cautions = _weather_cautions()
+        if cautions:
+            lines.append("Wetter-Hinweise:" if is_de else "Weather precautions:")
+            for caution in cautions:
+                lines.append(f"  • {caution}")
         lines.append("")
 
     if summary.birthdays:
@@ -290,11 +409,19 @@ def _build_prompt(summary: DailySummary) -> str:
 
     if summary.events:
         lines.append("Termine heute:" if is_de else "Events today:")
-        for ev in summary.events:
+        sorted_events = sorted(summary.events, key=lambda e: e.start.astimezone(local_tz))
+        for ev in sorted_events:
             local_start = ev.start.astimezone(local_tz)
             time_str = local_start.strftime("%H:%M")
             loc_str = f" @ {ev.location}" if ev.location else ""
             lines.append(f"  • {time_str} – {ev.title}{loc_str}")
+        lines.append("")
+
+    windows = _recommended_time_windows()
+    if windows:
+        lines.append("Empfohlene Zeitfenster:" if is_de else "Suggested time windows:")
+        for w in windows:
+            lines.append(f"  • {w}")
         lines.append("")
 
     if summary.todos:
@@ -315,24 +442,44 @@ def _build_prompt(summary: DailySummary) -> str:
 
     if is_de:
         return (
-            "Du bist ein freundlicher persoenlicher Assistent fuer eine Familie. "
+            "Du bist ein freundlicher persoenlicher Assistent fuer eine Familie mit Kleinkind (3 Jahre). "
             "Schreibe auf Basis der folgenden Daten ein warmes, kurzes Tagesbriefing auf Deutsch "
-            "(maximal 5 Saetze, beginne mit 'Guten Morgen'). "
-            "Das Briefing soll kurz auf das Wetter eingehen und dabei die Tageshöchsttemperatur "
-            "sowie die Temperaturen am Vormittag, Mittag und Abend erwaehnen. "
-            "Verwende KEIN Markdown (keine **, keine *, keine #). Schreibe nur normalen Text. "
+            "(maximal 6 Saetze, beginne mit 'Guten Morgen'). "
+            "Verwende KEIN Markdown (keine **, keine *, keine #), nur normalen Text. "
+            "Schreibe persoenlich und zugewandt (du/ihr-Ansprache), ruhig und motivierend. "
+            "Wenn es gut passt, nutze 1-2 passende Emojis im SUMMARY zur Auflockerung (nicht ueberladen). "
+            "Nutze keine Emojis im PRIORITIES-Block. "
+            "Das Briefing MUSS enthalten: "
+            "1) eine kurze Wetterzusammenfassung, "
+            "2) 1-2 konkrete Dinge, die man wegen des Wetters beachten sollte, "
+            "3) eine Zusammenfassung der anstehenden Termine in sinnvoller (chronologischer) Reihenfolge, "
+            "4) mindestens eine konkrete Zeitfenster-Empfehlung aus den angegebenen 'Empfohlenen Zeitfenstern', "
+            "5) falls heute Geburtstag ist, eine deutlich hervorgehobene, positive Geburtstags-Erwaehnung, "
+            "6) genau 2 konkrete, familienfreundliche Vorschlaege fuer Aktivitäten mit einem 3-jaehrigen Kind: "
+            "an Werktagen als Idee fuer NACH der Arbeit, am Wochenende fuer tagsueber. "
+            "Achte darauf, dass die Vorschlaege zum Wetter passen. "
             "Extrahiere danach die 3 wichtigsten Prioritaeten als nummerierte Liste.\n\n"
             "FORMAT:\nSUMMARY:\n<text>\n\nPRIORITIES:\n1. ...\n2. ...\n3. ...\n\n"
             f"DATA:\n{data_text}"
         )
 
     return (
-        "You are a friendly personal assistant for a family. "
+        "You are a friendly personal assistant for a family with a 3-year-old toddler. "
         "Based on the following data, write a warm, concise daily briefing in English "
-        "(maximum 5 sentences, starting with 'Good morning'). "
-        "Briefly mention the weather, including the daily high temperature and "
-        "the expected temperatures in the morning, at noon, and in the evening. "
+        "(maximum 6 sentences, starting with 'Good morning'). "
         "Use NO markdown formatting (no **, no *, no #). Plain text only. "
+        "Use a personal, supportive tone (speak to the family directly as you/your). "
+        "If it fits naturally, include 1-2 relevant emojis in the SUMMARY for readability (do not overuse). "
+        "Do not use emojis in the PRIORITIES block. "
+        "The briefing MUST include: "
+        "1) a short weather summary, "
+        "2) 1-2 concrete weather precautions, "
+        "3) a summary of upcoming events in sensible (chronological) order, "
+        "4) at least one concrete time-window recommendation based on the provided 'Suggested time windows', "
+        "5) if there is a birthday today, a clearly emphasized positive birthday mention, "
+        "6) exactly 2 concrete family activity ideas suitable for a 3-year-old: "
+        "on weekdays as after-work ideas, on weekends as daytime ideas. "
+        "Ensure those ideas fit the weather conditions. "
         "Then extract the 3 most important priorities for the day as a numbered list.\n\n"
         "FORMAT:\nSUMMARY:\n<text>\n\nPRIORITIES:\n1. ...\n2. ...\n3. ...\n\n"
         f"DATA:\n{data_text}"
