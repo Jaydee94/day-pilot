@@ -96,16 +96,7 @@ class TestWeatherRoute:
 
 class TestEventsRoute:
     def test_create_event_success(self, client):
-        from app.models.schemas import CalendarEvent
-
-        fake_event = CalendarEvent(
-            id="new-ev-1",
-            title="Team lunch",
-            start=datetime(2024, 6, 1, 12, 0, tzinfo=BERLIN_TZ),
-            end=datetime(2024, 6, 1, 13, 0, tzinfo=BERLIN_TZ),
-            source="google",
-        )
-        with patch("app.api.routes.add_google_event", return_value=fake_event):
+        with patch("app.api.routes.add_apple_event", return_value=True):
             resp = client.post(
                 "/api/events",
                 json={
@@ -116,12 +107,24 @@ class TestEventsRoute:
             )
         assert resp.status_code == 200
         data = resp.json()
-        assert data["title"] == "Team lunch"
-        assert data["source"] == "google"
+        assert data["source"] == "apple"
 
-    def test_create_event_falls_back_to_apple(self, client):
-        with patch("app.api.routes.add_google_event", return_value=None), patch(
-            "app.api.routes.add_apple_event", return_value=True
+    def test_create_event_falls_back_to_local(self, client):
+        from app.models.schemas import CalendarEvent
+        import pytz
+        from datetime import datetime, timedelta
+
+        tz = pytz.timezone("Europe/Berlin")
+        start = datetime(2024, 6, 1, 9, 0, tzinfo=tz)
+        fake_local = CalendarEvent(
+            id="local-1",
+            title="Doctor",
+            start=start,
+            end=start + timedelta(hours=1),
+            source="local",
+        )
+        with patch("app.api.routes.add_apple_event", return_value=False), patch(
+            "app.api.routes.add_local_event", return_value=fake_local
         ):
             resp = client.post(
                 "/api/events",
@@ -131,10 +134,10 @@ class TestEventsRoute:
                 },
             )
         assert resp.status_code == 200
-        assert resp.json()["source"] == "apple"
+        assert resp.json()["source"] == "local"
 
     def test_create_event_service_unavailable(self, client):
-        """When Google and Apple both fail, the event is saved locally (source='local')."""
+        """When Apple CalDAV fails the event is saved locally (source='local')."""
         from app.models.schemas import CalendarEvent
         import pytz
         from datetime import datetime, timedelta
@@ -148,9 +151,9 @@ class TestEventsRoute:
             end=start + timedelta(hours=1),
             source="local",
         )
-        with patch("app.api.routes.add_google_event", return_value=None), patch(
-            "app.api.routes.add_apple_event", return_value=False
-        ), patch("app.api.routes.add_local_event", return_value=fake_local):
+        with patch("app.api.routes.add_apple_event", return_value=False), patch(
+            "app.api.routes.add_local_event", return_value=fake_local
+        ):
             resp = client.post(
                 "/api/events",
                 json={
@@ -163,30 +166,23 @@ class TestEventsRoute:
 
 
 class TestTodosRoute:
-    def test_create_todo_success(self, client):
-        from app.models.schemas import TodoItem
-
-        fake_todo = TodoItem(
-            id="task-1",
-            title="Pick up groceries",
-            completed=False,
-            source="google",
-        )
-        with patch("app.api.routes.add_google_task", return_value=fake_todo):
+    def test_create_todo_success(self, client, tmp_path):
+        local_todos_file = str(tmp_path / "local_todos.json")
+        with patch("app.config.settings.LOCAL_TODOS_FILE", local_todos_file), \
+             patch("app.services.local_todos.settings.LOCAL_TODOS_FILE", local_todos_file):
             resp = client.post(
                 "/api/todos",
                 json={"title": "Pick up groceries"},
             )
         assert resp.status_code == 200
         assert resp.json()["title"] == "Pick up groceries"
+        assert resp.json()["source"] == "local"
 
     def test_create_todo_service_unavailable(self, client, tmp_path):
-        """When Google Tasks is unavailable the task falls back to local storage."""
-        local_todos_file = str(tmp_path / "local_todos.json")
+        """Todo creation always saves to local storage."""
+        from app.models.schemas import TodoItem
         fake_local_todo = TodoItem(id="local-1", title="Broken task", completed=False, source="local")
-        with patch("app.api.routes.add_google_task", return_value=None), patch(
-            "app.api.routes.add_local_todo", return_value=fake_local_todo
-        ):
+        with patch("app.api.routes.add_local_todo", return_value=fake_local_todo):
             resp = client.post("/api/todos", json={"title": "Broken task"})
         assert resp.status_code == 200
         assert resp.json()["source"] == "local"
@@ -238,18 +234,9 @@ class TestVoiceRoute:
         assert resp.status_code == 401
 
     def test_add_event_success(self, client):
-        from app.models.schemas import CalendarEvent
-
-        fake_event = CalendarEvent(
-            id="new-ev",
-            title="Doctor appointment",
-            start=datetime(2024, 6, 1, 10, 0, tzinfo=BERLIN_TZ),
-            end=datetime(2024, 6, 1, 11, 0, tzinfo=BERLIN_TZ),
-            source="google",
-        )
         with patch(
             "app.api.voice.settings.VOICE_WEBHOOK_SECRET", "test-secret"
-        ), patch("app.api.voice.add_google_event", return_value=fake_event):
+        ), patch("app.api.voice.add_apple_event", return_value=True):
             payload = {
                 "secret": "test-secret",
                 "command": "add_event",
@@ -258,7 +245,7 @@ class TestVoiceRoute:
             }
             resp = client.post("/api/voice/command", json=payload)
         assert resp.status_code == 200
-        assert resp.json()["source"] == "google"
+        assert resp.json()["source"] == "apple"
 
     def test_add_event_missing_start(self, client):
         with patch("app.api.voice.settings.VOICE_WEBHOOK_SECRET", "test-secret"):

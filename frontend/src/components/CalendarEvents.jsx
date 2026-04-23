@@ -26,6 +26,7 @@ function formatCountdown(isoStart, isoEnd, t) {
 
 const SOURCE_LABEL = {
   google: { label: 'Google', color: '#4285F4' },
+  ical: { label: 'iCal', color: '#4285F4' },
   apple: { label: 'Apple', color: '#A3AAAE' },
 }
 

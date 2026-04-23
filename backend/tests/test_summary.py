@@ -23,11 +23,11 @@ def _make_summary() -> DailySummary:
                 title="Team Standup",
                 start=now.replace(hour=9, minute=0),
                 end=now.replace(hour=9, minute=30),
-                source="google",
+                source="ical",
             )
         ],
         todos=[
-            TodoItem(id="t1", title="Report abschließen", source="google")
+            TodoItem(id="t1", title="Report abschließen", source="local")
         ],
         weather=WeatherInfo(
             city="Berlin",
@@ -348,3 +348,47 @@ class TestAISummaryCache:
         assert key in _ai_summary_cache
         assert _ai_summary_cache[key]["ai_summary"] is not None
         assert len(_ai_summary_cache[key]["top_priorities"]) == 3
+
+
+# ---------------------------------------------------------------------------
+# Timezone conversion in _build_prompt
+# ---------------------------------------------------------------------------
+
+class TestBuildPromptTimezone:
+    """Event times in the AI prompt must be displayed in APP_TIMEZONE, not UTC."""
+
+    def test_event_times_shown_in_configured_timezone(self, monkeypatch):
+        """A UTC event at 08:00Z must appear as 10:00 when APP_TIMEZONE is Europe/Berlin (UTC+2)."""
+        import pytz as _pytz
+        from datetime import datetime, timedelta
+        from app.models.schemas import DailySummary, CalendarEvent
+        from app.services.ai_summary import _build_prompt
+
+        utc = _pytz.utc
+        berlin = _pytz.timezone("Europe/Berlin")
+
+        # UTC 08:00 == Berlin 10:00 in summer (UTC+2)
+        ev_start_utc = datetime(2024, 6, 1, 8, 0, 0, tzinfo=utc)
+        ev_end_utc = ev_start_utc + timedelta(hours=1)
+
+        summary = DailySummary(
+            date=datetime.now(berlin),
+            events=[
+                CalendarEvent(
+                    id="e-tz",
+                    title="Morning meeting",
+                    start=ev_start_utc,
+                    end=ev_end_utc,
+                    source="ical",
+                )
+            ],
+            todos=[],
+        )
+
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_LANGUAGE", "en")
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_TIMEZONE", "Europe/Berlin")
+
+        prompt = _build_prompt(summary)
+
+        assert "10:00" in prompt, "Expected local time 10:00 (Berlin) in prompt, got UTC time"
+        assert "08:00" not in prompt, "UTC time 08:00 must not appear in prompt"

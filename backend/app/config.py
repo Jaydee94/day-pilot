@@ -48,9 +48,10 @@ class Settings(BaseSettings):
     WEATHER_CITY: str = "Berlin"
     WEATHER_UNITS: str = "metric"  # metric | imperial
 
-    # Google Calendar
-    GOOGLE_CREDENTIALS_JSON: str = ""  # path to credentials.json
-    GOOGLE_TOKEN_JSON: str = "/app/data/google_token.json"
+    # iCal subscriptions (read-only, works with Google Calendar, Outlook, etc.)
+    # Comma-separated list of iCal feed URLs, e.g.:
+    # https://calendar.google.com/calendar/ical/.../basic.ics
+    ICAL_URLS: str = ""
 
     # Apple / CalDAV Calendar
     CALDAV_URL: str = ""  # e.g. https://caldav.icloud.com
@@ -68,7 +69,8 @@ class Settings(BaseSettings):
     # Local / internal todo storage
     LOCAL_TODOS_FILE: str = "/app/data/local_todos.json"
 
-    # Directory where uploaded Google credentials files are stored
+    # Directory where uploaded Google credentials files are stored (kept for
+    # backwards compatibility; no longer actively used after iCal migration).
     GOOGLE_CREDENTIALS_DIR: str = "/app/data/google_credentials"
 
     # Push Notifications (ntfy.sh)
