@@ -1,12 +1,22 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import Weather from '../components/Weather.jsx'
 import CalendarEvents from '../components/CalendarEvents.jsx'
 import TodoList from '../components/TodoList.jsx'
 import Birthdays from '../components/Birthdays.jsx'
 import AISummary from '../components/AISummary.jsx'
 import DailySummary from '../components/DailySummary.jsx'
+
+vi.mock('../api.js', () => ({
+  fetchBirthdays: vi.fn().mockResolvedValue([]),
+}))
+
+vi.mock('../components/UpcomingBirthdays.jsx', () => ({
+  default: function MockUpcomingBirthdays() {
+    return <div>Upcoming Birthdays</div>
+  },
+}))
 
 // ---- helpers ----
 const mockWeather = {
@@ -122,8 +132,8 @@ describe('Weather', () => {
 
   it('renders hourly section for today', () => {
     render(<Weather weather={mockWeather} />)
-    expect(screen.getByText(/Today by hour/)).toBeInTheDocument()
-    expect(screen.getByText(/11:00/)).toBeInTheDocument()
+    expect(screen.getByText(/Today's forecast/)).toBeInTheDocument()
+    expect(screen.getByText(/Morning/)).toBeInTheDocument()
   })
 
   it('renders 3-day forecast panel', () => {
@@ -249,7 +259,8 @@ describe('DailySummary', () => {
     expect(screen.getByText(/Weather/i)).toBeInTheDocument()
     expect(screen.getByText(/Events/i)).toBeInTheDocument()
     expect(screen.getByText(/Tasks/i)).toBeInTheDocument()
-    expect(screen.getByText(/Birthdays/i)).toBeInTheDocument()
+    expect(screen.getByText(/Birthdays Today/i)).toBeInTheDocument()
+    expect(screen.getByText(/Upcoming Birthdays/i)).toBeInTheDocument()
   })
 
   it('hides AI section when no summary or priorities', () => {
@@ -258,9 +269,11 @@ describe('DailySummary', () => {
     expect(screen.queryByText(/DayPilot Briefing/i)).not.toBeInTheDocument()
   })
 
-  it('hides birthdays when empty', () => {
+  it('hides birthdays today card when empty', () => {
     const s = { ...mockSummary, birthdays: [] }
     render(withRouter(<DailySummary summary={s} />))
-    expect(screen.queryByText(/Birthdays/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Birthdays Today/i)).not.toBeInTheDocument()
+    // Upcoming birthdays panel is intentionally always visible.
+    expect(screen.getByText(/Upcoming Birthdays/i)).toBeInTheDocument()
   })
 })

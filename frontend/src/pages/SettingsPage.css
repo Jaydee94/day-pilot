@@ -267,6 +267,8 @@
 .settings-actions {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: 0.7rem;
   padding-bottom: 1rem;
 }
 
@@ -276,6 +278,19 @@
   gap: 0.45rem;
   padding: 0.65rem 1.75rem;
   font-size: 0.95rem;
+}
+
+.settings-actions__feedback {
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.settings-actions__feedback--success {
+  color: #1b6b33;
+}
+
+.settings-actions__feedback--error {
+  color: var(--error);
 }
 
 .settings-save__icon {

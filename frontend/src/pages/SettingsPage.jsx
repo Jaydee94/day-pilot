@@ -499,6 +499,16 @@ export default function SettingsPage({ onLanguageChange }) {
             </>
           )}
         </button>
+        {saveStatus === 'success' && (
+          <span className="settings-actions__feedback settings-actions__feedback--success" role="status">
+            {t('settingsSaved')}
+          </span>
+        )}
+        {saveStatus === 'error' && (
+          <span className="settings-actions__feedback settings-actions__feedback--error" role="alert">
+            {t('settingsSaveFailed')}
+          </span>
+        )}
       </div>
     </div>
   )
@@ -657,6 +667,11 @@ function ICalCalendarSection({ icon, values, onChange, onTest, connectionState, 
       .catch(() => setUrls([]))
   }, [])
 
+  function syncIcalSettings(updatedFeeds) {
+    onChange('ICAL_FEEDS', JSON.stringify(updatedFeeds.map(({ url, is_birthday }) => ({ url, is_birthday }))))
+    onChange('ICAL_URLS', updatedFeeds.map(u => u.url).join(','))
+  }
+
   async function handleAdd(e) {
     e.preventDefault()
     if (!newUrl.trim()) return
@@ -666,7 +681,7 @@ function ICalCalendarSection({ icon, values, onChange, onTest, connectionState, 
       await addICalUrl(newUrl.trim(), newFeedIsBirthday)
       const updated = await fetchICalUrls()
       setUrls(updated)
-      onChange('ICAL_URLS', updated.map(u => u.url).join(','))
+      syncIcalSettings(updated)
       setNewUrl('')
       setNewFeedIsBirthday(false)
     } catch (err) {
@@ -682,7 +697,7 @@ function ICalCalendarSection({ icon, values, onChange, onTest, connectionState, 
       await deleteICalUrl(index)
       const updated = await fetchICalUrls()
       setUrls(updated)
-      onChange('ICAL_URLS', updated.map(u => u.url).join(','))
+      syncIcalSettings(updated)
     } catch (_) {
       // ignore
     } finally {
@@ -697,6 +712,7 @@ function ICalCalendarSection({ icon, values, onChange, onTest, connectionState, 
       await patchICalFeed(entry.index, { is_birthday: !entry.is_birthday })
       const updated = await fetchICalUrls()
       setUrls(updated)
+      syncIcalSettings(updated)
     } catch (_) {
       setToggleError(t('iCalFeedToggleError') || 'Unable to update feed. Please try again.')
     } finally {
