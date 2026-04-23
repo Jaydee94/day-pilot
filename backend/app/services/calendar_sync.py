@@ -136,6 +136,12 @@ def fetch_ical_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
             resp = http_requests.get(url, timeout=15)
             resp.raise_for_status()
             cal = ICalendar.from_ical(resp.content)
+
+            # Extract the calendar name from the X-WR-CALNAME property so that
+            # birthday detection can identify birthday-only calendars by name.
+            cal_name_raw = cal.get("X-WR-CALNAME")
+            cal_name: Optional[str] = str(cal_name_raw) if cal_name_raw else None
+
             occurrences = recurring_ical_events.of(cal).between(start, end)
 
             feed_events: List[CalendarEvent] = []
@@ -169,6 +175,7 @@ def fetch_ical_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
                         location=str(loc) if loc else None,
                         description=str(desc) if desc else None,
                         source="ical",
+                        calendar_name=cal_name,
                     )
                 )
             logger.info("iCal feed %s returned %d event(s) for %s", url, len(feed_events), start.date().isoformat())
@@ -261,6 +268,12 @@ def fetch_apple_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
 
             for cal in principal.calendars():
                 try:
+                    # Extract the CalDAV calendar display name for birthday detection.
+                    try:
+                        cal_name = str(cal.name) if cal.name else None
+                    except Exception:
+                        cal_name = None
+
                     raw_events = cal.date_search(start=start, end=end, expand=True)
                     for ev in raw_events:
                         vevent = ev.vobject_instance.vevent
@@ -305,6 +318,7 @@ def fetch_apple_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
                                 if hasattr(vevent, "description")
                                 else None,
                                 source="apple",
+                                calendar_name=cal_name,
                             )
                         )
                 except Exception as cal_exc:

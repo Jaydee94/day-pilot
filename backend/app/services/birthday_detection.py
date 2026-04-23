@@ -5,8 +5,11 @@ Scans calendar events from all configured sources (iCal feeds, CalDAV, local)
 over a look-ahead window and identifies which events are birthdays.
 
 Detection strategy (in order):
-  1. Keyword matching – cheap, instant, no AI quota used.
-  2. AI classification – only for events that don't match any keyword; results
+  1. Calendar-name match – if the event comes from a calendar explicitly
+     marked as a birthday calendar (via ``BIRTHDAY_CALENDAR_NAMES`` setting),
+     every event in that calendar is treated as a birthday.
+  2. Keyword matching – cheap, instant, no AI quota used.
+  3. AI classification – only for events that don't match any keyword; results
      are cached permanently in memory so that each event title is only
      classified once per server lifetime.
 
@@ -31,15 +34,19 @@ logger = logging.getLogger(__name__)
 # Keyword matching
 # ---------------------------------------------------------------------------
 
-# Birthday-related keywords (English and German).
-_BIRTHDAY_KEYWORDS = [
+# Birthday-related text keywords (English and German) – checked in both title and description.
+_BIRTHDAY_TEXT_KEYWORDS = [
     "birthday",
     "geburtstag",
     "bday",
     "b-day",
     "b'day",
+]
+
+# Emoji keywords that are unambiguously birthday-related – checked in title only.
+# 🎉 is intentionally excluded: it is too generic and matches any celebration event.
+_BIRTHDAY_EMOJI_KEYWORDS = [
     "🎂",
-    "🎉",
 ]
 
 # Patterns used to strip the keyword from the title to obtain the person's name.
@@ -53,7 +60,7 @@ _NAME_STRIP_PATTERNS = [
     # "Birthday: John" (keyword at start with colon)
     re.compile(r"^(?:birthday|geburtstag|bday)\s*:\s*", re.IGNORECASE),
     # Emoji
-    re.compile(r"[🎂🎉]", re.IGNORECASE),
+    re.compile(r"[🎂]", re.IGNORECASE),
 ]
 
 # Patterns for extracting ordinal age from titles like "John's 30th Birthday".
@@ -66,10 +73,41 @@ _AGE_FROM_TITLE_RE = re.compile(
 _AI_PROMPT_MAX_DESCRIPTION_LENGTH = 200
 
 
+def _get_birthday_calendar_names() -> List[str]:
+    """Return the normalised list of calendar names configured as birthday-only."""
+    raw = settings.BIRTHDAY_CALENDAR_NAMES or ""
+    return [name.strip().lower() for name in raw.split(",") if name.strip()]
+
+
+def _is_birthday_calendar(calendar_name: Optional[str]) -> bool:
+    """Return True if *calendar_name* matches one of the configured birthday calendar names.
+
+    Comparison is case-insensitive.  When ``BIRTHDAY_CALENDAR_NAMES`` is empty
+    or the event carries no calendar name, this returns False.
+    """
+    if not calendar_name:
+        return False
+    normalised = calendar_name.strip().lower()
+    return normalised in _get_birthday_calendar_names()
+
+
 def _matches_keyword(title: str, description: Optional[str] = None) -> bool:
-    """Return True if the event title (or description) contains a birthday keyword."""
-    combined = (title + " " + (description or "")).lower()
-    return any(kw in combined for kw in _BIRTHDAY_KEYWORDS)
+    """Return True if the event title (or description) contains a birthday keyword.
+
+    Text keywords (birthday, geburtstag, …) are checked in both the title and
+    description.  Emoji keywords (🎂) are only checked in the title to avoid
+    false positives from celebration or party event descriptions.
+    """
+    title_lower = title.lower()
+    if any(kw in title_lower for kw in _BIRTHDAY_TEXT_KEYWORDS):
+        return True
+    if any(kw in title for kw in _BIRTHDAY_EMOJI_KEYWORDS):
+        return True
+    if description:
+        desc_lower = description.lower()
+        if any(kw in desc_lower for kw in _BIRTHDAY_TEXT_KEYWORDS):
+            return True
+    return False
 
 
 def _extract_name(title: str) -> str:
@@ -222,7 +260,10 @@ def get_upcoming_birthdays(days_ahead: int = 14) -> List[Birthday]:
         for ev in events:
             is_birthday = False
 
-            if _matches_keyword(ev.title, ev.description):
+            if _is_birthday_calendar(ev.calendar_name):
+                # All events in a designated birthday calendar are birthdays.
+                is_birthday = True
+            elif _matches_keyword(ev.title, ev.description):
                 is_birthday = True
             else:
                 # Only ask AI for events we haven't already decided on.

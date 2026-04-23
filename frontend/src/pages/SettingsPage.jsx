@@ -45,6 +45,7 @@ const FIELD_LABEL_KEYS = {
   NTFY_TOPIC: 'settingsFieldTopic',
   NTFY_TOKEN: 'settingsFieldTokenOptional',
   ICAL_URLS: 'settingsFieldICalUrls',
+  BIRTHDAY_CALENDAR_NAMES: 'settingsFieldBirthdayCalendarNames',
   CALDAV_URL: 'settingsFieldCaldavUrl',
   CALDAV_USERNAME: 'settingsFieldUsername',
   CALDAV_PASSWORD: 'settingsFieldAppSpecificPassword',
@@ -64,6 +65,7 @@ const FIELD_DESC_KEYS = {
   NTFY_TOPIC: 'settingsFieldTopicDesc',
   NTFY_TOKEN: 'settingsFieldTokenOptionalDesc',
   ICAL_URLS: 'settingsFieldICalUrlsDesc',
+  BIRTHDAY_CALENDAR_NAMES: 'settingsFieldBirthdayCalendarNamesDesc',
   CALDAV_URL: 'settingsFieldCaldavUrlDesc',
   CALDAV_USERNAME: 'settingsFieldUsernameDesc',
   CALDAV_PASSWORD: 'settingsFieldAppSpecificPasswordDesc',
@@ -793,6 +795,24 @@ function ICalCalendarSection({ icon, values, onChange, onTest, connectionState, 
           {addError && (
             <p className="settings-test-result settings-test-result--error">{addError}</p>
           )}
+        </div>
+
+        {/* Birthday calendar names */}
+        <div className="settings-field">
+          <label className="settings-field__label" htmlFor="birthday-calendar-names">
+            {t('settingsFieldBirthdayCalendarNames')}
+          </label>
+          <span className="settings-field__desc">
+            {t('settingsFieldBirthdayCalendarNamesDesc')}
+          </span>
+          <input
+            id="birthday-calendar-names"
+            type="text"
+            className="settings-field__input"
+            placeholder="Bdays,Birthdays,Geburtstage"
+            value={values.BIRTHDAY_CALENDAR_NAMES ?? ''}
+            onChange={e => onChange('BIRTHDAY_CALENDAR_NAMES', e.target.value)}
+          />
         </div>
       </div>
     </div>

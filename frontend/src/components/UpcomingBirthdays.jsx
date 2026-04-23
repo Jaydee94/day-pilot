@@ -4,6 +4,9 @@ import { fetchBirthdays } from '../api.js'
 import { useI18n } from '../i18n.jsx'
 import './UpcomingBirthdays.css'
 
+/** Maximum number of upcoming birthdays to display. */
+const MAX_BIRTHDAYS = 5
+
 /** Format the birthday date relative to today for display. */
 function formatRelativeDate(isoDate, t, locale) {
   const today = new Date()
@@ -20,8 +23,9 @@ function formatRelativeDate(isoDate, t, locale) {
 }
 
 /**
- * UpcomingBirthdays fetches and displays birthday events for the next 14 days.
- * It manages its own loading / error state so the dashboard never blocks on it.
+ * UpcomingBirthdays fetches and displays the next upcoming birthday events
+ * (up to 5) for the next 14 days.  The card is always visible so users know
+ * where to find birthday information even when the list is empty.
  */
 export default function UpcomingBirthdays() {
   const { t, locale } = useI18n()
@@ -35,8 +39,7 @@ export default function UpcomingBirthdays() {
       .finally(() => setLoading(false))
   }, [])
 
-  // Don't render the card at all while loading or when there are no upcoming birthdays.
-  if (loading || birthdays.length === 0) return null
+  const displayed = birthdays.slice(0, MAX_BIRTHDAYS)
 
   return (
     <div className="upcoming-birthdays card">
@@ -45,21 +48,29 @@ export default function UpcomingBirthdays() {
         <span className="card__title">{t('upcomingBirthdays')}</span>
       </div>
 
-      <ul className="upcoming-birthdays__list">
-        {birthdays.map((b) => (
-          <li key={`${b.name}-${b.date}`} className="upcoming-birthdays__item">
-            <div className="upcoming-birthdays__info">
-              <span className="upcoming-birthdays__name">{b.name}</span>
-              {b.age != null && (
-                <span className="upcoming-birthdays__age">{t('turnsAge', { age: b.age })}</span>
-              )}
-            </div>
-            <span className="upcoming-birthdays__date">
-              {formatRelativeDate(b.date, t, locale)}
-            </span>
-          </li>
-        ))}
-      </ul>
+      {loading ? (
+        <p className="upcoming-birthdays__empty upcoming-birthdays__loading" aria-busy="true">
+          {'…'}
+        </p>
+      ) : displayed.length === 0 ? (
+        <p className="upcoming-birthdays__empty">{t('noUpcomingBirthdays')}</p>
+      ) : (
+        <ul className="upcoming-birthdays__list">
+          {displayed.map((b) => (
+            <li key={`${b.name}-${b.date}`} className="upcoming-birthdays__item">
+              <div className="upcoming-birthdays__info">
+                <span className="upcoming-birthdays__name">{b.name}</span>
+                {b.age != null && (
+                  <span className="upcoming-birthdays__age">{t('turnsAge', { age: b.age })}</span>
+                )}
+              </div>
+              <span className="upcoming-birthdays__date">
+                {formatRelativeDate(b.date, t, locale)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

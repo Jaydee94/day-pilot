@@ -53,6 +53,13 @@ class Settings(BaseSettings):
     # https://calendar.google.com/calendar/ical/.../basic.ics
     ICAL_URLS: str = ""
 
+    # Comma-separated list of calendar names that should be treated as
+    # birthday-only calendars.  Every event from a calendar whose name matches
+    # one of these entries (case-insensitive) is automatically classified as a
+    # birthday, regardless of the event title or description.
+    # Example: "Bdays,Birthdays,Geburtstage,Contacts"
+    BIRTHDAY_CALENDAR_NAMES: str = "Bdays,Birthdays,Geburtstage,Contacts"
+
     # Apple / CalDAV Calendar
     CALDAV_URL: str = ""  # e.g. https://caldav.icloud.com
     CALDAV_USERNAME: str = ""
