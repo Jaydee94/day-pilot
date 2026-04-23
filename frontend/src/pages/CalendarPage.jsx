@@ -81,8 +81,8 @@ export default function CalendarPage() {
     try {
       await deleteEvent(eventId)
       await loadEvents()
-    } catch {
-      // Silently ignore – the event list will remain unchanged
+    } catch (err) {
+      setError(err.message)
     }
   }
 

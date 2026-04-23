@@ -46,8 +46,8 @@ export default function UpcomingBirthdays() {
       </div>
 
       <ul className="upcoming-birthdays__list">
-        {birthdays.map((b, i) => (
-          <li key={i} className="upcoming-birthdays__item">
+        {birthdays.map((b) => (
+          <li key={`${b.name}-${b.date}`} className="upcoming-birthdays__item">
             <div className="upcoming-birthdays__info">
               <span className="upcoming-birthdays__name">{b.name}</span>
               {b.age != null && (

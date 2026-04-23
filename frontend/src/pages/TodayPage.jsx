@@ -7,8 +7,8 @@ export default function TodayPage({ summary, onAddSuccess }) {
     try {
       await deleteEvent(eventId)
       if (onAddSuccess) onAddSuccess()
-    } catch {
-      // Silently ignore – the summary will stay as-is
+    } catch (err) {
+      console.error('Failed to delete event:', err)
     }
   }
 

@@ -62,6 +62,9 @@ _AGE_FROM_TITLE_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Maximum number of characters from the event description sent to the AI prompt.
+_AI_PROMPT_MAX_DESCRIPTION_LENGTH = 200
+
 
 def _matches_keyword(title: str, description: Optional[str] = None) -> bool:
     """Return True if the event title (or description) contains a birthday keyword."""
@@ -99,7 +102,7 @@ _ai_classification_cache: Dict[str, bool] = {}
 
 def _cache_key_for_event(title: str, description: Optional[str]) -> str:
     raw = (title + "|" + (description or "")).encode("utf-8")
-    return hashlib.md5(raw).hexdigest()  # noqa: S324 – not security-sensitive
+    return hashlib.sha256(raw).hexdigest()
 
 
 def _classify_with_ai(title: str, description: Optional[str]) -> Optional[bool]:
@@ -153,7 +156,7 @@ def _classify_with_ai(title: str, description: Optional[str]) -> Optional[bool]:
             client_kwargs["base_url"] = base_url
         client = OpenAI(**client_kwargs)
 
-        desc_part = f"\nDescription: {description[:200]}" if description else ""
+        desc_part = f"\nDescription: {description[:_AI_PROMPT_MAX_DESCRIPTION_LENGTH]}" if description else ""
         prompt = (
             "Answer ONLY with 'yes' or 'no'.\n"
             f"Is the following calendar event a birthday celebration for a person?\n"
