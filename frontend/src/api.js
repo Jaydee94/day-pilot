@@ -200,3 +200,32 @@ export async function fetchSyncStatus() {
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
   return resp.json()
 }
+
+/**
+ * Delete a locally created calendar event by ID.
+ * Only events with source='local' can be deleted via this endpoint.
+ * @param {string} eventId
+ * @returns {Promise<{status: string, event_id: string}>}
+ */
+export async function deleteEvent(eventId) {
+  const resp = await fetch(`${API_BASE}/events/${encodeURIComponent(eventId)}`, {
+    method: 'DELETE',
+  })
+  if (!resp.ok) {
+    const data = await resp.json().catch(() => ({}))
+    throw new Error(data.detail || `HTTP ${resp.status}`)
+  }
+  return resp.json()
+}
+
+/**
+ * Fetch upcoming birthdays detected from all calendar sources.
+ * @param {number} daysAhead - How many days ahead to scan (default 14)
+ * @returns {Promise<Array>} list of Birthday objects
+ */
+export async function fetchBirthdays(daysAhead = 14) {
+  const resp = await fetch(`${API_BASE}/birthdays?days_ahead=${daysAhead}`)
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  return resp.json()
+}
+

@@ -15,6 +15,7 @@
   --radius: 14px;
   --radius-sm: 8px;
   --item-bg: rgba(79, 142, 247, 0.04);
+  --bg-secondary: #EEF2FA;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(79, 142, 247, 0.08);
 }
 
@@ -28,6 +29,7 @@
     --text: #F9FAFB;
     --text-muted: #9CA3AF;
     --item-bg: rgba(255, 255, 255, 0.04);
+    --bg-secondary: #2D3748;
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.2);
   }
 }

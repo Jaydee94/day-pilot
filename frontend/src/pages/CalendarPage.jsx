@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import CalendarEvents from '../components/CalendarEvents.jsx'
 import QuickAddButton from '../components/QuickAddButton.jsx'
-import { fetchEvents, fetchSyncStatus, triggerSchedulerJob } from '../api.js'
+import { fetchEvents, fetchSyncStatus, triggerSchedulerJob, deleteEvent } from '../api.js'
 import { useI18n } from '../i18n.jsx'
 import './Page.css'
 import './CalendarPage.css'
@@ -77,6 +77,15 @@ export default function CalendarPage() {
     }
   }
 
+  async function handleDeleteEvent(eventId) {
+    try {
+      await deleteEvent(eventId)
+      await loadEvents()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
   useEffect(() => {
     loadEvents()
     loadSyncStatus()
@@ -121,7 +130,7 @@ export default function CalendarPage() {
           <button className="btn" onClick={loadEvents}>{t('tryAgain')}</button>
         </div>
       )}
-      {!loading && !error && <CalendarEvents events={events} />}
+      {!loading && !error && <CalendarEvents events={events} onDeleteEvent={handleDeleteEvent} />}
       <QuickAddButton defaultTab="Event" onSuccess={loadEvents} />
     </div>
   )

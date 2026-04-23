@@ -860,3 +860,43 @@ class TestCalendarSyncJourney:
         assert after is not None
         assert before != after or before is None
 
+
+# ---------------------------------------------------------------------------
+# Journey 14: Upcoming birthdays
+# ---------------------------------------------------------------------------
+
+class TestUpcomingBirthdaysJourney:
+    """A user views upcoming birthday events detected from their calendars."""
+
+    def test_birthdays_endpoint_returns_list(self, client):
+        """GET /api/birthdays must return a list (even when empty)."""
+        with patch("app.api.routes.get_upcoming_birthdays", return_value=[]):
+            resp = client.get("/api/birthdays")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+    def test_birthdays_endpoint_returns_detected_birthdays(self, client):
+        """Detected birthday objects must be serialised correctly."""
+        fake_birthdays = [_make_birthday()]
+        with patch("app.api.routes.get_upcoming_birthdays", return_value=fake_birthdays):
+            resp = client.get("/api/birthdays")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["name"] == "Max Mustermann"
+        assert data[0]["age"] == 30
+
+    def test_birthdays_endpoint_accepts_days_ahead_param(self, client):
+        """The days_ahead query parameter must be forwarded to the service."""
+        with patch("app.api.routes.get_upcoming_birthdays", return_value=[]) as mock_fn:
+            resp = client.get("/api/birthdays?days_ahead=7")
+        assert resp.status_code == 200
+        mock_fn.assert_called_once_with(days_ahead=7)
+
+    def test_birthdays_empty_when_no_calendar_events(self, client):
+        """When no birthday events exist an empty list is returned."""
+        with patch("app.api.routes.get_upcoming_birthdays", return_value=[]):
+            resp = client.get("/api/birthdays")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
