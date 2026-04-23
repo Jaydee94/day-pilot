@@ -50,6 +50,29 @@
   color: var(--text-muted);
 }
 
+.cal-events__badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.cal-events__countdown {
+  font-size: 0.65rem;
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+  background: var(--secondary, #A6C8FF);
+  color: #1F2937;
+  white-space: nowrap;
+}
+
+.cal-events__countdown--running {
+  background: var(--accent, #7ED957);
+  color: #1F2937;
+}
+
 .cal-events__source {
   font-size: 0.65rem;
   font-weight: 600;
@@ -57,5 +80,4 @@
   border-radius: 4px;
   padding: 0.1rem 0.35rem;
   flex-shrink: 0;
-  margin-top: 0.1rem;
 }

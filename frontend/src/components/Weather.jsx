@@ -5,19 +5,40 @@ import { useI18n } from '../i18n.jsx'
 const UNIT_SYMBOL = { metric: '°C', imperial: '°F' }
 const WIND_UNIT = { metric: 'm/s', imperial: 'mph' }
 
+/** Target hours for the four time-of-day slots. */
+const TIME_SLOTS = [
+  { key: 'morning',   targetHour: 9  },
+  { key: 'noon',      targetHour: 12 },
+  { key: 'afternoon', targetHour: 15 },
+  { key: 'evening',   targetHour: 18 },
+]
+
 function toIconUrl(icon) {
   if (!icon) return ''
   return icon.startsWith('//') ? `https:${icon}` : icon
 }
 
-function formatHour(value, locale) {
-  const date = new Date(value)
-  return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
-}
-
 function formatDay(value, locale) {
   const date = new Date(value)
   return date.toLocaleDateString(locale, { weekday: 'short' })
+}
+
+/**
+ * Pick one forecast point per time-of-day slot.
+ * For each target hour, we choose the entry whose hour is closest to the target.
+ * If an exact match exists it is preferred; otherwise the nearest available entry is used.
+ */
+function buildTimeSlots(hourlyForecast) {
+  if (!hourlyForecast || hourlyForecast.length === 0) return []
+
+  return TIME_SLOTS.map(slot => {
+    const best = hourlyForecast.reduce((prev, curr) => {
+      const prevH = new Date(prev.time).getHours()
+      const currH = new Date(curr.time).getHours()
+      return Math.abs(currH - slot.targetHour) < Math.abs(prevH - slot.targetHour) ? curr : prev
+    })
+    return { slotKey: slot.key, ...best }
+  })
 }
 
 export default function Weather({ weather }) {
@@ -48,7 +69,7 @@ export default function Weather({ weather }) {
   const unitSym = UNIT_SYMBOL[weather.units] || '°C'
   const windUnit = WIND_UNIT[weather.units] || 'm/s'
   const iconUrl = toIconUrl(weather.icon)
-  const hourlyForecast = weather.hourly_forecast || []
+  const slots = buildTimeSlots(weather.hourly_forecast)
   const dailyForecast = weather.daily_forecast || []
 
   return (
@@ -78,14 +99,14 @@ export default function Weather({ weather }) {
         </div>
 
         <div className="weather__section">
-          <div className="weather__section-title">{t('hourlyToday')}</div>
-          {hourlyForecast.length === 0 ? (
+          <div className="weather__section-title">{t('todayForecast')}</div>
+          {slots.length === 0 ? (
             <div className="weather__empty">{t('noHourlyForecast')}</div>
           ) : (
             <div className="weather__hourly-grid">
-              {hourlyForecast.map(point => (
-                <div className="weather__hourly-item" key={point.time}>
-                  <div className="weather__hourly-time">{formatHour(point.time, locale)}</div>
+              {slots.map(point => (
+                <div className="weather__hourly-item" key={point.slotKey}>
+                  <div className="weather__hourly-time">{t(point.slotKey)}</div>
                   <img
                     className="weather__hourly-icon"
                     src={toIconUrl(point.icon)}
