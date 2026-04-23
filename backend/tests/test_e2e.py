@@ -331,9 +331,9 @@ class TestServiceStatusJourney:
 
     def test_all_services_healthy(self, client):
         with patch(
-            "app.services.calendar_sync.fetch_ical_events", return_value=[]
+            "app.api.routes.fetch_ical_events", return_value=[]
         ), patch(
-            "app.services.calendar_sync.fetch_apple_events", return_value=[]
+            "app.api.routes.fetch_apple_events", return_value=[]
         ), patch("app.api.routes.fetch_weather", return_value=_make_weather()):
             resp = client.get("/api/status")
 
@@ -346,10 +346,10 @@ class TestServiceStatusJourney:
 
     def test_status_reports_ical_failure(self, client):
         with patch(
-            "app.services.calendar_sync.fetch_ical_events",
+            "app.api.routes.fetch_ical_events",
             side_effect=Exception("network error"),
         ), patch(
-            "app.services.calendar_sync.fetch_apple_events", return_value=[]
+            "app.api.routes.fetch_apple_events", return_value=[]
         ), patch("app.api.routes.fetch_weather", return_value=_make_weather()):
             resp = client.get("/api/status")
 
@@ -360,9 +360,9 @@ class TestServiceStatusJourney:
 
     def test_status_reports_weather_failure(self, client):
         with patch(
-            "app.services.calendar_sync.fetch_ical_events", return_value=[]
+            "app.api.routes.fetch_ical_events", return_value=[]
         ), patch(
-            "app.services.calendar_sync.fetch_apple_events", return_value=[]
+            "app.api.routes.fetch_apple_events", return_value=[]
         ), patch("app.api.routes.fetch_weather", return_value=None):
             resp = client.get("/api/status")
 
@@ -782,3 +782,81 @@ class TestCalDAVAccountManagementJourney:
              patch("app.api.settings_router.app_settings.CALDAV_URL", ""):
             resp = client.delete("/api/settings/caldav-accounts/10")
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Journey 13: Calendar sync job and last sync time
+# ---------------------------------------------------------------------------
+
+class TestCalendarSyncJourney:
+    """A user checks when calendars were last synced and triggers a manual sync."""
+
+    def test_status_last_sync_is_none_before_first_sync(self, client):
+        """Before any sync has run the last_sync field must be null."""
+        with patch(
+            "app.services.calendar_sync.fetch_ical_events", return_value=[]
+        ), patch(
+            "app.services.calendar_sync.fetch_apple_events", return_value=[]
+        ), patch("app.api.routes.fetch_weather", return_value=_make_weather()), \
+            patch("app.api.routes.get_last_calendar_sync", return_value=None):
+            resp = client.get("/api/status")
+
+        assert resp.status_code == 200
+        assert resp.json()["last_sync"] is None
+
+    def test_status_last_sync_returns_real_timestamp_after_sync(self, client):
+        """After a sync the last_sync field must contain a datetime string."""
+        sync_time = datetime.now(BERLIN_TZ)
+        with patch(
+            "app.services.calendar_sync.fetch_ical_events", return_value=[]
+        ), patch(
+            "app.services.calendar_sync.fetch_apple_events", return_value=[]
+        ), patch("app.api.routes.fetch_weather", return_value=_make_weather()), \
+            patch("app.api.routes.get_last_calendar_sync", return_value=sync_time):
+            resp = client.get("/api/status")
+
+        assert resp.status_code == 200
+        assert resp.json()["last_sync"] is not None
+
+    def test_calendar_sync_job_is_registered(self, client):
+        """The scheduler must expose a calendar_sync job."""
+        from datetime import timedelta
+        fake_jobs = [
+            {
+                "id": "calendar_sync",
+                "name": "run_calendar_sync",
+                "description": "Syncs all configured iCal feeds and CalDAV accounts",
+                "trigger": "interval[1:00:00]",
+                "next_run": datetime.now(BERLIN_TZ) + timedelta(hours=1),
+            },
+        ]
+        with patch("app.api.routes.get_jobs", return_value=fake_jobs):
+            resp = client.get("/api/scheduler/jobs")
+
+        assert resp.status_code == 200
+        ids = [j["id"] for j in resp.json()]
+        assert "calendar_sync" in ids
+
+    def test_manual_calendar_sync_trigger_returns_200(self, client):
+        """A user can manually trigger the calendar_sync job."""
+        with patch("app.api.routes.trigger_job", return_value=True):
+            resp = client.post("/api/scheduler/jobs/calendar_sync/run")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "triggered"
+        assert data["job_id"] == "calendar_sync"
+
+    def test_sync_calendars_updates_last_sync_timestamp(self):
+        """sync_calendars() must update the module-level last sync timestamp."""
+        import app.services.calendar_sync as cal_sync
+
+        with patch.object(cal_sync, "fetch_ical_events", return_value=[]), \
+             patch.object(cal_sync, "fetch_apple_events", return_value=[]):
+            before = cal_sync.get_last_calendar_sync()
+            cal_sync.sync_calendars()
+            after = cal_sync.get_last_calendar_sync()
+
+        assert after is not None
+        assert before != after or before is None
+

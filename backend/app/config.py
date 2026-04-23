@@ -81,6 +81,9 @@ class Settings(BaseSettings):
     # Voice Webhook secret (used by Siri Shortcuts / Google Assistant IFTTT)
     VOICE_WEBHOOK_SECRET: str = "change-me-in-production"
 
+    # How often the calendar sync job runs (in full hours, default: 1).
+    CALENDAR_SYNC_INTERVAL_HOURS: int = 1
+
 
 def _apply_settings_overlay(s: Settings) -> None:
     """Overlay persisted user settings on top of the env-based defaults.

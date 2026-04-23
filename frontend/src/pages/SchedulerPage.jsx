@@ -6,6 +6,7 @@ import './SchedulerPage.css'
 /** Human-readable display names per job ID */
 const JOB_DISPLAY = {
   daily_summary: 'Daily Briefing',
+  calendar_sync: 'Calendar Sync',
   weather_cache_refresh: 'Weather Refresh',
 }
 
@@ -16,6 +17,17 @@ function JobIcon({ jobId }) {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <circle cx="12" cy="12" r="10" />
         <polyline points="12 6 12 12 16 14" />
+      </svg>
+    )
+  }
+  if (jobId === 'calendar_sync') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+        <line x1="16" y1="2" x2="16" y2="6" />
+        <line x1="8" y1="2" x2="8" y2="6" />
+        <line x1="3" y1="10" x2="21" y2="10" />
+        <polyline points="17 14 12 14 12 19" />
       </svg>
     )
   }

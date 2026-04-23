@@ -1,0 +1,45 @@
+.calendar-sync-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--color-surface, #ffffff);
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.calendar-sync-bar__status {
+  font-size: 0.85rem;
+  color: #6b7280;
+  min-width: 0;
+}
+
+.calendar-sync-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.calendar-sync-bar__feedback {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.calendar-sync-bar__feedback--ok {
+  color: #16a34a;
+}
+
+.calendar-sync-bar__feedback--error {
+  color: #dc2626;
+}
+
+.calendar-sync-bar__btn {
+  font-size: 0.85rem;
+  padding: 6px 14px;
+  border-radius: 8px;
+  white-space: nowrap;
+}

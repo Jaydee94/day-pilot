@@ -16,6 +16,7 @@ from app.models.schemas import DailySummary
 from app.services.calendar_sync import (
     fetch_ical_events,
     fetch_apple_events,
+    sync_calendars,
 )
 from app.services.local_calendar import fetch_local_events
 from app.services.local_todos import fetch_local_todos
@@ -74,6 +75,16 @@ def run_daily_pipeline() -> None:
         logger.error("Daily pipeline failed: %s", exc)
 
 
+def run_calendar_sync() -> None:
+    """Sync all configured calendars (iCal feeds and CalDAV accounts)."""
+    logger.info("Running scheduled calendar sync…")
+    try:
+        sync_calendars()
+        logger.info("Calendar sync completed.")
+    except Exception as exc:
+        logger.error("Calendar sync failed: %s", exc)
+
+
 def run_weather_cache_refresh() -> None:
     """Refresh cached weather data on a fixed schedule."""
     logger.info("Refreshing weather cache…")
@@ -100,6 +111,12 @@ def start_scheduler() -> None:
         replace_existing=True,
     )
     _scheduler.add_job(
+        run_calendar_sync,
+        IntervalTrigger(hours=settings.CALENDAR_SYNC_INTERVAL_HOURS, timezone=tz),
+        id="calendar_sync",
+        replace_existing=True,
+    )
+    _scheduler.add_job(
         run_weather_cache_refresh,
         IntervalTrigger(hours=1, timezone=tz),
         id="weather_cache_refresh",
@@ -107,10 +124,15 @@ def start_scheduler() -> None:
     )
     _scheduler.start()
     logger.info(
-        "Scheduler started – daily summary at %s %s",
+        "Scheduler started – daily summary at %s %s, calendar sync every %dh",
         settings.DAILY_SUMMARY_TIME,
         settings.APP_TIMEZONE,
+        settings.CALENDAR_SYNC_INTERVAL_HOURS,
     )
+    # Run an initial calendar sync immediately so data is available without
+    # waiting for the first scheduled interval.
+    import threading
+    threading.Thread(target=run_calendar_sync, daemon=True).start()
 
 
 def stop_scheduler() -> None:
@@ -122,11 +144,13 @@ def stop_scheduler() -> None:
 
 _JOB_DESCRIPTIONS: dict[str, str] = {
     "daily_summary": "Builds the DayPilot briefing and sends a push notification",
+    "calendar_sync": "Syncs all configured iCal feeds and CalDAV accounts",
     "weather_cache_refresh": "Refreshes the weather cache with the latest forecast data",
 }
 
 _JOB_RUNNERS: dict[str, object] = {
     "daily_summary": run_daily_pipeline,
+    "calendar_sync": run_calendar_sync,
     "weather_cache_refresh": run_weather_cache_refresh,
 }
 
