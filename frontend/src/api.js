@@ -116,13 +116,33 @@ export async function fetchICalUrls() {
 /**
  * Add a new iCal feed URL.
  * @param {string} url
- * @returns {Promise<{status: string, index: number, url: string}>}
+ * @param {boolean} [isBirthday=false]
+ * @returns {Promise<{status: string, index: number, url: string, is_birthday: boolean}>}
  */
-export async function addICalUrl(url) {
+export async function addICalUrl(url, isBirthday = false) {
   const resp = await fetch(`${API_BASE}/settings/ical-urls`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({ url, is_birthday: isBirthday }),
+  })
+  if (!resp.ok) {
+    const data = await resp.json().catch(() => ({}))
+    throw new Error(data.detail || `HTTP ${resp.status}`)
+  }
+  return resp.json()
+}
+
+/**
+ * Update properties of an existing iCal feed by index (e.g. toggle is_birthday).
+ * @param {number} index
+ * @param {{is_birthday?: boolean}} patch
+ * @returns {Promise<{status: string, index: number, url: string, is_birthday: boolean}>}
+ */
+export async function patchICalFeed(index, patch) {
+  const resp = await fetch(`${API_BASE}/settings/ical-urls/${index}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
   })
   if (!resp.ok) {
     const data = await resp.json().catch(() => ({}))

@@ -514,3 +514,72 @@
 .btn--ghost:hover {
   background: var(--bg-secondary, #f0f4fb);
 }
+
+/* ── Birthday feed toggle ──────────────────────────────────────────────── */
+
+.settings-account-item__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.settings-birthday-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.settings-birthday-toggle--inline {
+  margin: 0 0.25rem;
+}
+
+.settings-birthday-toggle__input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.settings-birthday-toggle__track {
+  display: inline-block;
+  width: 2.2rem;
+  height: 1.2rem;
+  background: #d1d5db;
+  border-radius: 999px;
+  transition: background 0.2s;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.settings-birthday-toggle__track::after {
+  content: '';
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  width: 0.9rem;
+  height: 0.9rem;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.settings-birthday-toggle__input:checked + .settings-birthday-toggle__track {
+  background: var(--primary, #4F8EF7);
+}
+
+.settings-birthday-toggle__input:checked + .settings-birthday-toggle__track::after {
+  transform: translateX(1rem);
+}
+
+.settings-birthday-toggle__input:disabled + .settings-birthday-toggle__track {
+  opacity: 0.5;
+}
+
+.settings-birthday-toggle__label {
+  font-size: 1rem;
+  line-height: 1;
+}

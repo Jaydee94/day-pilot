@@ -157,6 +157,8 @@ class UserSettings(BaseModel):
     WEATHER_CITY: Optional[str] = None
     WEATHER_UNITS: Optional[str] = None
     ICAL_URLS: Optional[str] = None
+    # Structured iCal feeds (JSON array of {url, is_birthday}).
+    ICAL_FEEDS: Optional[str] = None
     # Comma-separated list of calendar names treated as birthday-only calendars.
     BIRTHDAY_CALENDAR_NAMES: Optional[str] = None
     CALDAV_URL: Optional[str] = None
@@ -191,6 +193,19 @@ class IntegrationTestRequest(BaseModel):
     """Payload for testing a specific integration with optional temporary setting overrides."""
 
     overrides: Optional[UserSettings] = None
+
+
+class ICalFeedAddRequest(BaseModel):
+    """Payload for adding a new iCal feed URL."""
+
+    url: str
+    is_birthday: bool = False
+
+
+class ICalFeedPatchRequest(BaseModel):
+    """Payload for updating an existing iCal feed entry (e.g. toggling the birthday flag)."""
+
+    is_birthday: Optional[bool] = None
 
 
 class IntegrationTestResult(BaseModel):

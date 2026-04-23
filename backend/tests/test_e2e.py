@@ -705,7 +705,8 @@ class TestICalURLManagementJourney:
 
     def test_add_ical_url_rejects_missing_url(self, client):
         resp = client.post("/api/settings/ical-urls", json={})
-        assert resp.status_code == 400
+        # Missing required 'url' field triggers Pydantic validation → 422
+        assert resp.status_code == 422
 
     def test_add_ical_url_rejects_non_http_url(self, client):
         resp = client.post("/api/settings/ical-urls", json={"url": "ftp://bad-url.com/cal.ics"})
