@@ -61,8 +61,9 @@ export default function SetupWizard({ onComplete, onLanguageChange }) {
       if (ICAL_URL && ICAL_URL.trim()) {
         try {
           await addICalUrl(ICAL_URL.trim())
-        } catch {
-          // Non-fatal: user can add it later in settings.
+        } catch (icalErr) {
+          // Non-fatal: user can add it later in Settings → iCal Calendar.
+          console.error('Failed to add iCal URL during setup:', icalErr)
         }
       }
     } catch (err) {

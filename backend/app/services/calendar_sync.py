@@ -130,7 +130,7 @@ def fetch_ical_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
         end = start + timedelta(days=1)
 
     events: List[CalendarEvent] = []
-    logger.info("Fetching iCal events for %s from %d feed(s)", start.date(), len(urls))
+    logger.info("Fetching iCal events for %s from %d feed(s)", start.date().isoformat(), len(urls))
     for url in urls:
         try:
             resp = http_requests.get(url, timeout=15)
@@ -171,7 +171,7 @@ def fetch_ical_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
                         source="ical",
                     )
                 )
-            logger.info("iCal feed %s returned %d event(s) for %s", url, len(feed_events), start.date())
+            logger.info("iCal feed %s returned %d event(s) for %s", url, len(feed_events), start.date().isoformat())
             events.extend(feed_events)
         except Exception as exc:
             logger.error("Failed to fetch iCal events from %s: %s", url, exc)
