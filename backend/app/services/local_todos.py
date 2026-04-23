@@ -46,7 +46,9 @@ def _load_all_todos() -> List[dict]:
 def _save_all_todos(todos: List[dict]) -> None:
     """Persist todo dicts to the local todos file."""
     path = _todos_file()
-    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    dir_name = os.path.dirname(os.path.abspath(path))
+    if dir_name:
+        os.makedirs(dir_name, exist_ok=True)
     try:
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(todos, fh, indent=2, ensure_ascii=False)

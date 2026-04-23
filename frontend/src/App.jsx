@@ -51,8 +51,10 @@ function AppContent({ setLanguage }) {
 
   useEffect(() => {
     fetchSummary()
-    // Auto-refresh every 15 minutes
-    const interval = setInterval(fetchSummary, 15 * 60 * 1000)
+    // Auto-refresh every 60 minutes. The AI summary is cached on the backend
+    // (one call per day), so frequent refreshes here are cheap and only
+    // re-fetch calendar/weather data, not a new AI generation.
+    const interval = setInterval(fetchSummary, 60 * 60 * 1000)
     return () => clearInterval(interval)
   }, [fetchSummary])
 
@@ -123,8 +125,8 @@ function AppContent({ setLanguage }) {
             <Routes>
               <Route path="/" element={<Navigate to="/today" replace />} />
               <Route path="/today" element={<TodayPage summary={summary} onAddSuccess={fetchSummary} />} />
-              <Route path="/calendar" element={<CalendarPage events={summary.events || []} />} />
-              <Route path="/tasks" element={<TasksPage todos={summary.todos || []} />} />
+              <Route path="/calendar" element={<CalendarPage />} />
+              <Route path="/tasks" element={<TasksPage />} />
               <Route path="/settings" element={<SettingsPage onLanguageChange={setLanguage} />} />
               <Route path="/scheduler" element={<SchedulerPage />} />
               <Route path="*" element={<Navigate to="/today" replace />} />

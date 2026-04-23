@@ -352,10 +352,15 @@ async def upload_google_credentials(file: UploadFile = File(...)) -> dict:
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
 
+    # Sanitize filename to prevent path traversal attacks
+    safe_filename = os.path.basename(file.filename)
+    if not safe_filename or safe_filename in {".", ".."}:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
     creds_dir = app_settings.GOOGLE_CREDENTIALS_DIR
     os.makedirs(creds_dir, exist_ok=True)
 
-    dest_path = os.path.join(creds_dir, file.filename)
+    dest_path = os.path.join(creds_dir, safe_filename)
     try:
         with open(dest_path, "wb") as fh:
             shutil.copyfileobj(file.file, fh)
@@ -375,7 +380,7 @@ async def upload_google_credentials(file: UploadFile = File(...)) -> dict:
 
     app_settings.GOOGLE_CREDENTIALS_JSON = new_value
     logger.info("Google credentials uploaded: %s", dest_path)
-    return {"status": "uploaded", "path": dest_path, "filename": file.filename}
+    return {"status": "uploaded", "path": dest_path, "filename": safe_filename}
 
 
 @settings_router.get(
@@ -451,18 +456,19 @@ def _parse_caldav_accounts() -> List[dict]:
 def _save_caldav_accounts(accounts: List[dict]) -> None:
     """Persist CalDAV account list to CALDAV_CONFIGS and clear legacy single-account variables."""
     new_value = json.dumps(accounts, ensure_ascii=False)
-    updates: dict = {"CALDAV_CONFIGS": new_value}
-    # Clear legacy variables when accounts are stored in CALDAV_CONFIGS
-    if accounts:
-        updates["CALDAV_URL"] = ""
-        updates["CALDAV_USERNAME"] = ""
-        updates["CALDAV_PASSWORD"] = ""
+    # Always clear legacy single-account variables so they are not picked up
+    # alongside the structured CALDAV_CONFIGS (including when the list is empty).
+    updates: dict = {
+        "CALDAV_CONFIGS": new_value,
+        "CALDAV_URL": "",
+        "CALDAV_USERNAME": "",
+        "CALDAV_PASSWORD": "",
+    }
     save_user_settings(updates)
     app_settings.CALDAV_CONFIGS = new_value
-    if accounts:
-        app_settings.CALDAV_URL = ""
-        app_settings.CALDAV_USERNAME = ""
-        app_settings.CALDAV_PASSWORD = ""
+    app_settings.CALDAV_URL = ""
+    app_settings.CALDAV_USERNAME = ""
+    app_settings.CALDAV_PASSWORD = ""
 
 
 @settings_router.get(

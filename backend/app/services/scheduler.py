@@ -23,7 +23,7 @@ from app.services.local_calendar import fetch_local_events
 from app.services.local_todos import fetch_local_todos
 from app.services.weather import fetch_weather
 from app.services.weather import refresh_weather_cache
-from app.services.ai_summary import generate_summary
+from app.services.ai_summary import generate_summary, invalidate_ai_cache
 from app.services.notifications import send_daily_push
 
 logger = logging.getLogger(__name__)
@@ -63,9 +63,15 @@ def build_daily_summary(date: Optional[datetime] = None) -> DailySummary:
 
 
 def run_daily_pipeline() -> None:
-    """Full daily pipeline: build summary and push it."""
+    """Full daily pipeline: build summary and push it.
+
+    The AI summary cache is invalidated before building so that the morning
+    briefing is always freshly generated, regardless of any cached result
+    from a previous request on the same calendar day.
+    """
     logger.info("Running daily summary pipeline…")
     try:
+        invalidate_ai_cache()  # force fresh AI generation for today's briefing
         summary = build_daily_summary()
         send_daily_push(summary)
         logger.info("Daily pipeline completed successfully.")

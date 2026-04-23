@@ -785,6 +785,7 @@ class TestCalDAVAccountManagementJourney:
         assert data[0]["url"] == "https://caldav.icloud.com"
         assert data[0]["username"] == "user@icloud.com"
         assert "password" not in data[0]  # password must not be returned
+        assert data[0]["password_set"] is True  # but presence must be indicated
 
     def test_delete_caldav_account(self, client, tmp_path):
         configs_json = '[{"url":"https://caldav.icloud.com","username":"user@icloud.com","password":"pw"}]'

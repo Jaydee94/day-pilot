@@ -82,6 +82,28 @@ export async function triggerSchedulerJob(jobId) {
 }
 
 /**
+ * Fetch all calendar events for today from the backend.
+ * Does NOT trigger any AI calls.
+ * @returns {Promise<Array>} list of CalendarEvent objects
+ */
+export async function fetchEvents() {
+  const resp = await fetch(`${API_BASE}/events`)
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  return resp.json()
+}
+
+/**
+ * Fetch all open todos from the backend.
+ * Does NOT trigger any AI calls.
+ * @returns {Promise<Array>} list of TodoItem objects
+ */
+export async function fetchTodos() {
+  const resp = await fetch(`${API_BASE}/todos`)
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  return resp.json()
+}
+
+/**
  * Upload a Google credentials.json file to the backend.
  * @param {File} file
  * @returns {Promise<{status: string, path: string, filename: string}>}

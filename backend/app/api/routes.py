@@ -224,7 +224,7 @@ def create_todo(payload: CreateTodoRequest):
     return local_todo
 
 
-@router.delete("/todos/{todo_id}", summary="Delete a local task")
+@router.delete("/todos/{todo_id}", summary="Delete an internal (local) task")
 def delete_todo(todo_id: str):
     """Delete a task from the internal local store.
 

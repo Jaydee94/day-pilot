@@ -44,6 +44,15 @@ def _make_summary() -> DailySummary:
 
 
 class TestGenerateSummary:
+    def setup_method(self):
+        """Clear the AI summary cache before each test to avoid cross-test pollution."""
+        from app.services.ai_summary import invalidate_ai_cache
+        invalidate_ai_cache()
+
+    def teardown_method(self):
+        from app.services.ai_summary import invalidate_ai_cache
+        invalidate_ai_cache()
+
     def test_returns_unchanged_when_no_api_key(self, monkeypatch):
         monkeypatch.setattr("app.services.ai_summary.settings.AI_PROVIDER", "openai")
         monkeypatch.setattr("app.services.ai_summary.settings.OPENAI_API_KEY", "")
@@ -240,3 +249,102 @@ class TestGetAiConfig:
         assert cfg.provider == "github"
         assert cfg.model == "gpt-4o"
         assert cfg.configured is True
+
+
+class TestAISummaryCache:
+    """Verify that the daily AI summary cache prevents redundant AI API calls."""
+
+    def setup_method(self):
+        """Clear the AI summary cache before each test."""
+        from app.services.ai_summary import invalidate_ai_cache
+        invalidate_ai_cache()
+
+    def teardown_method(self):
+        """Clear cache after each test to avoid leaking state."""
+        from app.services.ai_summary import invalidate_ai_cache
+        invalidate_ai_cache()
+
+    def test_second_call_does_not_hit_ai_api(self, monkeypatch):
+        """generate_summary must return cached result on the second call without calling the AI."""
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_PROVIDER", "openai")
+        monkeypatch.setattr("app.services.ai_summary.settings.OPENAI_API_KEY", "fake-key")
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_MODEL", "gpt-4o-mini")
+
+        fake_text = (
+            "SUMMARY:\nGood morning — a great day ahead.\n\n"
+            "PRIORITIES:\n1. Task A\n2. Task B\n3. Task C"
+        )
+        mock_choice = MagicMock()
+        mock_choice.message.content = fake_text
+        mock_completion = MagicMock()
+        mock_completion.choices = [mock_choice]
+
+        with patch("app.services.ai_summary.OpenAI") as mock_openai_cls:
+            mock_client = MagicMock()
+            mock_client.chat.completions.create.return_value = mock_completion
+            mock_openai_cls.return_value = mock_client
+
+            from app.services.ai_summary import generate_summary
+            # First call – AI is invoked
+            result1 = generate_summary(_make_summary())
+            # Second call same day – must use cache, AI NOT invoked again
+            result2 = generate_summary(_make_summary())
+
+        assert mock_client.chat.completions.create.call_count == 1
+        assert result1.ai_summary == result2.ai_summary
+
+    def test_invalidate_cache_forces_fresh_ai_call(self, monkeypatch):
+        """After invalidation generate_summary must call the AI again."""
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_PROVIDER", "openai")
+        monkeypatch.setattr("app.services.ai_summary.settings.OPENAI_API_KEY", "fake-key")
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_MODEL", "gpt-4o-mini")
+
+        fake_text = (
+            "SUMMARY:\nGood morning — fresh briefing.\n\n"
+            "PRIORITIES:\n1. X\n2. Y\n3. Z"
+        )
+        mock_choice = MagicMock()
+        mock_choice.message.content = fake_text
+        mock_completion = MagicMock()
+        mock_completion.choices = [mock_choice]
+
+        with patch("app.services.ai_summary.OpenAI") as mock_openai_cls:
+            mock_client = MagicMock()
+            mock_client.chat.completions.create.return_value = mock_completion
+            mock_openai_cls.return_value = mock_client
+
+            from app.services.ai_summary import generate_summary, invalidate_ai_cache
+            generate_summary(_make_summary())   # first call – cached
+            invalidate_ai_cache()               # clear cache
+            generate_summary(_make_summary())   # second call – fresh AI call
+
+        assert mock_client.chat.completions.create.call_count == 2
+
+    def test_cache_populated_after_successful_call(self, monkeypatch):
+        """_ai_summary_cache must contain the result after a successful AI call."""
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_PROVIDER", "openai")
+        monkeypatch.setattr("app.services.ai_summary.settings.OPENAI_API_KEY", "fake-key")
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_MODEL", "gpt-4o-mini")
+
+        fake_text = (
+            "SUMMARY:\nGood morning.\n\n"
+            "PRIORITIES:\n1. Alpha\n2. Beta\n3. Gamma"
+        )
+        mock_choice = MagicMock()
+        mock_choice.message.content = fake_text
+        mock_completion = MagicMock()
+        mock_completion.choices = [mock_choice]
+
+        with patch("app.services.ai_summary.OpenAI") as mock_openai_cls:
+            mock_client = MagicMock()
+            mock_client.chat.completions.create.return_value = mock_completion
+            mock_openai_cls.return_value = mock_client
+
+            from app.services.ai_summary import generate_summary, _ai_summary_cache
+            summary = _make_summary()
+            generate_summary(summary)
+            key = summary.date.strftime("%Y-%m-%d")
+
+        assert key in _ai_summary_cache
+        assert _ai_summary_cache[key]["ai_summary"] is not None
+        assert len(_ai_summary_cache[key]["top_priorities"]) == 3

@@ -813,6 +813,7 @@ function AppleCalendarSection({ icon, values, onChange, onTest, connectionState,
   const [adding, setAdding] = useState(false)
   const [addError, setAddError] = useState(null)
   const [deleting, setDeleting] = useState(null)
+  const [deleteError, setDeleteError] = useState(null)
 
   useEffect(() => {
     fetchCalDAVAccounts()
@@ -842,12 +843,13 @@ function AppleCalendarSection({ icon, values, onChange, onTest, connectionState,
 
   async function handleDelete(index) {
     setDeleting(index)
+    setDeleteError(null)
     try {
       await deleteCalDAVAccount(index)
       const updated = await fetchCalDAVAccounts()
       setAccounts(updated)
-    } catch {
-      // ignore
+    } catch (err) {
+      setDeleteError(err.message)
     } finally {
       setDeleting(null)
     }
@@ -909,6 +911,9 @@ function AppleCalendarSection({ icon, values, onChange, onTest, connectionState,
               ))}
             </div>
           </div>
+        )}
+        {deleteError && (
+          <p className="settings-test-result settings-test-result--error">{deleteError}</p>
         )}
 
         {/* Add account button / form */}

@@ -23,6 +23,35 @@ from app.models.schemas import DailySummary, AIConfig, AIModelInfo
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Daily AI summary cache
+# ---------------------------------------------------------------------------
+# Keyed by ISO date string (YYYY-MM-DD). Stores the generated ai_summary text
+# and top_priorities so that repeated calls to /api/summary on the same day
+# never trigger a second AI API request.
+#
+# The cache is intentionally in-memory; it is cleared either when the process
+# restarts or when the scheduler's daily pipeline explicitly invalidates it
+# before generating the fresh morning briefing.
+# ---------------------------------------------------------------------------
+_ai_summary_cache: dict = {}
+
+
+def invalidate_ai_cache(date_key: Optional[str] = None) -> None:
+    """Remove cached AI result for *date_key* (or all keys when None)."""
+    if date_key is None:
+        _ai_summary_cache.clear()
+    else:
+        _ai_summary_cache.pop(date_key, None)
+
+
+def _cache_key(summary_date) -> str:
+    """Return the cache key for the given date."""
+    try:
+        return summary_date.strftime("%Y-%m-%d")
+    except AttributeError:
+        return str(summary_date)[:10]
+
 # Provider base URLs (all OpenAI-compatible)
 _GITHUB_MODELS_BASE_URL = "https://models.inference.ai.azure.com"
 _GROQ_BASE_URL = "https://api.groq.com/openai/v1"
@@ -258,8 +287,22 @@ def _build_prompt(summary: DailySummary) -> str:
 def generate_summary(summary: DailySummary) -> DailySummary:
     """
     Call the configured AI provider to produce a narrative and top-3 priorities.
+
+    The result is cached for the day identified by ``summary.date``.  Subsequent
+    calls for the same calendar day return the cached text without hitting the
+    AI API again, keeping quota usage to one call per day.
+
     Returns the enriched DailySummary (ai_summary + top_priorities filled in).
     """
+    # Check the daily cache first
+    cache_key = _cache_key(summary.date)
+    if cache_key in _ai_summary_cache:
+        cached = _ai_summary_cache[cache_key]
+        logger.debug("AI summary cache hit for %s – skipping AI call", cache_key)
+        summary.ai_summary = cached["ai_summary"]
+        summary.top_priorities = cached["top_priorities"]
+        return summary
+
     if not _is_configured():
         logger.warning(
             "AI provider '%s' is not configured (missing credential) – skipping AI summary",
@@ -302,6 +345,13 @@ def generate_summary(summary: DailySummary) -> DailySummary:
 
         summary.ai_summary = ai_text
         summary.top_priorities = priorities[:3]
+
+        # Populate the daily cache
+        _ai_summary_cache[cache_key] = {
+            "ai_summary": ai_text,
+            "top_priorities": priorities[:3],
+        }
+        logger.info("AI summary cached for %s", cache_key)
         return summary
 
     except Exception as exc:
