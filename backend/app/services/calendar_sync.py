@@ -109,10 +109,34 @@ def _get_ical_urls() -> List[str]:
     return [u.strip() for u in raw.split(",") if u.strip()]
 
 
+def _get_ical_feeds() -> List[dict]:
+    """Return structured iCal feed configs as a list of ``{url, is_birthday}`` dicts.
+
+    Reads from ``ICAL_FEEDS`` (JSON array) when available.  Falls back to the
+    legacy ``ICAL_URLS`` comma-separated string, treating all migrated entries
+    as ``is_birthday=False``.
+    """
+    import json as _json
+    raw_feeds = (settings.ICAL_FEEDS or "").strip()
+    if raw_feeds:
+        try:
+            feeds = _json.loads(raw_feeds)
+            if isinstance(feeds, list):
+                return [
+                    {"url": f.get("url", ""), "is_birthday": bool(f.get("is_birthday", False))}
+                    for f in feeds
+                    if f.get("url", "").strip()
+                ]
+        except Exception:
+            pass
+    # Migrate legacy ICAL_URLS
+    return [{"url": u, "is_birthday": False} for u in _get_ical_urls()]
+
+
 def fetch_ical_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
     """Fetch events from all configured iCal feed URLs for the given date."""
-    urls = _get_ical_urls()
-    if not urls:
+    feeds = _get_ical_feeds()
+    if not feeds:
         logger.info(
             "No iCal URLs configured – skipping. "
             "Add a Google/Outlook iCal feed URL in Settings → iCal Calendar."
@@ -130,8 +154,10 @@ def fetch_ical_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
         end = start + timedelta(days=1)
 
     events: List[CalendarEvent] = []
-    logger.info("Fetching iCal events for %s from %d feed(s)", start.date().isoformat(), len(urls))
-    for url in urls:
+    logger.info("Fetching iCal events for %s from %d feed(s)", start.date().isoformat(), len(feeds))
+    for feed in feeds:
+        url = feed["url"]
+        is_birthday_feed = feed.get("is_birthday", False)
         try:
             resp = http_requests.get(url, timeout=15)
             resp.raise_for_status()
@@ -141,6 +167,12 @@ def fetch_ical_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
             # birthday detection can identify birthday-only calendars by name.
             cal_name_raw = cal.get("X-WR-CALNAME")
             cal_name: Optional[str] = str(cal_name_raw) if cal_name_raw else None
+
+            # When the feed is explicitly marked as a birthday feed, override the
+            # calendar name with the reserved sentinel so birthday_detection
+            # treats every event from this feed as a birthday.
+            if is_birthday_feed:
+                cal_name = "__birthday__"
 
             occurrences = recurring_ical_events.of(cal).between(start, end)
 

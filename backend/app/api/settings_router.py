@@ -343,20 +343,52 @@ def test_connection(integration: str, payload: IntegrationTestRequest) -> Integr
 
 
 # ---------------------------------------------------------------------------
-# iCal URL management
+# iCal feed management (structured: {url, is_birthday})
 # ---------------------------------------------------------------------------
 
-def _parse_ical_urls() -> List[str]:
-    """Return the current list of configured iCal feed URLs."""
-    raw = (app_settings.ICAL_URLS or "").strip()
-    return [u.strip() for u in raw.split(",") if u.strip()]
+def _parse_ical_feeds() -> List[dict]:
+    """Return the current iCal feeds as a list of ``{url, is_birthday}`` dicts.
+
+    Reads from ``ICAL_FEEDS`` (JSON array).  When that is empty it falls back
+    to ``ICAL_URLS`` (comma-separated), treating all migrated entries as
+    ``is_birthday=False``.
+    """
+    raw_feeds = (app_settings.ICAL_FEEDS or "").strip()
+    if raw_feeds:
+        try:
+            feeds = json.loads(raw_feeds)
+            if isinstance(feeds, list):
+                return [
+                    {"url": f.get("url", ""), "is_birthday": bool(f.get("is_birthday", False))}
+                    for f in feeds
+                    if f.get("url", "").strip()
+                ]
+        except Exception:
+            pass
+
+    # Migration: convert legacy ICAL_URLS to structured feeds.
+    raw_urls = (app_settings.ICAL_URLS or "").strip()
+    if raw_urls:
+        return [
+            {"url": u.strip(), "is_birthday": False}
+            for u in raw_urls.split(",")
+            if u.strip()
+        ]
+    return []
 
 
-def _save_ical_urls(urls: List[str]) -> None:
-    """Persist the iCal URL list to ``ICAL_URLS``."""
-    new_value = ",".join(urls)
-    save_user_settings({"ICAL_URLS": new_value})
-    app_settings.ICAL_URLS = new_value
+def _save_ical_feeds(feeds: List[dict]) -> None:
+    """Persist the feed list to ``ICAL_FEEDS`` and clear legacy ``ICAL_URLS``."""
+    new_value = json.dumps(feeds, ensure_ascii=False)
+    updates: dict = {
+        "ICAL_FEEDS": new_value,
+        # Clear the legacy comma-separated field so there is no duplication
+        # after the first structured save.
+        "ICAL_URLS": "",
+    }
+    save_user_settings(updates)
+    app_settings.ICAL_FEEDS = new_value
+    app_settings.ICAL_URLS = ""
 
 
 @settings_router.get(
@@ -364,9 +396,9 @@ def _save_ical_urls(urls: List[str]) -> None:
     summary="List configured iCal feed URLs",
 )
 def list_ical_urls() -> List[dict]:
-    """Return all configured iCal feed URLs with their zero-based index."""
-    urls = _parse_ical_urls()
-    return [{"index": i, "url": u} for i, u in enumerate(urls)]
+    """Return all configured iCal feeds with their zero-based index and birthday flag."""
+    feeds = _parse_ical_feeds()
+    return [{"index": i, "url": f["url"], "is_birthday": f["is_birthday"]} for i, f in enumerate(feeds)]
 
 
 @settings_router.post(
@@ -376,8 +408,9 @@ def list_ical_urls() -> List[dict]:
 def add_ical_url(payload: dict) -> dict:
     """Add a new iCal feed URL.
 
-    Expects a JSON body with a ``url`` field, e.g.:
-    ``{"url": "https://calendar.google.com/calendar/ical/…/basic.ics"}``
+    Expects a JSON body with a ``url`` field and an optional ``is_birthday``
+    boolean, e.g.:
+    ``{"url": "https://calendar.google.com/calendar/ical/…/basic.ics", "is_birthday": false}``
     """
     url = (payload.get("url") or "").strip()
     if not url:
@@ -385,15 +418,44 @@ def add_ical_url(payload: dict) -> dict:
     if not url.startswith(("http://", "https://")):
         raise HTTPException(status_code=400, detail="URL must start with http:// or https://")
 
-    urls = _parse_ical_urls()
-    if url in urls:
-        return {"status": "already_exists", "index": urls.index(url), "url": url}
-    urls.append(url)
+    is_birthday = bool(payload.get("is_birthday", False))
+
+    feeds = _parse_ical_feeds()
+    existing_urls = [f["url"] for f in feeds]
+    if url in existing_urls:
+        idx = existing_urls.index(url)
+        return {"status": "already_exists", "index": idx, "url": url, "is_birthday": feeds[idx]["is_birthday"]}
+
+    feeds.append({"url": url, "is_birthday": is_birthday})
     try:
-        _save_ical_urls(urls)
+        _save_ical_feeds(feeds)
     except Exception as exc:
         raise HTTPException(status_code=500, detail="Failed to persist settings") from exc
-    return {"status": "added", "index": len(urls) - 1, "url": url}
+    return {"status": "added", "index": len(feeds) - 1, "url": url, "is_birthday": is_birthday}
+
+
+@settings_router.patch(
+    "/settings/ical-urls/{index}",
+    summary="Update an iCal feed (e.g. toggle birthday flag)",
+)
+def patch_ical_url(index: int, payload: dict) -> dict:
+    """Update properties of an existing iCal feed entry by its zero-based index.
+
+    Currently supports updating the ``is_birthday`` flag:
+    ``{"is_birthday": true}``
+    """
+    feeds = _parse_ical_feeds()
+    if index < 0 or index >= len(feeds):
+        raise HTTPException(status_code=404, detail=f"No iCal feed at index {index}")
+
+    if "is_birthday" in payload:
+        feeds[index]["is_birthday"] = bool(payload["is_birthday"])
+
+    try:
+        _save_ical_feeds(feeds)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Failed to persist settings") from exc
+    return {"status": "updated", "index": index, "url": feeds[index]["url"], "is_birthday": feeds[index]["is_birthday"]}
 
 
 @settings_router.delete(
@@ -401,17 +463,17 @@ def add_ical_url(payload: dict) -> dict:
     summary="Remove an iCal feed URL",
 )
 def delete_ical_url(index: int) -> dict:
-    """Remove an iCal feed URL entry by its zero-based index."""
-    urls = _parse_ical_urls()
-    if index < 0 or index >= len(urls):
+    """Remove an iCal feed entry by its zero-based index."""
+    feeds = _parse_ical_feeds()
+    if index < 0 or index >= len(feeds):
         raise HTTPException(status_code=404, detail=f"No iCal URL at index {index}")
 
-    removed = urls.pop(index)
+    removed = feeds.pop(index)
     try:
-        _save_ical_urls(urls)
+        _save_ical_feeds(feeds)
     except Exception as exc:
         raise HTTPException(status_code=500, detail="Failed to persist settings") from exc
-    return {"status": "removed", "url": removed}
+    return {"status": "removed", "url": removed["url"]}
 
 
 # ---------------------------------------------------------------------------

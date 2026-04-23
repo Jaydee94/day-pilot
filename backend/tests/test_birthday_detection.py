@@ -171,3 +171,15 @@ class TestIsBirthdayCalendar:
         with patch("app.services.birthday_detection.settings") as mock_settings:
             mock_settings.BIRTHDAY_CALENDAR_NAMES = "Bdays,Birthdays,Geburtstage,Contacts"
             assert _is_birthday_calendar("Contacts") is True
+
+    def test_birthday_sentinel_is_always_true(self):
+        """The internal '__birthday__' sentinel must always be recognised."""
+        with patch("app.services.birthday_detection.settings") as mock_settings:
+            mock_settings.BIRTHDAY_CALENDAR_NAMES = ""
+            assert _is_birthday_calendar("__birthday__") is True
+
+    def test_birthday_sentinel_independent_of_names_setting(self):
+        """'__birthday__' works even when BIRTHDAY_CALENDAR_NAMES is unset."""
+        with patch("app.services.birthday_detection.settings") as mock_settings:
+            mock_settings.BIRTHDAY_CALENDAR_NAMES = "Bdays"
+            assert _is_birthday_calendar("__birthday__") is True

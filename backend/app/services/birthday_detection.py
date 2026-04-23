@@ -82,11 +82,20 @@ def _get_birthday_calendar_names() -> List[str]:
 def _is_birthday_calendar(calendar_name: Optional[str]) -> bool:
     """Return True if *calendar_name* matches one of the configured birthday calendar names.
 
+    Also returns True for the reserved sentinel ``"__birthday__"`` which is
+    assigned by the calendar sync service to every event that comes from an
+    iCal feed explicitly marked as a birthday feed via the per-feed toggle.
+
     Comparison is case-insensitive.  When ``BIRTHDAY_CALENDAR_NAMES`` is empty
     or the event carries no calendar name, this returns False.
     """
     if not calendar_name:
         return False
+    # The sentinel is set internally by calendar_sync when is_birthday=True on
+    # the feed; it always counts as a birthday calendar regardless of the user's
+    # BIRTHDAY_CALENDAR_NAMES list.
+    if calendar_name == "__birthday__":
+        return True
     normalised = calendar_name.strip().lower()
     return normalised in _get_birthday_calendar_names()
 

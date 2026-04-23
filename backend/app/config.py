@@ -53,6 +53,13 @@ class Settings(BaseSettings):
     # https://calendar.google.com/calendar/ical/.../basic.ics
     ICAL_URLS: str = ""
 
+    # Structured iCal feeds — JSON array of {url, is_birthday} objects.
+    # When non-empty this takes precedence over ICAL_URLS.  Entries with
+    # is_birthday=true cause every event from that feed to be treated as a
+    # birthday, bypassing keyword and AI detection.
+    # Example: [{"url": "https://…/basic.ics", "is_birthday": false}]
+    ICAL_FEEDS: str = ""
+
     # Comma-separated list of calendar names that should be treated as
     # birthday-only calendars.  Every event from a calendar whose name matches
     # one of these entries (case-insensitive) is automatically classified as a

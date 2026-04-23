@@ -157,6 +157,8 @@ class UserSettings(BaseModel):
     WEATHER_CITY: Optional[str] = None
     WEATHER_UNITS: Optional[str] = None
     ICAL_URLS: Optional[str] = None
+    # Structured iCal feeds (JSON array of {url, is_birthday}).
+    ICAL_FEEDS: Optional[str] = None
     # Comma-separated list of calendar names treated as birthday-only calendars.
     BIRTHDAY_CALENDAR_NAMES: Optional[str] = None
     CALDAV_URL: Optional[str] = None

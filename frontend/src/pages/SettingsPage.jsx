@@ -6,6 +6,7 @@ import {
   fetchICalUrls,
   addICalUrl,
   deleteICalUrl,
+  patchICalFeed,
   fetchCalDAVAccounts,
   addCalDAVAccount,
   deleteCalDAVAccount,
@@ -642,9 +643,11 @@ function AIProviderSection({ values, onChange, onTest, connectionState, t }) {
 function ICalCalendarSection({ icon, values, onChange, onTest, connectionState, t }) {
   const [urls, setUrls] = useState([])
   const [newUrl, setNewUrl] = useState('')
+  const [newIsBirthday, setNewIsBirthday] = useState(false)
   const [adding, setAdding] = useState(false)
   const [addError, setAddError] = useState(null)
   const [deleting, setDeleting] = useState(null)
+  const [toggling, setToggling] = useState(null)
   const [showGuide, setShowGuide] = useState(false)
 
   useEffect(() => {
@@ -659,11 +662,12 @@ function ICalCalendarSection({ icon, values, onChange, onTest, connectionState, 
     setAdding(true)
     setAddError(null)
     try {
-      await addICalUrl(newUrl.trim())
+      await addICalUrl(newUrl.trim(), newIsBirthday)
       const updated = await fetchICalUrls()
       setUrls(updated)
       onChange('ICAL_URLS', updated.map(u => u.url).join(','))
       setNewUrl('')
+      setNewIsBirthday(false)
     } catch (err) {
       setAddError(err.message)
     } finally {
@@ -682,6 +686,19 @@ function ICalCalendarSection({ icon, values, onChange, onTest, connectionState, 
       // ignore
     } finally {
       setDeleting(null)
+    }
+  }
+
+  async function handleToggleBirthday(entry) {
+    setToggling(entry.index)
+    try {
+      await patchICalFeed(entry.index, { is_birthday: !entry.is_birthday })
+      const updated = await fetchICalUrls()
+      setUrls(updated)
+    } catch (_) {
+      // ignore
+    } finally {
+      setToggling(null)
     }
   }
 
@@ -740,7 +757,7 @@ function ICalCalendarSection({ icon, values, onChange, onTest, connectionState, 
       )}
 
       <div className="settings-group__fields">
-        {/* List of configured iCal URLs */}
+        {/* List of configured iCal feeds */}
         {urls.length > 0 && (
           <div className="settings-field">
             <span className="settings-field__label">
@@ -755,18 +772,40 @@ function ICalCalendarSection({ icon, values, onChange, onTest, connectionState, 
                       {entry.url.length > 60 ? `${entry.url.slice(0, 57)}…` : entry.url}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    className="settings-account-item__delete"
-                    onClick={() => handleDelete(entry.index)}
-                    disabled={deleting === entry.index}
-                    aria-label={t('removeAccount') || 'Remove'}
-                  >
-                    <AppIcon name="trash" className="settings-account-item__delete-icon" />
-                  </button>
+                  <div className="settings-account-item__actions">
+                    <label
+                      className="settings-birthday-toggle"
+                      title={t('iCalFeedIsBirthdayTitle') || 'Mark as birthday calendar'}
+                    >
+                      <input
+                        type="checkbox"
+                        className="settings-birthday-toggle__input"
+                        checked={entry.is_birthday ?? false}
+                        disabled={toggling === entry.index}
+                        onChange={() => handleToggleBirthday(entry)}
+                        aria-label={t('iCalFeedIsBirthdayToggle') || 'Birthday calendar'}
+                      />
+                      <span className="settings-birthday-toggle__track" aria-hidden="true" />
+                      <span className="settings-birthday-toggle__label">
+                        {t('iCalFeedIsBirthdayLabel') || '🎂'}
+                      </span>
+                    </label>
+                    <button
+                      type="button"
+                      className="settings-account-item__delete"
+                      onClick={() => handleDelete(entry.index)}
+                      disabled={deleting === entry.index}
+                      aria-label={t('removeAccount') || 'Remove'}
+                    >
+                      <AppIcon name="trash" className="settings-account-item__delete-icon" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
+            <p className="settings-field__desc">
+              {t('iCalFeedIsBirthdayHint') || 'Toggle 🎂 to mark a feed as a birthday calendar — every event from that feed will be treated as a birthday.'}
+            </p>
           </div>
         )}
 
@@ -788,6 +827,20 @@ function ICalCalendarSection({ icon, values, onChange, onTest, connectionState, 
               disabled={adding}
               required
             />
+            <label className="settings-birthday-toggle settings-birthday-toggle--inline" title={t('iCalFeedIsBirthdayTitle') || 'Mark as birthday calendar'}>
+              <input
+                type="checkbox"
+                className="settings-birthday-toggle__input"
+                checked={newIsBirthday}
+                onChange={e => setNewIsBirthday(e.target.checked)}
+                disabled={adding}
+                aria-label={t('iCalFeedIsBirthdayToggle') || 'Birthday calendar'}
+              />
+              <span className="settings-birthday-toggle__track" aria-hidden="true" />
+              <span className="settings-birthday-toggle__label">
+                {t('iCalFeedIsBirthdayLabel') || '🎂'}
+              </span>
+            </label>
             <button type="submit" className="btn" disabled={adding || !newUrl.trim()}>
               {adding ? (t('adding') || 'Adding…') : (t('addFeed') || 'Add feed')}
             </button>
@@ -795,24 +848,6 @@ function ICalCalendarSection({ icon, values, onChange, onTest, connectionState, 
           {addError && (
             <p className="settings-test-result settings-test-result--error">{addError}</p>
           )}
-        </div>
-
-        {/* Birthday calendar names */}
-        <div className="settings-field">
-          <label className="settings-field__label" htmlFor="birthday-calendar-names">
-            {t('settingsFieldBirthdayCalendarNames')}
-          </label>
-          <span className="settings-field__desc">
-            {t('settingsFieldBirthdayCalendarNamesDesc')}
-          </span>
-          <input
-            id="birthday-calendar-names"
-            type="text"
-            className="settings-field__input"
-            placeholder="Bdays,Birthdays,Geburtstage"
-            value={values.BIRTHDAY_CALENDAR_NAMES ?? ''}
-            onChange={e => onChange('BIRTHDAY_CALENDAR_NAMES', e.target.value)}
-          />
         </div>
       </div>
     </div>

@@ -143,3 +143,91 @@ class TestIntegrationConnection:
         c, _ = client
         resp = c.post("/api/settings/test-connection/not-real", json={"overrides": {}})
         assert resp.status_code == 404
+
+
+class TestICalFeedManagement:
+    """Tests for iCal feed list endpoints including per-feed birthday toggle."""
+
+    def test_list_empty(self, client):
+        c, _ = client
+        resp = c.get("/api/settings/ical-urls")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_add_feed_without_birthday_flag(self, client):
+        c, _ = client
+        resp = c.post("/api/settings/ical-urls", json={"url": "https://example.com/cal.ics"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "added"
+        assert data["url"] == "https://example.com/cal.ics"
+        assert data["is_birthday"] is False
+
+    def test_add_feed_with_birthday_flag(self, client):
+        c, _ = client
+        resp = c.post(
+            "/api/settings/ical-urls",
+            json={"url": "https://example.com/bdays.ics", "is_birthday": True},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "added"
+        assert data["is_birthday"] is True
+
+    def test_list_includes_is_birthday(self, client):
+        c, _ = client
+        c.post("/api/settings/ical-urls", json={"url": "https://example.com/cal.ics"})
+        c.post(
+            "/api/settings/ical-urls",
+            json={"url": "https://example.com/bdays.ics", "is_birthday": True},
+        )
+        resp = c.get("/api/settings/ical-urls")
+        assert resp.status_code == 200
+        items = resp.json()
+        assert len(items) == 2
+        assert items[0]["is_birthday"] is False
+        assert items[1]["is_birthday"] is True
+
+    def test_patch_toggles_birthday_flag(self, client):
+        c, _ = client
+        c.post("/api/settings/ical-urls", json={"url": "https://example.com/cal.ics"})
+        # Toggle on
+        resp = c.patch("/api/settings/ical-urls/0", json={"is_birthday": True})
+        assert resp.status_code == 200
+        assert resp.json()["is_birthday"] is True
+        # Verify persisted
+        items = c.get("/api/settings/ical-urls").json()
+        assert items[0]["is_birthday"] is True
+
+    def test_patch_toggle_off(self, client):
+        c, _ = client
+        c.post(
+            "/api/settings/ical-urls",
+            json={"url": "https://example.com/bdays.ics", "is_birthday": True},
+        )
+        resp = c.patch("/api/settings/ical-urls/0", json={"is_birthday": False})
+        assert resp.status_code == 200
+        assert resp.json()["is_birthday"] is False
+
+    def test_patch_invalid_index_returns_404(self, client):
+        c, _ = client
+        resp = c.patch("/api/settings/ical-urls/99", json={"is_birthday": True})
+        assert resp.status_code == 404
+
+    def test_delete_feed(self, client):
+        c, _ = client
+        c.post("/api/settings/ical-urls", json={"url": "https://example.com/cal.ics"})
+        resp = c.delete("/api/settings/ical-urls/0")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "removed"
+        assert c.get("/api/settings/ical-urls").json() == []
+
+    def test_add_missing_url_returns_400(self, client):
+        c, _ = client
+        resp = c.post("/api/settings/ical-urls", json={"url": ""})
+        assert resp.status_code == 400
+
+    def test_add_invalid_url_returns_400(self, client):
+        c, _ = client
+        resp = c.post("/api/settings/ical-urls", json={"url": "not-a-url"})
+        assert resp.status_code == 400
