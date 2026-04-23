@@ -19,9 +19,11 @@ from app.services.calendar_sync import (
     fetch_google_birthdays,
     fetch_apple_events,
 )
+from app.services.local_calendar import fetch_local_events
+from app.services.local_todos import fetch_local_todos
 from app.services.weather import fetch_weather
 from app.services.weather import refresh_weather_cache
-from app.services.ai_summary import generate_summary
+from app.services.ai_summary import generate_summary, invalidate_ai_cache
 from app.services.notifications import send_daily_push
 
 logger = logging.getLogger(__name__)
@@ -36,18 +38,22 @@ def build_daily_summary(date: Optional[datetime] = None) -> DailySummary:
 
     google_events = fetch_google_events(date=target_date)
     apple_events = fetch_apple_events(date=target_date)
+    local_events = fetch_local_events(date=target_date)
     all_events = sorted(
-        google_events + apple_events, key=lambda e: e.start
+        google_events + apple_events + local_events, key=lambda e: e.start
     )
 
     google_tasks = fetch_google_tasks()
+    local_tasks = fetch_local_todos()
+    all_todos = google_tasks + local_tasks
+
     weather = fetch_weather()
     birthdays = fetch_google_birthdays()
 
     summary = DailySummary(
         date=target_date,
         events=all_events,
-        todos=google_tasks,
+        todos=all_todos,
         weather=weather,
         birthdays=birthdays,
     )
@@ -57,9 +63,15 @@ def build_daily_summary(date: Optional[datetime] = None) -> DailySummary:
 
 
 def run_daily_pipeline() -> None:
-    """Full daily pipeline: build summary and push it."""
+    """Full daily pipeline: build summary and push it.
+
+    The AI summary cache is invalidated before building so that the morning
+    briefing is always freshly generated, regardless of any cached result
+    from a previous request on the same calendar day.
+    """
     logger.info("Running daily summary pipeline…")
     try:
+        invalidate_ai_cache()  # force fresh AI generation for today's briefing
         summary = build_daily_summary()
         send_daily_push(summary)
         logger.info("Daily pipeline completed successfully.")

@@ -20,10 +20,10 @@ function toLocalDateTimeInput(date = new Date()) {
   )
 }
 
-export default function QuickAddButton({ onSuccess }) {
+export default function QuickAddButton({ onSuccess, defaultTab = 'Event' }) {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
-  const [tab, setTab] = useState('Event')
+  const [tab, setTab] = useState(defaultTab)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
@@ -48,7 +48,7 @@ export default function QuickAddButton({ onSuccess }) {
     setEventLocation('')
     setTaskTitle('')
     setTaskDue('')
-    setTab('Event')
+    setTab(defaultTab)
   }
 
   function handleTabChange(newTab) {

@@ -6,18 +6,28 @@ Endpoints
 GET  /api/settings          – return the current effective settings
 PUT  /api/settings          – save (partial) settings and apply them live
 GET  /api/settings/status   – return setup-wizard completion status
+POST /api/settings/google-credentials/upload – upload a credentials.json file
+GET  /api/settings/google-credentials        – list configured credentials
+DELETE /api/settings/google-credentials/{index} – remove a credentials entry
+GET  /api/settings/caldav-accounts           – list CalDAV accounts
+POST /api/settings/caldav-accounts           – add a CalDAV account
+DELETE /api/settings/caldav-accounts/{index} – remove a CalDAV account
 """
+import json
 import logging
+import os
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Any, Dict, Iterator
+from typing import Any, Dict, Iterator, List
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File
 import pytz
 
 from app.config import settings as app_settings
 from app.models.schemas import (
+    CalDAVAccount,
+    GoogleCredentialInfo,
     IntegrationTestRequest,
     IntegrationTestResult,
     SetupStatus,
@@ -25,7 +35,7 @@ from app.models.schemas import (
 )
 from app.services.ai_summary import _get_client as _get_ai_client
 from app.services.ai_summary import get_ai_config
-from app.services.calendar_sync import _get_caldav_client, _get_google_service
+from app.services.calendar_sync import _get_caldav_client, _get_google_service, _get_caldav_configs
 from app.services.weather import fetch_weather
 from app.services.settings_store import (
     USER_CONFIGURABLE_KEYS,
@@ -315,3 +325,221 @@ def test_connection(integration: str, payload: IntegrationTestRequest) -> Integr
 
     with _temporary_settings_override(overrides):
         return _run_integration_test(integration)
+
+
+# ---------------------------------------------------------------------------
+# Google credentials management
+# ---------------------------------------------------------------------------
+
+def _google_credential_paths() -> List[str]:
+    """Return the current list of configured Google credential file paths."""
+    raw = (app_settings.GOOGLE_CREDENTIALS_JSON or "").strip()
+    return [p.strip() for p in raw.split(",") if p.strip()]
+
+
+@settings_router.post(
+    "/settings/google-credentials/upload",
+    summary="Upload a Google credentials.json file",
+)
+async def upload_google_credentials(file: UploadFile = File(...)) -> dict:
+    """Upload a Google OAuth2 credentials.json file to the server.
+
+    The file is saved in the configured credentials directory and its path
+    is appended to ``GOOGLE_CREDENTIALS_JSON`` (comma-separated for
+    multi-account support).
+    """
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided")
+
+    # Sanitize filename to prevent path traversal attacks
+    safe_filename = os.path.basename(file.filename)
+    if not safe_filename or safe_filename in {".", ".."}:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    # Only accept .json files
+    if not safe_filename.lower().endswith(".json"):
+        raise HTTPException(
+            status_code=400,
+            detail="Only JSON files (.json) are accepted as Google credentials",
+        )
+
+    creds_dir = app_settings.GOOGLE_CREDENTIALS_DIR
+    os.makedirs(creds_dir, exist_ok=True)
+
+    dest_path = os.path.join(creds_dir, safe_filename)
+
+    # Read and validate the file is parseable JSON before saving
+    try:
+        raw_content = await file.read()
+        json.loads(raw_content)  # raises ValueError if not valid JSON
+    except (ValueError, Exception) as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File is not valid JSON: {exc}",
+        ) from exc
+
+    try:
+        with open(dest_path, "wb") as fh:
+            fh.write(raw_content)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to save file: {exc}") from exc
+
+    # Append path to GOOGLE_CREDENTIALS_JSON setting
+    existing_paths = _google_credential_paths()
+    if dest_path not in existing_paths:
+        existing_paths.append(dest_path)
+    new_value = ",".join(existing_paths)
+
+    try:
+        save_user_settings({"GOOGLE_CREDENTIALS_JSON": new_value})
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Failed to persist settings") from exc
+
+    app_settings.GOOGLE_CREDENTIALS_JSON = new_value
+    logger.info("Google credentials uploaded: %s", dest_path)
+    return {"status": "uploaded", "path": dest_path, "filename": safe_filename}
+
+
+@settings_router.get(
+    "/settings/google-credentials",
+    response_model=List[GoogleCredentialInfo],
+    summary="List configured Google credentials files",
+)
+def list_google_credentials() -> List[GoogleCredentialInfo]:
+    """Return all configured Google credentials file paths with existence status."""
+    paths = _google_credential_paths()
+    return [
+        GoogleCredentialInfo(
+            index=i,
+            path=p,
+            filename=os.path.basename(p),
+            exists=os.path.exists(p),
+        )
+        for i, p in enumerate(paths)
+    ]
+
+
+@settings_router.delete(
+    "/settings/google-credentials/{index}",
+    summary="Remove a Google credentials entry",
+)
+def delete_google_credentials(index: int) -> dict:
+    """Remove a Google credentials file entry by its zero-based index.
+
+    The file itself is not deleted from disk – only the path is removed from
+    the ``GOOGLE_CREDENTIALS_JSON`` setting.
+    """
+    paths = _google_credential_paths()
+    if index < 0 or index >= len(paths):
+        raise HTTPException(status_code=404, detail=f"No credentials entry at index {index}")
+
+    removed = paths.pop(index)
+    new_value = ",".join(paths)
+
+    try:
+        save_user_settings({"GOOGLE_CREDENTIALS_JSON": new_value})
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Failed to persist settings") from exc
+
+    app_settings.GOOGLE_CREDENTIALS_JSON = new_value
+    return {"status": "removed", "path": removed}
+
+
+# ---------------------------------------------------------------------------
+# CalDAV account management
+# ---------------------------------------------------------------------------
+
+def _parse_caldav_accounts() -> List[dict]:
+    """Return CalDAV accounts as a list of dicts."""
+    raw = (app_settings.CALDAV_CONFIGS or "").strip()
+    if raw:
+        try:
+            accounts = json.loads(raw)
+            if isinstance(accounts, list):
+                return accounts
+        except Exception:
+            pass
+
+    # Fall back to legacy single-account variables
+    if app_settings.CALDAV_URL:
+        return [{
+            "url": app_settings.CALDAV_URL,
+            "username": app_settings.CALDAV_USERNAME,
+            "password": app_settings.CALDAV_PASSWORD,
+        }]
+    return []
+
+
+def _save_caldav_accounts(accounts: List[dict]) -> None:
+    """Persist CalDAV account list to CALDAV_CONFIGS and clear legacy single-account variables."""
+    new_value = json.dumps(accounts, ensure_ascii=False)
+    # Always clear legacy single-account variables so they are not picked up
+    # alongside the structured CALDAV_CONFIGS (including when the list is empty).
+    updates: dict = {
+        "CALDAV_CONFIGS": new_value,
+        "CALDAV_URL": "",
+        "CALDAV_USERNAME": "",
+        "CALDAV_PASSWORD": "",
+    }
+    save_user_settings(updates)
+    app_settings.CALDAV_CONFIGS = new_value
+    app_settings.CALDAV_URL = ""
+    app_settings.CALDAV_USERNAME = ""
+    app_settings.CALDAV_PASSWORD = ""
+
+
+@settings_router.get(
+    "/settings/caldav-accounts",
+    summary="List configured CalDAV accounts",
+)
+def list_caldav_accounts() -> List[dict]:
+    """Return all configured CalDAV / Apple Calendar accounts (passwords redacted)."""
+    accounts = _parse_caldav_accounts()
+    return [
+        {
+            "index": i,
+            "url": a.get("url", ""),
+            "username": a.get("username", ""),
+            "password_set": bool(a.get("password", "")),
+        }
+        for i, a in enumerate(accounts)
+    ]
+
+
+@settings_router.post(
+    "/settings/caldav-accounts",
+    summary="Add a CalDAV account",
+)
+def add_caldav_account(account: CalDAVAccount) -> dict:
+    """Add a new CalDAV / Apple Calendar account.
+
+    Note: The password is stored in plaintext in the settings file.  For a
+    home-server deployment ensure that the settings file is readable only by
+    the application user (e.g. ``chmod 600 settings.json``).
+    """
+    accounts = _parse_caldav_accounts()
+    new_entry = {"url": account.url, "username": account.username or "", "password": account.password or ""}
+    accounts.append(new_entry)
+    try:
+        _save_caldav_accounts(accounts)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Failed to persist settings") from exc
+    return {"status": "added", "index": len(accounts) - 1, "url": account.url}
+
+
+@settings_router.delete(
+    "/settings/caldav-accounts/{index}",
+    summary="Remove a CalDAV account",
+)
+def delete_caldav_account(index: int) -> dict:
+    """Remove a CalDAV account entry by its zero-based index."""
+    accounts = _parse_caldav_accounts()
+    if index < 0 or index >= len(accounts):
+        raise HTTPException(status_code=404, detail=f"No CalDAV account at index {index}")
+
+    removed = accounts.pop(index)
+    try:
+        _save_caldav_accounts(accounts)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Failed to persist settings") from exc
+    return {"status": "removed", "url": removed.get("url", "")}

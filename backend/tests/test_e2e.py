@@ -311,11 +311,18 @@ class TestTodoCreationJourney:
         assert resp.status_code == 200
         assert resp.json()["title"] == "Buy groceries"
 
-    def test_create_todo_returns_503_when_service_fails(self, client):
-        with patch("app.api.routes.add_google_task", return_value=None):
-            resp = client.post("/api/todos", json={"title": "Unreachable task"})
+    def test_create_todo_falls_back_to_local_when_google_fails(self, client, tmp_path):
+        """When Google Tasks is unavailable the task must be saved in local storage."""
+        local_todos_file = str(tmp_path / "local_todos.json")
+        with patch("app.api.routes.add_google_task", return_value=None), patch(
+            "app.config.settings.LOCAL_TODOS_FILE", local_todos_file
+        ), patch("app.services.local_todos.settings.LOCAL_TODOS_FILE", local_todos_file):
+            resp = client.post("/api/todos", json={"title": "Offline task"})
 
-        assert resp.status_code == 503
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["title"] == "Offline task"
+        assert data["source"] == "local"
 
     def test_created_todo_appears_in_todo_list(self, client):
         """Creating and then listing todos returns the new task."""
@@ -324,12 +331,38 @@ class TestTodoCreationJourney:
             create_resp = client.post("/api/todos", json={"title": "Call mum"})
         assert create_resp.status_code == 200
 
-        with patch("app.api.routes.fetch_google_tasks", return_value=[fake_todo]):
+        with patch("app.api.routes.fetch_google_tasks", return_value=[fake_todo]), patch(
+            "app.api.routes.fetch_local_todos", return_value=[]
+        ):
             list_resp = client.get("/api/todos")
 
         assert list_resp.status_code == 200
         titles = [t["title"] for t in list_resp.json()]
         assert "Call mum" in titles
+
+    def test_local_todos_included_in_todo_list(self, client):
+        """Local todos must appear in the todo list alongside external ones."""
+        local_todo = _make_todo(tid="loc-t1", title="Local task")
+        local_todo.source = "local"
+        with patch("app.api.routes.fetch_google_tasks", return_value=[]), patch(
+            "app.api.routes.fetch_local_todos", return_value=[local_todo]
+        ):
+            resp = client.get("/api/todos")
+
+        assert resp.status_code == 200
+        sources = [t["source"] for t in resp.json()]
+        assert "local" in sources
+
+    def test_delete_local_todo_success(self, client):
+        with patch("app.api.routes.delete_local_todo", return_value=True):
+            resp = client.delete("/api/todos/local-todo-uuid")
+        assert resp.status_code == 200
+        assert resp.json()["todo_id"] == "local-todo-uuid"
+
+    def test_delete_nonexistent_local_todo_returns_404(self, client):
+        with patch("app.api.routes.delete_local_todo", return_value=False):
+            resp = client.delete("/api/todos/does-not-exist")
+        assert resp.status_code == 404
 
 
 # ---------------------------------------------------------------------------
@@ -653,3 +686,138 @@ class TestSchedulerJobsJourney:
 
         assert resp.status_code == 200
         assert resp.json() == []
+
+
+# ---------------------------------------------------------------------------
+# Journey 10: Google credentials management
+# ---------------------------------------------------------------------------
+
+class TestGoogleCredentialsManagementJourney:
+    """A user uploads and manages Google Calendar credentials files."""
+
+    def test_list_credentials_returns_empty_when_none_configured(self, client):
+        with patch("app.api.settings_router.app_settings.GOOGLE_CREDENTIALS_JSON", ""):
+            resp = client.get("/api/settings/google-credentials")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_list_credentials_returns_configured_paths(self, client, tmp_path):
+        creds_file = tmp_path / "credentials.json"
+        creds_file.write_text('{"installed":{}}')
+        creds_path = str(creds_file)
+        with patch("app.api.settings_router.app_settings.GOOGLE_CREDENTIALS_JSON", creds_path):
+            resp = client.get("/api/settings/google-credentials")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["filename"] == "credentials.json"
+        assert data[0]["exists"] is True
+
+    def test_upload_credentials_file(self, client, tmp_path):
+        creds_dir = str(tmp_path / "creds")
+        settings_file = str(tmp_path / "settings.json")
+        with patch("app.api.settings_router.app_settings.GOOGLE_CREDENTIALS_DIR", creds_dir), \
+             patch("app.api.settings_router.app_settings.GOOGLE_CREDENTIALS_JSON", ""), \
+             patch("app.services.settings_store.SETTINGS_FILE", settings_file):
+            resp = client.post(
+                "/api/settings/google-credentials/upload",
+                files={"file": ("credentials.json", b'{"installed":{"client_id":"x"}}', "application/json")},
+            )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "uploaded"
+        assert data["filename"] == "credentials.json"
+
+    def test_upload_rejects_non_json_file(self, client, tmp_path):
+        creds_dir = str(tmp_path / "creds")
+        with patch("app.api.settings_router.app_settings.GOOGLE_CREDENTIALS_DIR", creds_dir), \
+             patch("app.api.settings_router.app_settings.GOOGLE_CREDENTIALS_JSON", ""):
+            resp = client.post(
+                "/api/settings/google-credentials/upload",
+                files={"file": ("credentials.txt", b"not json", "text/plain")},
+            )
+        assert resp.status_code == 400
+
+    def test_upload_rejects_invalid_json_content(self, client, tmp_path):
+        creds_dir = str(tmp_path / "creds")
+        with patch("app.api.settings_router.app_settings.GOOGLE_CREDENTIALS_DIR", creds_dir), \
+             patch("app.api.settings_router.app_settings.GOOGLE_CREDENTIALS_JSON", ""):
+            resp = client.post(
+                "/api/settings/google-credentials/upload",
+                files={"file": ("bad.json", b"this is not json", "application/json")},
+            )
+        assert resp.status_code == 400
+
+    def test_delete_credentials_entry(self, client, tmp_path):
+        creds_file = tmp_path / "credentials.json"
+        creds_file.write_text('{"installed":{}}')
+        creds_path = str(creds_file)
+        settings_file = str(tmp_path / "settings.json")
+        with patch("app.api.settings_router.app_settings.GOOGLE_CREDENTIALS_JSON", creds_path), \
+             patch("app.services.settings_store.SETTINGS_FILE", settings_file):
+            resp = client.delete("/api/settings/google-credentials/0")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "removed"
+
+    def test_delete_out_of_range_index_returns_404(self, client):
+        with patch("app.api.settings_router.app_settings.GOOGLE_CREDENTIALS_JSON", ""):
+            resp = client.delete("/api/settings/google-credentials/5")
+        assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Journey 11: CalDAV account management
+# ---------------------------------------------------------------------------
+
+class TestCalDAVAccountManagementJourney:
+    """A user adds and removes CalDAV / Apple Calendar accounts."""
+
+    def test_list_caldav_accounts_empty(self, client):
+        with patch("app.api.settings_router.app_settings.CALDAV_CONFIGS", ""), \
+             patch("app.api.settings_router.app_settings.CALDAV_URL", ""):
+            resp = client.get("/api/settings/caldav-accounts")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_add_caldav_account(self, client, tmp_path):
+        settings_file = str(tmp_path / "settings.json")
+        with patch("app.api.settings_router.app_settings.CALDAV_CONFIGS", ""), \
+             patch("app.api.settings_router.app_settings.CALDAV_URL", ""), \
+             patch("app.api.settings_router.app_settings.CALDAV_USERNAME", ""), \
+             patch("app.api.settings_router.app_settings.CALDAV_PASSWORD", ""), \
+             patch("app.services.settings_store.SETTINGS_FILE", settings_file):
+            resp = client.post(
+                "/api/settings/caldav-accounts",
+                json={"url": "https://caldav.icloud.com", "username": "test@icloud.com", "password": "xxxx"},
+            )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "added"
+        assert data["url"] == "https://caldav.icloud.com"
+
+    def test_list_caldav_accounts_from_configs(self, client):
+        configs_json = '[{"url":"https://caldav.icloud.com","username":"user@icloud.com","password":"pw"}]'
+        with patch("app.api.settings_router.app_settings.CALDAV_CONFIGS", configs_json):
+            resp = client.get("/api/settings/caldav-accounts")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["url"] == "https://caldav.icloud.com"
+        assert data[0]["username"] == "user@icloud.com"
+        assert "password" not in data[0]  # password must not be returned
+        assert data[0]["password_set"] is True  # but presence must be indicated
+
+    def test_delete_caldav_account(self, client, tmp_path):
+        configs_json = '[{"url":"https://caldav.icloud.com","username":"user@icloud.com","password":"pw"}]'
+        settings_file = str(tmp_path / "settings.json")
+        with patch("app.api.settings_router.app_settings.CALDAV_CONFIGS", configs_json), \
+             patch("app.services.settings_store.SETTINGS_FILE", settings_file):
+            resp = client.delete("/api/settings/caldav-accounts/0")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "removed"
+
+    def test_delete_out_of_range_caldav_account_returns_404(self, client):
+        with patch("app.api.settings_router.app_settings.CALDAV_CONFIGS", ""), \
+             patch("app.api.settings_router.app_settings.CALDAV_URL", ""):
+            resp = client.delete("/api/settings/caldav-accounts/10")
+        assert resp.status_code == 404

@@ -80,3 +80,114 @@ export async function triggerSchedulerJob(jobId) {
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
   return resp.json()
 }
+
+/**
+ * Fetch all calendar events for today from the backend.
+ * Does NOT trigger any AI calls.
+ * @returns {Promise<Array>} list of CalendarEvent objects
+ */
+export async function fetchEvents() {
+  const resp = await fetch(`${API_BASE}/events`)
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  return resp.json()
+}
+
+/**
+ * Fetch all open todos from the backend.
+ * Does NOT trigger any AI calls.
+ * @returns {Promise<Array>} list of TodoItem objects
+ */
+export async function fetchTodos() {
+  const resp = await fetch(`${API_BASE}/todos`)
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  return resp.json()
+}
+
+/**
+ * Upload a Google credentials.json file to the backend.
+ * @param {File} file
+ * @returns {Promise<{status: string, path: string, filename: string}>}
+ */
+export async function uploadGoogleCredentials(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  const resp = await fetch(`${API_BASE}/settings/google-credentials/upload`, {
+    method: 'POST',
+    body: formData,
+  })
+  if (!resp.ok) {
+    const data = await resp.json().catch(() => ({}))
+    throw new Error(data.detail || `HTTP ${resp.status}`)
+  }
+  return resp.json()
+}
+
+/**
+ * List all configured Google credentials entries.
+ * @returns {Promise<Array<{index: number, path: string, filename: string, exists: boolean}>>}
+ */
+export async function fetchGoogleCredentials() {
+  const resp = await fetch(`${API_BASE}/settings/google-credentials`)
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  return resp.json()
+}
+
+/**
+ * Remove a Google credentials entry by index.
+ * @param {number} index
+ * @returns {Promise<{status: string, path: string}>}
+ */
+export async function deleteGoogleCredential(index) {
+  const resp = await fetch(`${API_BASE}/settings/google-credentials/${index}`, {
+    method: 'DELETE',
+  })
+  if (!resp.ok) {
+    const data = await resp.json().catch(() => ({}))
+    throw new Error(data.detail || `HTTP ${resp.status}`)
+  }
+  return resp.json()
+}
+
+/**
+ * List all configured CalDAV accounts.
+ * @returns {Promise<Array<{index: number, url: string, username: string, password_set: boolean}>>}
+ */
+export async function fetchCalDAVAccounts() {
+  const resp = await fetch(`${API_BASE}/settings/caldav-accounts`)
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  return resp.json()
+}
+
+/**
+ * Add a new CalDAV account.
+ * @param {{url: string, username: string, password: string}} account
+ * @returns {Promise<{status: string, index: number, url: string}>}
+ */
+export async function addCalDAVAccount(account) {
+  const resp = await fetch(`${API_BASE}/settings/caldav-accounts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(account),
+  })
+  if (!resp.ok) {
+    const data = await resp.json().catch(() => ({}))
+    throw new Error(data.detail || `HTTP ${resp.status}`)
+  }
+  return resp.json()
+}
+
+/**
+ * Remove a CalDAV account by index.
+ * @param {number} index
+ * @returns {Promise<{status: string, url: string}>}
+ */
+export async function deleteCalDAVAccount(index) {
+  const resp = await fetch(`${API_BASE}/settings/caldav-accounts/${index}`, {
+    method: 'DELETE',
+  })
+  if (!resp.ok) {
+    const data = await resp.json().catch(() => ({}))
+    throw new Error(data.detail || `HTTP ${resp.status}`)
+  }
+  return resp.json()
+}

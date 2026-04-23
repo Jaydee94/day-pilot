@@ -1,5 +1,15 @@
 import { useState, useEffect } from 'react'
-import { fetchSettings, saveSettings, testIntegrationConnection } from '../api.js'
+import {
+  fetchSettings,
+  saveSettings,
+  testIntegrationConnection,
+  uploadGoogleCredentials,
+  fetchGoogleCredentials,
+  deleteGoogleCredential,
+  fetchCalDAVAccounts,
+  addCalDAVAccount,
+  deleteCalDAVAccount,
+} from '../api.js'
 import AppIcon from '../components/AppIcon.jsx'
 import { useI18n } from '../i18n.jsx'
 import './Page.css'
@@ -364,8 +374,37 @@ export default function SettingsPage({ onLanguageChange }) {
           t={t}
         />
 
-        {/* Remaining groups (Notifications, CalDAV, Voice) */}
-        {SETTING_GROUPS.slice(2).map(({ group, icon, items, integration }) => (
+        {/* Remaining groups (Notifications, Google Calendar, Apple Calendar, Voice) */}
+        {SETTING_GROUPS.slice(2).map(({ group, icon, items, integration }) => {
+          if (group === 'Google Calendar') {
+            return (
+              <GoogleCalendarSection
+                key={group}
+                icon={icon}
+                items={items}
+                values={values}
+                onChange={handleChange}
+                onTest={handleTestConnection}
+                connectionState={connectionStates[integration]}
+                t={t}
+              />
+            )
+          }
+          if (group === 'Apple Calendar (iCloud)') {
+            return (
+              <AppleCalendarSection
+                key={group}
+                icon={icon}
+                items={items}
+                values={values}
+                onChange={handleChange}
+                onTest={handleTestConnection}
+                connectionState={connectionStates[integration]}
+                t={t}
+              />
+            )
+          }
+          return (
           <div key={group} className="settings-group card">
             <div className="settings-group__head">
               <h3 className="settings-group__title">
@@ -409,7 +448,8 @@ export default function SettingsPage({ onLanguageChange }) {
               )})}
             </div>
           </div>
-        ))}
+        )})}
+
       </div>
 
       {/* Google Calendar setup info */}
@@ -605,6 +645,329 @@ function AIProviderSection({ values, onChange, onTest, connectionState, t }) {
             </select>
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Google Calendar section ─────────────────────────────────────────────── */
+
+function GoogleCalendarSection({ icon, values, onChange, onTest, connectionState, t }) {
+  const [credentials, setCredentials] = useState([])
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState(null)
+  const [uploadSuccess, setUploadSuccess] = useState(null)
+  const [deleting, setDeleting] = useState(null)
+
+  useEffect(() => {
+    fetchGoogleCredentials()
+      .then(setCredentials)
+      .catch(() => setCredentials([]))
+  }, [])
+
+  async function handleFileUpload(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    setUploading(true)
+    setUploadError(null)
+    setUploadSuccess(null)
+    try {
+      await uploadGoogleCredentials(file)
+      const updated = await fetchGoogleCredentials()
+      setCredentials(updated)
+      // Sync the path setting value
+      const paths = updated.map(c => c.path).join(',')
+      onChange('GOOGLE_CREDENTIALS_JSON', paths)
+      setUploadSuccess(t('googleCredentialsUploaded') || 'Credentials file uploaded successfully.')
+      setTimeout(() => setUploadSuccess(null), 5000)
+    } catch (err) {
+      setUploadError(err.message)
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
+  }
+
+  async function handleDelete(index) {
+    setDeleting(index)
+    try {
+      await deleteGoogleCredential(index)
+      const updated = await fetchGoogleCredentials()
+      setCredentials(updated)
+      const paths = updated.map(c => c.path).join(',')
+      onChange('GOOGLE_CREDENTIALS_JSON', paths)
+    } catch (err) {
+      setUploadError(err.message)
+    } finally {
+      setDeleting(null)
+    }
+  }
+
+  return (
+    <div className="settings-group card">
+      <div className="settings-group__head">
+        <h3 className="settings-group__title">
+          <span className="settings-group__icon"><AppIcon name={icon} className="icon" /></span>
+          {t('settingsGroupGoogleCalendar')}
+        </h3>
+        <button
+          type="button"
+          className="settings-test-btn"
+          onClick={() => onTest('google_calendar')}
+          disabled={connectionState?.loading}
+          aria-label={t('testConnection')}
+        >
+          {connectionState?.loading ? t('testingConnection') : t('testConnection')}
+        </button>
+      </div>
+      {connectionState?.message && (
+        <p className={`settings-test-result ${connectionState?.ok ? 'settings-test-result--success' : 'settings-test-result--error'}`} role="status">
+          {connectionState?.ok ? t('connected') : t('notConnected')}: {connectionState?.message}
+        </p>
+      )}
+      <div className="settings-group__fields">
+        {/* Credentials file upload */}
+        <div className="settings-field">
+          <label className="settings-field__label">
+            {t('settingsFieldGoogleCredentialsJson') || 'Google Credentials File'}
+          </label>
+          <span className="settings-field__desc">
+            {t('settingsFieldGoogleCredentialsJsonDesc') || 'Upload your OAuth2 credentials.json file from Google Cloud Console.'}
+          </span>
+          <div className="settings-upload-row">
+            <label className="btn settings-upload-btn" aria-label={t('uploadFile') || 'Upload file'}>
+              <AppIcon name="upload" className="settings-upload__icon" />
+              {uploading ? (t('uploading') || 'Uploading…') : (t('uploadCredentialsFile') || 'Upload credentials.json')}
+              <input
+                type="file"
+                accept=".json,application/json"
+                style={{ display: 'none' }}
+                onChange={handleFileUpload}
+                disabled={uploading}
+              />
+            </label>
+          </div>
+          {uploadSuccess && (
+            <p className="settings-test-result settings-test-result--success">{uploadSuccess}</p>
+          )}
+          {uploadError && (
+            <p className="settings-test-result settings-test-result--error">{uploadError}</p>
+          )}
+        </div>
+
+        {/* List of configured credentials */}
+        {credentials.length > 0 && (
+          <div className="settings-field">
+            <span className="settings-field__label">
+              {t('configuredGoogleAccounts') || 'Configured Google accounts'}
+            </span>
+            <div className="settings-account-list">
+              {credentials.map((cred) => (
+                <div key={cred.index} className="settings-account-item">
+                  <div className="settings-account-item__info">
+                    <AppIcon name="calendar" className="settings-account-item__icon" />
+                    <div>
+                      <span className="settings-account-item__name">{cred.filename}</span>
+                      <span className={`settings-account-item__status ${cred.exists ? 'settings-account-item__status--ok' : 'settings-account-item__status--missing'}`}>
+                        {cred.exists ? (t('fileFound') || '✓ File found') : (t('fileMissing') || '⚠ File missing')}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="settings-account-item__delete"
+                    onClick={() => handleDelete(cred.index)}
+                    disabled={deleting === cred.index}
+                    aria-label={t('removeAccount') || 'Remove'}
+                  >
+                    <AppIcon name="trash" className="settings-account-item__delete-icon" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Token file path */}
+        <SettingField
+          fieldKey="GOOGLE_TOKEN_JSON"
+          label={t('settingsFieldGoogleTokenJson') || 'Token file path'}
+          desc={t('settingsFieldGoogleTokenJsonDesc') || 'Path where the OAuth2 token is stored'}
+          type="text"
+          value={values.GOOGLE_TOKEN_JSON ?? ''}
+          onChange={v => onChange('GOOGLE_TOKEN_JSON', v)}
+        />
+      </div>
+    </div>
+  )
+}
+
+/* ── Apple Calendar section ─────────────────────────────────────────────── */
+
+function AppleCalendarSection({ icon, values, onChange, onTest, connectionState, t }) {
+  const [accounts, setAccounts] = useState([])
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [newUrl, setNewUrl] = useState('')
+  const [newUsername, setNewUsername] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [addError, setAddError] = useState(null)
+  const [deleting, setDeleting] = useState(null)
+  const [deleteError, setDeleteError] = useState(null)
+
+  useEffect(() => {
+    fetchCalDAVAccounts()
+      .then(setAccounts)
+      .catch(() => setAccounts([]))
+  }, [])
+
+  async function handleAdd(e) {
+    e.preventDefault()
+    if (!newUrl.trim()) return
+    setAdding(true)
+    setAddError(null)
+    try {
+      await addCalDAVAccount({ url: newUrl.trim(), username: newUsername.trim(), password: newPassword })
+      const updated = await fetchCalDAVAccounts()
+      setAccounts(updated)
+      setShowAddForm(false)
+      setNewUrl('')
+      setNewUsername('')
+      setNewPassword('')
+    } catch (err) {
+      setAddError(err.message)
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  async function handleDelete(index) {
+    setDeleting(index)
+    setDeleteError(null)
+    try {
+      await deleteCalDAVAccount(index)
+      const updated = await fetchCalDAVAccounts()
+      setAccounts(updated)
+    } catch (err) {
+      setDeleteError(err.message)
+    } finally {
+      setDeleting(null)
+    }
+  }
+
+  return (
+    <div className="settings-group card">
+      <div className="settings-group__head">
+        <h3 className="settings-group__title">
+          <span className="settings-group__icon"><AppIcon name={icon} className="icon" /></span>
+          {t('settingsGroupAppleCalendar')}
+        </h3>
+        <button
+          type="button"
+          className="settings-test-btn"
+          onClick={() => onTest('apple_calendar')}
+          disabled={connectionState?.loading}
+          aria-label={t('testConnection')}
+        >
+          {connectionState?.loading ? t('testingConnection') : t('testConnection')}
+        </button>
+      </div>
+      {connectionState?.message && (
+        <p className={`settings-test-result ${connectionState?.ok ? 'settings-test-result--success' : 'settings-test-result--error'}`} role="status">
+          {connectionState?.ok ? t('connected') : t('notConnected')}: {connectionState?.message}
+        </p>
+      )}
+      <div className="settings-group__fields">
+        {/* List of configured accounts */}
+        {accounts.length > 0 && (
+          <div className="settings-field">
+            <span className="settings-field__label">
+              {t('configuredCalDAVAccounts') || 'Configured CalDAV accounts'}
+            </span>
+            <div className="settings-account-list">
+              {accounts.map((acc) => (
+                <div key={acc.index} className="settings-account-item">
+                  <div className="settings-account-item__info">
+                    <AppIcon name="calendar" className="settings-account-item__icon" />
+                    <div>
+                      <span className="settings-account-item__name">{acc.url}</span>
+                      {acc.username && (
+                        <span className="settings-account-item__status settings-account-item__status--ok">
+                          {acc.username}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="settings-account-item__delete"
+                    onClick={() => handleDelete(acc.index)}
+                    disabled={deleting === acc.index}
+                    aria-label={t('removeAccount') || 'Remove'}
+                  >
+                    <AppIcon name="trash" className="settings-account-item__delete-icon" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {deleteError && (
+          <p className="settings-test-result settings-test-result--error">{deleteError}</p>
+        )}
+
+        {/* Add account button / form */}
+        {!showAddForm ? (
+          <div className="settings-field">
+            <button
+              type="button"
+              className="btn settings-add-account-btn"
+              onClick={() => setShowAddForm(true)}
+            >
+              + {t('addCalDAVAccount') || 'Add CalDAV account'}
+            </button>
+          </div>
+        ) : (
+          <form className="settings-add-account-form settings-field" onSubmit={handleAdd}>
+            <span className="settings-field__label">{t('addCalDAVAccount') || 'Add CalDAV account'}</span>
+            <input
+              className="settings-field__input"
+              type="url"
+              placeholder={t('caldavUrlPlaceholder') || 'CalDAV URL, e.g. https://caldav.icloud.com'}
+              value={newUrl}
+              onChange={e => setNewUrl(e.target.value)}
+              required
+            />
+            <input
+              className="settings-field__input"
+              type="text"
+              placeholder={t('caldavUsernamePlaceholder') || 'Username (Apple ID email)'}
+              value={newUsername}
+              onChange={e => setNewUsername(e.target.value)}
+            />
+            <input
+              className="settings-field__input"
+              type="password"
+              placeholder={t('caldavPasswordPlaceholder') || 'App-specific password'}
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              autoComplete="new-password"
+            />
+            {addError && <p className="settings-test-result settings-test-result--error">{addError}</p>}
+            <div className="settings-add-account-form__actions">
+              <button type="submit" className="btn" disabled={adding}>
+                {adding ? (t('saving') || 'Saving…') : (t('addAccount') || 'Add account')}
+              </button>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => { setShowAddForm(false); setAddError(null) }}
+              >
+                {t('cancel') || 'Cancel'}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   )

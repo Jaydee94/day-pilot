@@ -19,7 +19,15 @@ class TodoItem(BaseModel):
     due: Optional[datetime] = None
     completed: bool = False
     priority: Optional[int] = None  # 1 (high) – 9 (low)
-    source: str  # "google" | "apple"
+    source: str  # "google" | "apple" | "local"
+
+
+class CalDAVAccount(BaseModel):
+    """A single CalDAV account configuration."""
+
+    url: str
+    username: Optional[str] = ""
+    password: Optional[str] = ""
 
 
 class Birthday(BaseModel):
@@ -166,6 +174,15 @@ class SetupStatus(BaseModel):
 
     setup_complete: bool
     needs_setup: bool
+
+
+class GoogleCredentialInfo(BaseModel):
+    """Info about a single configured Google credentials file."""
+
+    index: int
+    path: str
+    filename: str
+    exists: bool
 
 
 class IntegrationTestRequest(BaseModel):
