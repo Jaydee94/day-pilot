@@ -223,3 +223,23 @@
   padding: 0.75rem 2rem;
   font-size: 1rem;
 }
+
+/* ── Google Calendar step ─────────────────────────────────────────────────── */
+
+.wizard-step__guide {
+  margin: 0.75rem 0 1rem;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.wizard-step__skip-hint {
+  margin-top: 1rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  text-align: center;
+}

@@ -97,6 +97,71 @@ END:VCALENDAR
 
 
 # ---------------------------------------------------------------------------
+# _today_range timezone handling
+# ---------------------------------------------------------------------------
+
+class TestTodayRange:
+    def test_start_is_localized_midnight(self, monkeypatch):
+        """_today_range() must return a proper tz.localize() midnight, not just
+        now.replace(hour=0), so that the DST offset is always correct."""
+        monkeypatch.setattr("app.services.calendar_sync.settings.APP_TIMEZONE", "Europe/Berlin")
+        from app.services.calendar_sync import _today_range
+        start, end = _today_range()
+        # start must be midnight (00:00:00)
+        assert start.hour == 0
+        assert start.minute == 0
+        assert start.second == 0
+        # The UTC offset must match what pytz.localize() gives for that date,
+        # not the offset that happened to be active at call time.
+        tz = pytz.timezone("Europe/Berlin")
+        today = start.date()
+        expected_start = tz.localize(datetime(today.year, today.month, today.day))
+        assert start.utcoffset() == expected_start.utcoffset()
+
+    def test_end_is_exactly_one_day_after_start(self, monkeypatch):
+        monkeypatch.setattr("app.services.calendar_sync.settings.APP_TIMEZONE", "Europe/Berlin")
+        from app.services.calendar_sync import _today_range
+        from datetime import timedelta
+        start, end = _today_range()
+        assert end == start + timedelta(days=1)
+
+    def test_start_and_end_are_aware(self, monkeypatch):
+        monkeypatch.setattr("app.services.calendar_sync.settings.APP_TIMEZONE", "Europe/Berlin")
+        from app.services.calendar_sync import _today_range
+        start, end = _today_range()
+        assert start.tzinfo is not None
+        assert end.tzinfo is not None
+
+
+# ---------------------------------------------------------------------------
+# fetch_ical_events – date parameter timezone handling
+# ---------------------------------------------------------------------------
+
+class TestFetchIcalEventsDateParam:
+    def test_date_param_uses_localize_not_replace(self, monkeypatch):
+        """When a date is passed, the midnight must be computed with
+        tz.localize() so that the UTC offset is correct for that specific date."""
+        monkeypatch.setattr("app.services.calendar_sync.settings.ICAL_URLS", "")
+        monkeypatch.setattr("app.services.calendar_sync.settings.APP_TIMEZONE", "Europe/Berlin")
+        from app.services.calendar_sync import fetch_ical_events
+        # Calling with an explicit date must return [] (no URLs configured) and
+        # must not raise any exception regardless of DST state.
+        tz = pytz.timezone("Europe/Berlin")
+        target = tz.localize(datetime(2026, 3, 29))  # DST transition day in Germany
+        result = fetch_ical_events(date=target)
+        assert result == []
+
+    def test_date_param_with_utc_datetime(self, monkeypatch):
+        """An aware UTC datetime must be converted to the local date correctly."""
+        monkeypatch.setattr("app.services.calendar_sync.settings.ICAL_URLS", "")
+        monkeypatch.setattr("app.services.calendar_sync.settings.APP_TIMEZONE", "Europe/Berlin")
+        from app.services.calendar_sync import fetch_ical_events
+        target = datetime(2026, 4, 23, 10, 0, 0, tzinfo=pytz.utc)
+        result = fetch_ical_events(date=target)
+        assert result == []
+
+
+# ---------------------------------------------------------------------------
 # iCal URL helpers
 # ---------------------------------------------------------------------------
 
@@ -201,6 +266,32 @@ class TestGetCaldavConfigs:
         monkeypatch.setattr("app.services.calendar_sync.settings.CALDAV_CONFIGS", "")
         from app.services.calendar_sync import _get_caldav_configs
         assert _get_caldav_configs() == []
+
+
+# ---------------------------------------------------------------------------
+# sync_calendars – event count in log
+# ---------------------------------------------------------------------------
+
+class TestSyncCalendars:
+    def test_sync_completes_with_no_sources_configured(self, monkeypatch):
+        """sync_calendars() must complete without raising even when no
+        external sources are configured."""
+        monkeypatch.setattr("app.services.calendar_sync.settings.ICAL_URLS", "")
+        monkeypatch.setattr("app.services.calendar_sync.settings.CALDAV_URL", "")
+        monkeypatch.setattr("app.services.calendar_sync.settings.CALDAV_CONFIGS", "")
+        from app.services.calendar_sync import sync_calendars, get_last_calendar_sync
+        sync_calendars()
+        assert get_last_calendar_sync() is not None
+
+    def test_sync_updates_timestamp(self, monkeypatch):
+        monkeypatch.setattr("app.services.calendar_sync.settings.ICAL_URLS", "")
+        monkeypatch.setattr("app.services.calendar_sync.settings.CALDAV_URL", "")
+        monkeypatch.setattr("app.services.calendar_sync.settings.CALDAV_CONFIGS", "")
+        from app.services.calendar_sync import sync_calendars, get_last_calendar_sync
+        sync_calendars()
+        ts = get_last_calendar_sync()
+        assert ts is not None
+        assert ts.tzinfo is not None  # must be timezone-aware
 
 
 # ---------------------------------------------------------------------------

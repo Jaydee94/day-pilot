@@ -45,16 +45,25 @@ def sync_calendars() -> None:
     """
     global _last_calendar_sync
     logger.info("Running calendar sync…")
+    ical_count = 0
+    apple_count = 0
     try:
-        fetch_ical_events()
+        ical_events = fetch_ical_events()
+        ical_count = len(ical_events)
     except Exception as exc:
         logger.error("Calendar sync: iCal fetch failed: %s", exc)
     try:
-        fetch_apple_events()
+        apple_events = fetch_apple_events()
+        apple_count = len(apple_events)
     except Exception as exc:
         logger.error("Calendar sync: CalDAV fetch failed: %s", exc)
     _last_calendar_sync = datetime.now(pytz.timezone(settings.APP_TIMEZONE))
-    logger.info("Calendar sync completed at %s", _last_calendar_sync.isoformat())
+    logger.info(
+        "Calendar sync completed at %s – iCal: %d event(s), CalDAV: %d event(s)",
+        _last_calendar_sync.isoformat(),
+        ical_count,
+        apple_count,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -67,8 +76,11 @@ def _local_tz() -> pytz.BaseTzInfo:
 
 def _today_range():
     tz = _local_tz()
-    now = datetime.now(tz)
-    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today = datetime.now(tz).date()
+    # Use tz.localize() so that pytz picks the correct DST offset for midnight
+    # on the target date, rather than copying today's runtime offset via
+    # replace().  The difference matters on DST-transition days.
+    start = tz.localize(datetime(today.year, today.month, today.day))
     end = start + timedelta(days=1)
     return start, end
 
@@ -101,16 +113,24 @@ def fetch_ical_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
     """Fetch events from all configured iCal feed URLs for the given date."""
     urls = _get_ical_urls()
     if not urls:
-        logger.debug("No iCal URLs configured – skipping")
+        logger.info(
+            "No iCal URLs configured – skipping. "
+            "Add a Google/Outlook iCal feed URL in Settings → iCal Calendar."
+        )
         return []
 
     tz = _local_tz()
     start, end = _today_range()
     if date:
-        start = date.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=tz)
+        # Use tz.localize() so that pytz picks the correct DST offset for
+        # midnight on the requested date.  replace(tzinfo=tz) would always
+        # assign the LMT offset instead of the correct local offset.
+        local_date = date.astimezone(tz).date() if date.tzinfo is not None else date.date()
+        start = tz.localize(datetime(local_date.year, local_date.month, local_date.day))
         end = start + timedelta(days=1)
 
     events: List[CalendarEvent] = []
+    logger.info("Fetching iCal events for %s from %d feed(s)", start.date(), len(urls))
     for url in urls:
         try:
             resp = http_requests.get(url, timeout=15)
@@ -118,6 +138,7 @@ def fetch_ical_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
             cal = ICalendar.from_ical(resp.content)
             occurrences = recurring_ical_events.of(cal).between(start, end)
 
+            feed_events: List[CalendarEvent] = []
             for component in occurrences:
                 raw_start = component.get("DTSTART")
                 raw_end = component.get("DTEND")
@@ -139,7 +160,7 @@ def fetch_ical_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
                 loc = component.get("LOCATION")
                 desc = component.get("DESCRIPTION")
 
-                events.append(
+                feed_events.append(
                     CalendarEvent(
                         id=uid,
                         title=summary,
@@ -150,6 +171,8 @@ def fetch_ical_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
                         source="ical",
                     )
                 )
+            logger.info("iCal feed %s returned %d event(s) for %s", url, len(feed_events), start.date())
+            events.extend(feed_events)
         except Exception as exc:
             logger.error("Failed to fetch iCal events from %s: %s", url, exc)
 
@@ -220,7 +243,10 @@ def fetch_apple_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
     start, end = _today_range()
     if date:
         tz = _local_tz()
-        start = date.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=tz)
+        # Use tz.localize() so that pytz picks the correct DST offset for
+        # midnight on the requested date.
+        local_date = date.astimezone(tz).date() if date.tzinfo is not None else date.date()
+        start = tz.localize(datetime(local_date.year, local_date.month, local_date.day))
         end = start + timedelta(days=1)
 
     events: List[CalendarEvent] = []
