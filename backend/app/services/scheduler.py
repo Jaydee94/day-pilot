@@ -106,7 +106,7 @@ def start_scheduler() -> None:
     )
     _scheduler.add_job(
         run_weather_cache_refresh,
-        IntervalTrigger(minutes=30, timezone=tz),
+        IntervalTrigger(hours=1, timezone=tz),
         id="weather_cache_refresh",
         replace_existing=True,
     )

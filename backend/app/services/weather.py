@@ -12,7 +12,7 @@ from app.models.schemas import DailyForecastPoint, HourlyForecastPoint, WeatherI
 logger = logging.getLogger(__name__)
 
 _WEATHERAPI_BASE = "https://api.weatherapi.com/v1/forecast.json"
-_CACHE_TTL = timedelta(minutes=30)
+_CACHE_TTL = timedelta(hours=1)
 _cache_lock = Lock()
 _weather_cache: dict[tuple[str, str], tuple[datetime, WeatherInfo]] = {}
 
@@ -91,7 +91,7 @@ def _build_daily_forecast(data: dict) -> list[DailyForecastPoint]:
 
 
 def fetch_weather(city: Optional[str] = None, force_refresh: bool = False) -> Optional[WeatherInfo]:
-    """Fetch current weather for the configured city with forecast and 30-minute cache."""
+    """Fetch current weather for the configured city with forecast and 1-hour cache."""
     target_city = city or settings.WEATHER_CITY
     key = _cache_key(target_city, settings.WEATHER_UNITS)
     now = datetime.now(timezone.utc)
