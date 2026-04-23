@@ -15,7 +15,8 @@ function formatCountdown(isoStart, isoEnd, t) {
   if (now >= end) return null
   if (now >= start) return { label: t('eventRunning'), running: true }
 
-  const diffMin = Math.round((start - now) / 60000)
+  const diffMin = Math.ceil((start - now) / 60000)
+  if (diffMin < 1) return { label: t('inXMin', { min: 1 }), running: false }
   if (diffMin < 60) return { label: t('inXMin', { min: diffMin }), running: false }
   const h = Math.floor(diffMin / 60)
   const min = diffMin % 60

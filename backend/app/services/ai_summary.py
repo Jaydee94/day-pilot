@@ -232,7 +232,8 @@ def _build_prompt(summary: DailySummary) -> str:
 
         if w.hourly_forecast:
             all_temps = [h.temperature for h in w.hourly_forecast]
-            day_max_temp = max(all_temps)
+            if all_temps:
+                day_max_temp = max(all_temps)
             for h in w.hourly_forecast:
                 if morning_temp is None and h.time.hour >= 9:
                     morning_temp = h.temperature
@@ -240,6 +241,8 @@ def _build_prompt(summary: DailySummary) -> str:
                     noon_temp = h.temperature
                 if evening_temp is None and h.time.hour >= 18:
                     evening_temp = h.temperature
+                if morning_temp is not None and noon_temp is not None and evening_temp is not None:
+                    break
 
         if is_de:
             weather_line = (
