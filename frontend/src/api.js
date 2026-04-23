@@ -239,12 +239,13 @@ export async function deleteEvent(eventId) {
 }
 
 /**
- * Fetch upcoming birthdays detected from all calendar sources.
- * @param {number} daysAhead - How many days ahead to scan (default 14)
+ * Fetch upcoming birthdays detected from configured birthday calendars.
+ * @param {number} daysAhead - How many days ahead to scan (default 366)
+ * @param {number} limit - Maximum number of birthdays to return (default 5)
  * @returns {Promise<Array>} list of Birthday objects
  */
-export async function fetchBirthdays(daysAhead = 14) {
-  const resp = await fetch(`${API_BASE}/birthdays?days_ahead=${daysAhead}`)
+export async function fetchBirthdays(daysAhead = 366, limit = 5) {
+  const resp = await fetch(`${API_BASE}/birthdays?days_ahead=${daysAhead}&limit=${limit}`)
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
   return resp.json()
 }

@@ -24,7 +24,7 @@ function formatRelativeDate(isoDate, t, locale) {
 
 /**
  * UpcomingBirthdays fetches and displays the next upcoming birthday events
- * (up to 5) for the next 14 days.  The card is always visible so users know
+ * (up to 5) from the next 12 months. The card is always visible so users know
  * where to find birthday information even when the list is empty.
  */
 export default function UpcomingBirthdays() {
@@ -33,7 +33,7 @@ export default function UpcomingBirthdays() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchBirthdays(14)
+    fetchBirthdays(366, MAX_BIRTHDAYS)
       .then(setBirthdays)
       .catch(() => setBirthdays([]))
       .finally(() => setLoading(false))

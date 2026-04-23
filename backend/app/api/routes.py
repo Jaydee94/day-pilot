@@ -141,14 +141,11 @@ def get_weather():
 
 @router.get("/birthdays", summary="Upcoming birthdays")
 def list_birthdays(
-    days_ahead: int = Query(14, ge=0, le=90, description="How many days ahead to scan for birthdays")
+    days_ahead: int = Query(366, ge=0, le=730, description="How many days ahead to scan for birthdays"),
+    limit: int = Query(5, ge=1, le=25, description="Maximum number of birthdays to return"),
 ):
-    """Return birthday events detected in calendar data for the next *days_ahead* days.
-
-    Detection uses keyword matching first, then AI classification (with
-    persistent in-memory caching) for uncertain cases.
-    """
-    return get_upcoming_birthdays(days_ahead=days_ahead)
+    """Return upcoming birthdays from configured birthday calendars."""
+    return get_upcoming_birthdays(days_ahead=days_ahead, limit=limit)
 
 
 @router.post("/events", summary="Create a calendar event")

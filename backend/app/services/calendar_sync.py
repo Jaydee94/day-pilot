@@ -57,6 +57,19 @@ def sync_calendars() -> None:
         apple_count = len(apple_events)
     except Exception as exc:
         logger.error("Calendar sync: CalDAV fetch failed: %s", exc)
+    try:
+        from app.services.birthday_detection import (
+            DEFAULT_BIRTHDAY_LIMIT,
+            DEFAULT_BIRTHDAY_LOOKAHEAD_DAYS,
+            refresh_upcoming_birthdays_cache,
+        )
+
+        refresh_upcoming_birthdays_cache(
+            days_ahead=DEFAULT_BIRTHDAY_LOOKAHEAD_DAYS,
+            limit=DEFAULT_BIRTHDAY_LIMIT,
+        )
+    except Exception as exc:
+        logger.error("Calendar sync: birthday prefetch failed: %s", exc)
     _last_calendar_sync = datetime.now(pytz.timezone(settings.APP_TIMEZONE))
     logger.info(
         "Calendar sync completed at %s – iCal: %d event(s), CalDAV: %d event(s)",
@@ -133,8 +146,8 @@ def _get_ical_feeds() -> List[dict]:
     return [{"url": u, "is_birthday": False} for u in _get_ical_urls()]
 
 
-def fetch_ical_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
-    """Fetch events from all configured iCal feed URLs for the given date."""
+def fetch_ical_events_in_range(start: datetime, end: datetime) -> List[CalendarEvent]:
+    """Fetch events from all configured iCal feed URLs within a datetime range."""
     feeds = _get_ical_feeds()
     if not feeds:
         logger.info(
@@ -144,17 +157,22 @@ def fetch_ical_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
         return []
 
     tz = _local_tz()
-    start, end = _today_range()
-    if date:
-        # Use tz.localize() so that pytz picks the correct DST offset for
-        # midnight on the requested date.  replace(tzinfo=tz) would always
-        # assign the LMT offset instead of the correct local offset.
-        local_date = date.astimezone(tz).date() if date.tzinfo is not None else date.date()
-        start = tz.localize(datetime(local_date.year, local_date.month, local_date.day))
-        end = start + timedelta(days=1)
+    if start.tzinfo is None:
+        start = tz.localize(start)
+    else:
+        start = start.astimezone(tz)
+    if end.tzinfo is None:
+        end = tz.localize(end)
+    else:
+        end = end.astimezone(tz)
 
     events: List[CalendarEvent] = []
-    logger.info("Fetching iCal events for %s from %d feed(s)", start.date().isoformat(), len(feeds))
+    logger.info(
+        "Fetching iCal events for range %s -> %s from %d feed(s)",
+        start.isoformat(),
+        end.isoformat(),
+        len(feeds),
+    )
     for feed in feeds:
         url = feed["url"]
         is_birthday_feed = feed.get("is_birthday", False)
@@ -210,12 +228,29 @@ def fetch_ical_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
                         calendar_name=cal_name,
                     )
                 )
-            logger.info("iCal feed %s returned %d event(s) for %s", url, len(feed_events), start.date().isoformat())
+            logger.info(
+                "iCal feed %s returned %d event(s) for range %s -> %s",
+                url,
+                len(feed_events),
+                start.isoformat(),
+                end.isoformat(),
+            )
             events.extend(feed_events)
         except Exception as exc:
             logger.error("Failed to fetch iCal events from %s: %s", url, exc)
 
     return events
+
+
+def fetch_ical_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
+    """Fetch events from all configured iCal feed URLs for a single calendar day."""
+    tz = _local_tz()
+    start, _ = _today_range()
+    if date:
+        local_date = date.astimezone(tz).date() if date.tzinfo is not None else date.date()
+        start = tz.localize(datetime(local_date.year, local_date.month, local_date.day))
+    end = start + timedelta(days=1)
+    return fetch_ical_events_in_range(start=start, end=end)
 
 
 # ---------------------------------------------------------------------------
@@ -272,21 +307,22 @@ def _get_caldav_client(url: Optional[str] = None, username: Optional[str] = None
     return client
 
 
-def fetch_apple_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
-    """Fetch today's events from all configured CalDAV (Apple/iCloud) accounts."""
+def fetch_apple_events_in_range(start: datetime, end: datetime) -> List[CalendarEvent]:
+    """Fetch events from all configured CalDAV (Apple/iCloud) accounts within a datetime range."""
     configs = _get_caldav_configs()
     if not configs:
         logger.warning("Apple Calendar (CalDAV) not configured – skipping")
         return []
 
-    start, end = _today_range()
-    if date:
-        tz = _local_tz()
-        # Use tz.localize() so that pytz picks the correct DST offset for
-        # midnight on the requested date.
-        local_date = date.astimezone(tz).date() if date.tzinfo is not None else date.date()
-        start = tz.localize(datetime(local_date.year, local_date.month, local_date.day))
-        end = start + timedelta(days=1)
+    tz = _local_tz()
+    if start.tzinfo is None:
+        start = tz.localize(start)
+    else:
+        start = start.astimezone(tz)
+    if end.tzinfo is None:
+        end = tz.localize(end)
+    else:
+        end = end.astimezone(tz)
 
     events: List[CalendarEvent] = []
     for cfg in configs:
@@ -360,6 +396,17 @@ def fetch_apple_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
             logger.error("Failed to fetch Apple events for a CalDAV account: %s", exc)
 
     return events
+
+
+def fetch_apple_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
+    """Fetch events for a single calendar day from all configured CalDAV accounts."""
+    tz = _local_tz()
+    start, _ = _today_range()
+    if date:
+        local_date = date.astimezone(tz).date() if date.tzinfo is not None else date.date()
+        start = tz.localize(datetime(local_date.year, local_date.month, local_date.day))
+    end = start + timedelta(days=1)
+    return fetch_apple_events_in_range(start=start, end=end)
 
 
 def add_apple_event(

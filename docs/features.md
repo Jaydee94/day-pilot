@@ -114,13 +114,13 @@ DayPilot doesn't just *show* the weather — it uses it to make the AI briefing 
 
 ## 🎂 Birthday Reminders
 
-DayPilot checks your Google Contacts for birthdays and surfaces them in the daily briefing and dashboard.
+DayPilot reads birthdays from calendars that you mark as birthday calendars in Settings.
 
-- Birthdays are shown prominently on the dashboard on the day they occur
+- The dashboard shows the next 5 upcoming birthdays from the next 12 months
 - The AI briefing mentions birthdays so you never forget to reach out
-- Age is calculated and displayed when a birth year is available in the contact
+- Age is shown when the event title contains it (for example: "John's 30th Birthday")
 
-> 💡 To make sure birthdays appear, ensure the contacts you care about have a birthday set in your Google Contacts ([contacts.google.com](https://contacts.google.com/)).
+> 💡 In Settings → iCal Calendar, toggle 🎂 for birthday feeds and/or set `BIRTHDAY_CALENDAR_NAMES` to match birthday calendar names from CalDAV.
 
 ---
 

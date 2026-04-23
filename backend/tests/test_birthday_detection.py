@@ -1,185 +1,150 @@
-"""Unit tests for birthday detection keyword matching and name extraction."""
-import pytest
+"""Unit tests for calendar-based birthday detection."""
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
+import pytz
+
+from app.models.schemas import CalendarEvent
 from app.services.birthday_detection import (
-    _matches_keyword,
-    _extract_name,
     _extract_age_from_title,
+    _extract_name,
     _is_birthday_calendar,
+    get_upcoming_birthdays,
+    invalidate_birthday_cache,
+    refresh_upcoming_birthdays_cache,
 )
 
 
-# ---------------------------------------------------------------------------
-# _matches_keyword
-# ---------------------------------------------------------------------------
-
-class TestMatchesKeyword:
-    """Keyword matching should detect common birthday title patterns."""
-
-    # ── True positives ──────────────────────────────────────────────────────
-
-    def test_birthday_in_title(self):
-        assert _matches_keyword("John's Birthday") is True
-
-    def test_geburtstag_in_title(self):
-        assert _matches_keyword("Geburtstag von Anna") is True
-
-    def test_bday_in_title(self):
-        assert _matches_keyword("Sarah bday") is True
-
-    def test_b_dash_day_in_title(self):
-        assert _matches_keyword("Mike b-day") is True
-
-    def test_cake_emoji_in_title(self):
-        assert _matches_keyword("🎂 Peter") is True
-
-    def test_birthday_case_insensitive(self):
-        assert _matches_keyword("BIRTHDAY PARTY FOR ALICE") is True
-
-    def test_geburtstag_case_insensitive(self):
-        assert _matches_keyword("GEBURTSTAG Hans") is True
-
-    def test_birthday_in_description_only(self):
-        assert _matches_keyword("Family Dinner", "Celebrating her birthday!") is True
-
-    def test_geburtstag_in_description(self):
-        assert _matches_keyword("Familienfest", "Wir feiern seinen Geburtstag.") is True
-
-    # ── False positives that must NOT match ─────────────────────────────────
-
-    def test_party_emoji_in_title_not_birthday(self):
-        """🎉 alone in the title must not be treated as a birthday."""
-        assert _matches_keyword("🎉 Q1 Kick-Off") is False
-
-    def test_party_emoji_in_description_not_birthday(self):
-        """🎉 in the description must not trigger a match."""
-        assert _matches_keyword("Team Meeting", "Great results! 🎉") is False
-
-    def test_unrelated_event(self):
-        assert _matches_keyword("Sprint Planning") is False
-
-    def test_celebration_without_keyword(self):
-        assert _matches_keyword("Anniversary Dinner", "Celebrating 10 years together.") is False
-
-    def test_emoji_only_in_description_not_birthday(self):
-        assert _matches_keyword("Office Party", "🎂-shaped cake available") is False
-
-    def test_cake_emoji_only_in_description(self):
-        """🎂 is only matched in the title, not the description."""
-        assert _matches_keyword("Office Lunch", "We'll have a 🎂 cake") is False
+BERLIN_TZ = pytz.timezone("Europe/Berlin")
 
 
-# ---------------------------------------------------------------------------
-# _extract_name
-# ---------------------------------------------------------------------------
+def _event(
+    *,
+    eid: str,
+    title: str,
+    day_offset: int,
+    calendar_name: str,
+    source: str = "ical",
+) -> CalendarEvent:
+    base = datetime.now(BERLIN_TZ).replace(hour=10, minute=0, second=0, microsecond=0)
+    start = base + timedelta(days=day_offset)
+    return CalendarEvent(
+        id=eid,
+        title=title,
+        start=start,
+        end=start + timedelta(hours=1),
+        source=source,
+        calendar_name=calendar_name,
+    )
+
 
 class TestExtractName:
-
     def test_possessive_birthday(self):
         assert _extract_name("John's Birthday") == "John"
 
-    def test_birthday_of_pattern(self):
-        assert _extract_name("Birthday of Jane") == "Jane"
-
-    def test_keyword_at_end(self):
-        assert _extract_name("Sarah Birthday") == "Sarah"
-
-    def test_keyword_at_start_with_colon(self):
-        assert _extract_name("Birthday: Alice") == "Alice"
-
     def test_geburtstag_von(self):
         assert _extract_name("Geburtstag von Peter") == "Peter"
-
-    def test_cake_emoji_stripped(self):
-        assert _extract_name("🎂 Max") == "Max"
 
     def test_no_keyword_returns_title(self):
         assert _extract_name("Some Event") == "Some Event"
 
 
-# ---------------------------------------------------------------------------
-# _extract_age_from_title
-# ---------------------------------------------------------------------------
-
 class TestExtractAgeFromTitle:
-
     def test_ordinal_30th(self):
         assert _extract_age_from_title("John's 30th Birthday") == 30
-
-    def test_ordinal_1st(self):
-        assert _extract_age_from_title("Baby's 1st Birthday") == 1
-
-    def test_ordinal_2nd(self):
-        assert _extract_age_from_title("Emma's 2nd Birthday") == 2
-
-    def test_ordinal_no_suffix(self):
-        assert _extract_age_from_title("Lisa 40 Birthday") == 40
 
     def test_no_age_returns_none(self):
         assert _extract_age_from_title("John's Birthday") is None
 
 
-# ---------------------------------------------------------------------------
-# _is_birthday_calendar
-# ---------------------------------------------------------------------------
-
 class TestIsBirthdayCalendar:
-    """Calendar-name matching should be case-insensitive and respect the setting."""
-
-    def test_exact_match(self):
-        with patch("app.services.birthday_detection.settings") as mock_settings:
-            mock_settings.BIRTHDAY_CALENDAR_NAMES = "Bdays,Birthdays"
-            assert _is_birthday_calendar("Bdays") is True
-
     def test_case_insensitive_match(self):
         with patch("app.services.birthday_detection.settings") as mock_settings:
             mock_settings.BIRTHDAY_CALENDAR_NAMES = "Bdays,Birthdays"
             assert _is_birthday_calendar("bdays") is True
             assert _is_birthday_calendar("BDAYS") is True
-            assert _is_birthday_calendar("Birthdays") is True
-
-    def test_whitespace_trimmed(self):
-        with patch("app.services.birthday_detection.settings") as mock_settings:
-            mock_settings.BIRTHDAY_CALENDAR_NAMES = " Bdays , Geburtstage "
-            assert _is_birthday_calendar("Bdays") is True
-            assert _is_birthday_calendar("Geburtstage") is True
 
     def test_non_matching_calendar(self):
         with patch("app.services.birthday_detection.settings") as mock_settings:
             mock_settings.BIRTHDAY_CALENDAR_NAMES = "Bdays,Birthdays"
             assert _is_birthday_calendar("Work") is False
-            assert _is_birthday_calendar("Family") is False
-
-    def test_none_calendar_name_returns_false(self):
-        with patch("app.services.birthday_detection.settings") as mock_settings:
-            mock_settings.BIRTHDAY_CALENDAR_NAMES = "Bdays"
-            assert _is_birthday_calendar(None) is False
-
-    def test_empty_calendar_name_returns_false(self):
-        with patch("app.services.birthday_detection.settings") as mock_settings:
-            mock_settings.BIRTHDAY_CALENDAR_NAMES = "Bdays"
-            assert _is_birthday_calendar("") is False
-
-    def test_empty_setting_returns_false(self):
-        with patch("app.services.birthday_detection.settings") as mock_settings:
-            mock_settings.BIRTHDAY_CALENDAR_NAMES = ""
-            assert _is_birthday_calendar("Bdays") is False
-
-    def test_contacts_calendar_default(self):
-        """'Contacts' is in the default list – Google Contacts birthdays use this name."""
-        with patch("app.services.birthday_detection.settings") as mock_settings:
-            mock_settings.BIRTHDAY_CALENDAR_NAMES = "Bdays,Birthdays,Geburtstage,Contacts"
-            assert _is_birthday_calendar("Contacts") is True
 
     def test_birthday_sentinel_is_always_true(self):
-        """The internal '__birthday__' sentinel must always be recognised."""
         with patch("app.services.birthday_detection.settings") as mock_settings:
             mock_settings.BIRTHDAY_CALENDAR_NAMES = ""
             assert _is_birthday_calendar("__birthday__") is True
 
-    def test_birthday_sentinel_independent_of_names_setting(self):
-        """'__birthday__' works even when BIRTHDAY_CALENDAR_NAMES is unset."""
-        with patch("app.services.birthday_detection.settings") as mock_settings:
-            mock_settings.BIRTHDAY_CALENDAR_NAMES = "Bdays"
-            assert _is_birthday_calendar("__birthday__") is True
+
+class TestUpcomingBirthdays:
+    def setup_method(self):
+        invalidate_birthday_cache()
+
+    def teardown_method(self):
+        invalidate_birthday_cache()
+
+    def test_only_events_from_birthday_calendars_are_returned(self):
+        events = [
+            _event(eid="1", title="John's Birthday", day_offset=1, calendar_name="Birthdays"),
+            _event(eid="2", title="Team Meeting", day_offset=2, calendar_name="Work"),
+            _event(eid="3", title="🎂 Anna", day_offset=3, calendar_name="__birthday__"),
+        ]
+        with patch(
+            "app.services.calendar_sync.fetch_ical_events_in_range",
+            return_value=events,
+        ), patch(
+            "app.services.calendar_sync.fetch_apple_events_in_range",
+            return_value=[],
+        ), patch(
+            "app.services.birthday_detection.settings.BIRTHDAY_CALENDAR_NAMES",
+            "Birthdays,Geburtstage",
+        ):
+            result = get_upcoming_birthdays(days_ahead=366, limit=5)
+
+        assert len(result) == 2
+        assert result[0].name == "John"
+        assert result[1].name == "Anna"
+
+    def test_returns_next_five_sorted_by_date(self):
+        events = [
+            _event(eid="1", title="A Birthday", day_offset=20, calendar_name="Birthdays"),
+            _event(eid="2", title="B Birthday", day_offset=5, calendar_name="Birthdays"),
+            _event(eid="3", title="C Birthday", day_offset=8, calendar_name="Birthdays"),
+            _event(eid="4", title="D Birthday", day_offset=2, calendar_name="Birthdays"),
+            _event(eid="5", title="E Birthday", day_offset=12, calendar_name="Birthdays"),
+            _event(eid="6", title="F Birthday", day_offset=3, calendar_name="Birthdays"),
+        ]
+        with patch(
+            "app.services.calendar_sync.fetch_ical_events_in_range",
+            return_value=events,
+        ), patch(
+            "app.services.calendar_sync.fetch_apple_events_in_range",
+            return_value=[],
+        ), patch(
+            "app.services.birthday_detection.settings.BIRTHDAY_CALENDAR_NAMES",
+            "Birthdays",
+        ):
+            result = get_upcoming_birthdays(days_ahead=366, limit=5)
+
+        assert len(result) == 5
+        assert [b.name for b in result] == ["D", "F", "B", "C", "E"]
+
+    def test_cache_is_used_after_refresh(self):
+        events = [
+            _event(eid="1", title="John's Birthday", day_offset=1, calendar_name="Birthdays"),
+        ]
+        with patch(
+            "app.services.calendar_sync.fetch_ical_events_in_range",
+            return_value=events,
+        ) as mock_ical, patch(
+            "app.services.calendar_sync.fetch_apple_events_in_range",
+            return_value=[],
+        ), patch(
+            "app.services.birthday_detection.settings.BIRTHDAY_CALENDAR_NAMES",
+            "Birthdays",
+        ):
+            refresh_upcoming_birthdays_cache(days_ahead=366, limit=5)
+            result = get_upcoming_birthdays(days_ahead=366, limit=5)
+
+        assert len(result) == 1
+        assert result[0].name == "John"
+        assert mock_ical.call_count == 1

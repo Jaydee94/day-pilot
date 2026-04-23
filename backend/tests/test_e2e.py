@@ -892,7 +892,14 @@ class TestUpcomingBirthdaysJourney:
         with patch("app.api.routes.get_upcoming_birthdays", return_value=[]) as mock_fn:
             resp = client.get("/api/birthdays?days_ahead=7")
         assert resp.status_code == 200
-        mock_fn.assert_called_once_with(days_ahead=7)
+        mock_fn.assert_called_once_with(days_ahead=7, limit=5)
+
+    def test_birthdays_endpoint_accepts_limit_param(self, client):
+        """The limit query parameter must be forwarded to the service."""
+        with patch("app.api.routes.get_upcoming_birthdays", return_value=[]) as mock_fn:
+            resp = client.get("/api/birthdays?limit=3")
+        assert resp.status_code == 200
+        mock_fn.assert_called_once_with(days_ahead=366, limit=3)
 
     def test_birthdays_empty_when_no_calendar_events(self, client):
         """When no birthday events exist an empty list is returned."""

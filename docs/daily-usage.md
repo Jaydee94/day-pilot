@@ -83,7 +83,8 @@ The weather data also influences the AI briefing — if it's raining, the AI wil
 
 ### 🎂 Birthdays
 
-If any of your Google Contacts have a birthday today, they're highlighted here. Never forget to send a birthday message again.
+DayPilot shows the next 5 upcoming birthdays based on calendars you marked as birthday calendars in Settings.
+This list looks ahead up to 12 months so upcoming birthdays are visible even when they are not in the next few days.
 
 ---
 
