@@ -8,7 +8,7 @@ import pytest
 
 import pytz
 
-from app.models.schemas import DailySummary, WeatherInfo
+from app.models.schemas import DailySummary, WeatherInfo, TodoItem
 
 
 BERLIN_TZ = pytz.timezone("Europe/Berlin")
@@ -180,10 +180,16 @@ class TestTodosRoute:
         assert resp.status_code == 200
         assert resp.json()["title"] == "Pick up groceries"
 
-    def test_create_todo_service_unavailable(self, client):
-        with patch("app.api.routes.add_google_task", return_value=None):
+    def test_create_todo_service_unavailable(self, client, tmp_path):
+        """When Google Tasks is unavailable the task falls back to local storage."""
+        local_todos_file = str(tmp_path / "local_todos.json")
+        fake_local_todo = TodoItem(id="local-1", title="Broken task", completed=False, source="local")
+        with patch("app.api.routes.add_google_task", return_value=None), patch(
+            "app.api.routes.add_local_todo", return_value=fake_local_todo
+        ):
             resp = client.post("/api/todos", json={"title": "Broken task"})
-        assert resp.status_code == 503
+        assert resp.status_code == 200
+        assert resp.json()["source"] == "local"
 
 
 class TestAIRoutes:

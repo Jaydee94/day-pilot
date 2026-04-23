@@ -65,6 +65,12 @@ class Settings(BaseSettings):
     # Local / internal calendar
     LOCAL_EVENTS_FILE: str = "/app/data/local_events.json"
 
+    # Local / internal todo storage
+    LOCAL_TODOS_FILE: str = "/app/data/local_todos.json"
+
+    # Directory where uploaded Google credentials files are stored
+    GOOGLE_CREDENTIALS_DIR: str = "/app/data/google_credentials"
+
     # Push Notifications (ntfy.sh)
     NTFY_SERVER: str = "https://ntfy.sh"
     NTFY_TOPIC: str = ""

@@ -34,6 +34,11 @@ from app.services.local_calendar import (
     add_local_event,
     delete_local_event,
 )
+from app.services.local_todos import (
+    fetch_local_todos,
+    add_local_todo,
+    delete_local_todo,
+)
 from app.services.weather import fetch_weather
 from app.services.notifications import send_daily_push
 from app.services.ai_summary import get_ai_config, list_models
@@ -126,7 +131,9 @@ def list_events(
 
 @router.get("/todos", summary="List open to-dos")
 def list_todos():
-    return fetch_google_tasks()
+    google_tasks = fetch_google_tasks()
+    local_tasks = fetch_local_todos()
+    return google_tasks + local_tasks
 
 
 @router.get("/weather", summary="Current weather")
@@ -203,11 +210,35 @@ def delete_event(event_id: str):
 
 @router.post("/todos", summary="Create a task")
 def create_todo(payload: CreateTodoRequest):
-    """Add a new task to Google Tasks."""
+    """Add a new task.
+
+    The task is written to Google Tasks when configured; otherwise it falls
+    back to the internal local store so that Quick Capture always succeeds.
+    """
     todo = add_google_task(title=payload.title, due=payload.due)
     if todo:
         return todo
-    raise HTTPException(status_code=503, detail="Could not add task to Google Tasks")
+    # Fall back to the internal local store so users can always create tasks
+    # even without Google Tasks configured.
+    local_todo = add_local_todo(title=payload.title, due=payload.due)
+    return local_todo
+
+
+@router.delete("/todos/{todo_id}", summary="Delete a local task")
+def delete_todo(todo_id: str):
+    """Delete a task from the internal local store.
+
+    Only locally stored tasks (source='local') can be deleted through this
+    endpoint.  Tasks from external providers must be managed in the
+    respective app.
+    """
+    removed = delete_local_todo(todo_id)
+    if not removed:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No local task with id '{todo_id}' found. Only internal tasks can be deleted here.",
+        )
+    return {"status": "deleted", "todo_id": todo_id}
 
 
 @router.get("/ai/config", response_model=AIConfig, summary="Current AI provider configuration")
