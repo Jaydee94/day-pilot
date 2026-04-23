@@ -1,15 +1,16 @@
 import { useState } from 'react'
-import { saveSettings } from '../api.js'
+import { saveSettings, addICalUrl } from '../api.js'
 import { useI18n } from '../i18n.jsx'
 import './SetupWizard.css'
 
-const TOTAL_STEPS = 6
+const TOTAL_STEPS = 7
 
 /**
  * Multi-step first-run setup wizard.
  *
  * Guides the user through configuring general settings, weather, AI,
- * notifications, and CalDAV calendar, then marks setup as complete.
+ * notifications, Google Calendar (iCal), and CalDAV calendar, then marks
+ * setup as complete.
  *
  * @param {{ onComplete: () => void, onLanguageChange?: (lang: string) => void }} props
  */
@@ -34,6 +35,7 @@ export default function SetupWizard({ onComplete, onLanguageChange }) {
     NTFY_SERVER: 'https://ntfy.sh',
     NTFY_TOPIC: '',
     NTFY_TOKEN: '',
+    ICAL_URL: '',
     CALDAV_URL: '',
     CALDAV_USERNAME: '',
     CALDAV_PASSWORD: '',
@@ -47,10 +49,22 @@ export default function SetupWizard({ onComplete, onLanguageChange }) {
     setSaving(true)
     setError(null)
     try {
-      const payload = { ...form, ...extraUpdates }
+      // ICAL_URL is managed via the dedicated iCal URL API, not via saveSettings.
+      // Extract it before building the settings payload.
+      const { ICAL_URL, ...rest } = form
+      const payload = { ...rest, ...extraUpdates }
       await saveSettings(payload)
       if (onLanguageChange) {
         onLanguageChange(payload.APP_LANGUAGE === 'de' ? 'de' : 'en')
+      }
+      // Persist the iCal URL if one was entered.
+      if (ICAL_URL && ICAL_URL.trim()) {
+        try {
+          await addICalUrl(ICAL_URL.trim())
+        } catch (icalErr) {
+          // Non-fatal: user can add it later in Settings → iCal Calendar.
+          console.error('Failed to add iCal URL during setup:', icalErr)
+        }
       }
     } catch (err) {
       setError(t('setupSaveError'))
@@ -133,7 +147,8 @@ export default function SetupWizard({ onComplete, onLanguageChange }) {
           {step === 2 && <StepWeather form={form} set={set} t={t} />}
           {step === 3 && <StepAI form={form} set={set} t={t} />}
           {step === 4 && <StepNotifications form={form} set={set} t={t} />}
-          {step === 5 && <StepCalendar form={form} set={set} t={t} />}
+          {step === 5 && <StepGoogleCalendar form={form} set={set} t={t} />}
+          {step === 6 && <StepCalendar form={form} set={set} t={t} />}
           {step === TOTAL_STEPS && <StepDone onComplete={handleComplete} saving={saving} t={t} />}
         </div>
 
@@ -350,6 +365,32 @@ function StepNotifications({ form, set, t }) {
           onChange={v => set('NTFY_TOKEN', v)}
         />
       </div>
+    </div>
+  )
+}
+
+function StepGoogleCalendar({ form, set, t }) {
+  return (
+    <div className="wizard-step">
+      <div className="wizard-step__icon">📅</div>
+      <h2 className="wizard-step__title">{t('setupGoogleCalendarTitle')}</h2>
+      <p className="wizard-step__desc">
+        {t('setupGoogleCalendarDesc')}
+      </p>
+      <ol className="wizard-step__guide">
+        <li>{t('setupGoogleCalendarStep1')}</li>
+        <li>{t('setupGoogleCalendarStep2')}</li>
+        <li>{t('setupGoogleCalendarStep3')}</li>
+      </ol>
+      <div className="wizard-step__fields">
+        <Field
+          label={t('setupGoogleCalendarUrlLabel')}
+          hint={t('setupGoogleCalendarUrlHint')}
+          value={form.ICAL_URL}
+          onChange={v => set('ICAL_URL', v)}
+        />
+      </div>
+      <p className="wizard-step__skip-hint">{t('setupGoogleCalendarSkipHint')}</p>
     </div>
   )
 }
