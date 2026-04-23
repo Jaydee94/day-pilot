@@ -643,11 +643,12 @@ function AIProviderSection({ values, onChange, onTest, connectionState, t }) {
 function ICalCalendarSection({ icon, values, onChange, onTest, connectionState, t }) {
   const [urls, setUrls] = useState([])
   const [newUrl, setNewUrl] = useState('')
-  const [newIsBirthday, setNewIsBirthday] = useState(false)
+  const [newFeedIsBirthday, setNewFeedIsBirthday] = useState(false)
   const [adding, setAdding] = useState(false)
   const [addError, setAddError] = useState(null)
   const [deleting, setDeleting] = useState(null)
   const [toggling, setToggling] = useState(null)
+  const [toggleError, setToggleError] = useState(null)
   const [showGuide, setShowGuide] = useState(false)
 
   useEffect(() => {
@@ -662,12 +663,12 @@ function ICalCalendarSection({ icon, values, onChange, onTest, connectionState, 
     setAdding(true)
     setAddError(null)
     try {
-      await addICalUrl(newUrl.trim(), newIsBirthday)
+      await addICalUrl(newUrl.trim(), newFeedIsBirthday)
       const updated = await fetchICalUrls()
       setUrls(updated)
       onChange('ICAL_URLS', updated.map(u => u.url).join(','))
       setNewUrl('')
-      setNewIsBirthday(false)
+      setNewFeedIsBirthday(false)
     } catch (err) {
       setAddError(err.message)
     } finally {
@@ -691,12 +692,13 @@ function ICalCalendarSection({ icon, values, onChange, onTest, connectionState, 
 
   async function handleToggleBirthday(entry) {
     setToggling(entry.index)
+    setToggleError(null)
     try {
       await patchICalFeed(entry.index, { is_birthday: !entry.is_birthday })
       const updated = await fetchICalUrls()
       setUrls(updated)
     } catch (_) {
-      // ignore
+      setToggleError(t('iCalFeedToggleError') || 'Unable to update feed. Please try again.')
     } finally {
       setToggling(null)
     }
@@ -806,6 +808,9 @@ function ICalCalendarSection({ icon, values, onChange, onTest, connectionState, 
             <p className="settings-field__desc">
               {t('iCalFeedIsBirthdayHint') || 'Toggle 🎂 to mark a feed as a birthday calendar — every event from that feed will be treated as a birthday.'}
             </p>
+            {toggleError && (
+              <p className="settings-test-result settings-test-result--error" role="alert">{toggleError}</p>
+            )}
           </div>
         )}
 
@@ -831,8 +836,8 @@ function ICalCalendarSection({ icon, values, onChange, onTest, connectionState, 
               <input
                 type="checkbox"
                 className="settings-birthday-toggle__input"
-                checked={newIsBirthday}
-                onChange={e => setNewIsBirthday(e.target.checked)}
+                checked={newFeedIsBirthday}
+                onChange={e => setNewFeedIsBirthday(e.target.checked)}
                 disabled={adding}
                 aria-label={t('iCalFeedIsBirthdayToggle') || 'Birthday calendar'}
               />

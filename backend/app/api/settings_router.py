@@ -26,6 +26,8 @@ import pytz
 from app.config import settings as app_settings
 from app.models.schemas import (
     CalDAVAccount,
+    ICalFeedAddRequest,
+    ICalFeedPatchRequest,
     IntegrationTestRequest,
     IntegrationTestResult,
     SetupStatus,
@@ -405,20 +407,20 @@ def list_ical_urls() -> List[dict]:
     "/settings/ical-urls",
     summary="Add an iCal feed URL",
 )
-def add_ical_url(payload: dict) -> dict:
+def add_ical_url(payload: ICalFeedAddRequest) -> dict:
     """Add a new iCal feed URL.
 
     Expects a JSON body with a ``url`` field and an optional ``is_birthday``
     boolean, e.g.:
     ``{"url": "https://calendar.google.com/calendar/ical/…/basic.ics", "is_birthday": false}``
     """
-    url = (payload.get("url") or "").strip()
+    url = payload.url.strip()
     if not url:
         raise HTTPException(status_code=400, detail="'url' field is required")
     if not url.startswith(("http://", "https://")):
         raise HTTPException(status_code=400, detail="URL must start with http:// or https://")
 
-    is_birthday = bool(payload.get("is_birthday", False))
+    is_birthday = payload.is_birthday
 
     feeds = _parse_ical_feeds()
     existing_urls = [f["url"] for f in feeds]
@@ -438,7 +440,7 @@ def add_ical_url(payload: dict) -> dict:
     "/settings/ical-urls/{index}",
     summary="Update an iCal feed (e.g. toggle birthday flag)",
 )
-def patch_ical_url(index: int, payload: dict) -> dict:
+def patch_ical_url(index: int, payload: ICalFeedPatchRequest) -> dict:
     """Update properties of an existing iCal feed entry by its zero-based index.
 
     Currently supports updating the ``is_birthday`` flag:
@@ -448,8 +450,8 @@ def patch_ical_url(index: int, payload: dict) -> dict:
     if index < 0 or index >= len(feeds):
         raise HTTPException(status_code=404, detail=f"No iCal feed at index {index}")
 
-    if "is_birthday" in payload:
-        feeds[index]["is_birthday"] = bool(payload["is_birthday"])
+    if payload.is_birthday is not None:
+        feeds[index]["is_birthday"] = payload.is_birthday
 
     try:
         _save_ical_feeds(feeds)

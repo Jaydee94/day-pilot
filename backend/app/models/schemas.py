@@ -195,6 +195,19 @@ class IntegrationTestRequest(BaseModel):
     overrides: Optional[UserSettings] = None
 
 
+class ICalFeedAddRequest(BaseModel):
+    """Payload for adding a new iCal feed URL."""
+
+    url: str
+    is_birthday: bool = False
+
+
+class ICalFeedPatchRequest(BaseModel):
+    """Payload for updating an existing iCal feed entry (e.g. toggling the birthday flag)."""
+
+    is_birthday: Optional[bool] = None
+
+
 class IntegrationTestResult(BaseModel):
     """Result of a single integration connection test."""
 
