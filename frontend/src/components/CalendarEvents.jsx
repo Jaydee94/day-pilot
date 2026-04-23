@@ -30,7 +30,8 @@ const SOURCE_LABEL = {
   apple: { label: 'Apple', color: '#A3AAAE' },
 }
 
-export default function CalendarEvents({ events }) {
+/** @param {{ events: Array, onDeleteEvent?: (id: string) => void }} props */
+export default function CalendarEvents({ events, onDeleteEvent }) {
   const { t, locale } = useI18n()
 
   return (
@@ -47,6 +48,7 @@ export default function CalendarEvents({ events }) {
           {events.map((ev) => {
             const src = SOURCE_LABEL[ev.source] || { label: ev.source, color: '#888' }
             const countdown = formatCountdown(ev.start, ev.end, t)
+            const canDelete = ev.source === 'local' && typeof onDeleteEvent === 'function'
             return (
               <li key={ev.id} className="cal-events__item">
                 <div className="cal-events__time">
@@ -71,6 +73,17 @@ export default function CalendarEvents({ events }) {
                   >
                     {src.label}
                   </span>
+                  {canDelete && (
+                    <button
+                      type="button"
+                      className="cal-events__delete"
+                      onClick={() => onDeleteEvent(ev.id)}
+                      aria-label={t('deleteEvent')}
+                      title={t('deleteEvent')}
+                    >
+                      <AppIcon name="trash" className="cal-events__delete-icon" />
+                    </button>
+                  )}
                 </div>
               </li>
             )

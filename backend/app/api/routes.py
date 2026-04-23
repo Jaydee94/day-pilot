@@ -26,6 +26,7 @@ from app.services.calendar_sync import (
     add_apple_event,
     get_last_calendar_sync,
 )
+from app.services.birthday_detection import get_upcoming_birthdays
 from app.services.local_calendar import (
     fetch_local_events,
     add_local_event,
@@ -138,9 +139,16 @@ def get_weather():
     return weather
 
 
-@router.get("/birthdays", summary="Today's birthdays")
-def list_birthdays():
-    return []
+@router.get("/birthdays", summary="Upcoming birthdays")
+def list_birthdays(
+    days_ahead: int = Query(14, ge=0, le=90, description="How many days ahead to scan for birthdays")
+):
+    """Return birthday events detected in calendar data for the next *days_ahead* days.
+
+    Detection uses keyword matching first, then AI classification (with
+    persistent in-memory caching) for uncertain cases.
+    """
+    return get_upcoming_birthdays(days_ahead=days_ahead)
 
 
 @router.post("/events", summary="Create a calendar event")
