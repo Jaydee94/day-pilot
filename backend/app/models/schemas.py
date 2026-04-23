@@ -147,6 +147,8 @@ class UserSettings(BaseModel):
     WEATHERAPI_API_KEY: Optional[str] = None
     WEATHER_CITY: Optional[str] = None
     WEATHER_UNITS: Optional[str] = None
+    GOOGLE_CREDENTIALS_JSON: Optional[str] = None
+    GOOGLE_TOKEN_JSON: Optional[str] = None
     CALDAV_URL: Optional[str] = None
     CALDAV_USERNAME: Optional[str] = None
     CALDAV_PASSWORD: Optional[str] = None

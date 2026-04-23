@@ -18,6 +18,7 @@ const GROUP_TITLE_KEYS = {
   General: 'settingsGroupGeneral',
   Weather: 'settingsGroupWeather',
   'Push Notifications (ntfy)': 'settingsGroupNotifications',
+  'Google Calendar': 'settingsGroupGoogleCalendar',
   'Apple Calendar (iCloud)': 'settingsGroupAppleCalendar',
   'Voice Control': 'settingsGroupVoiceControl',
 }
@@ -33,6 +34,8 @@ const FIELD_LABEL_KEYS = {
   NTFY_SERVER: 'settingsFieldNtfyServer',
   NTFY_TOPIC: 'settingsFieldTopic',
   NTFY_TOKEN: 'settingsFieldTokenOptional',
+  GOOGLE_CREDENTIALS_JSON: 'settingsFieldGoogleCredentialsJson',
+  GOOGLE_TOKEN_JSON: 'settingsFieldGoogleTokenJson',
   CALDAV_URL: 'settingsFieldCaldavUrl',
   CALDAV_USERNAME: 'settingsFieldUsername',
   CALDAV_PASSWORD: 'settingsFieldAppSpecificPassword',
@@ -51,6 +54,8 @@ const FIELD_DESC_KEYS = {
   NTFY_SERVER: 'settingsFieldNtfyServerDesc',
   NTFY_TOPIC: 'settingsFieldTopicDesc',
   NTFY_TOKEN: 'settingsFieldTokenOptionalDesc',
+  GOOGLE_CREDENTIALS_JSON: 'settingsFieldGoogleCredentialsJsonDesc',
+  GOOGLE_TOKEN_JSON: 'settingsFieldGoogleTokenJsonDesc',
   CALDAV_URL: 'settingsFieldCaldavUrlDesc',
   CALDAV_USERNAME: 'settingsFieldUsernameDesc',
   CALDAV_PASSWORD: 'settingsFieldAppSpecificPasswordDesc',
@@ -134,6 +139,15 @@ const SETTING_GROUPS = [
       { key: 'NTFY_SERVER', label: 'ntfy server', desc: 'e.g. https://ntfy.sh', type: 'text' },
       { key: 'NTFY_TOPIC', label: 'Topic', desc: 'Your ntfy topic name', type: 'text' },
       { key: 'NTFY_TOKEN', label: 'Token (optional)', desc: 'Bearer token for private topics', type: 'password' },
+    ],
+  },
+  {
+    group: 'Google Calendar',
+    icon: 'calendar',
+    integration: 'google_calendar',
+    items: [
+      { key: 'GOOGLE_CREDENTIALS_JSON', label: 'Credentials file path', desc: 'Path to your OAuth2 credentials.json file on the server', type: 'text' },
+      { key: 'GOOGLE_TOKEN_JSON', label: 'Token file path', desc: 'Path where the OAuth2 token is stored', type: 'text' },
     ],
   },
   {
@@ -398,33 +412,14 @@ export default function SettingsPage({ onLanguageChange }) {
         ))}
       </div>
 
-      {/* Google Calendar note */}
+      {/* Google Calendar setup info */}
       <div className="settings-note card">
-        <div className="settings-group__head">
-          <h3 className="settings-group__title">
-            <span className="settings-group__icon"><AppIcon name="pin" className="icon" /></span>
-            {t('settingsGoogleCalendarTitle')}
-          </h3>
-          <button
-            type="button"
-            className="settings-test-btn"
-            onClick={() => handleTestConnection('google_calendar')}
-            disabled={connectionStates.google_calendar?.loading}
-            aria-label={t('testConnection')}
-          >
-            {connectionStates.google_calendar?.loading ? t('testingConnection') : t('testConnection')}
-          </button>
-        </div>
-        {connectionStates.google_calendar?.message && (
-          <p
-            className={`settings-test-result ${connectionStates.google_calendar?.ok ? 'settings-test-result--success' : 'settings-test-result--error'}`}
-            role="status"
-          >
-            {connectionStates.google_calendar?.ok ? t('connected') : t('notConnected')}: {connectionStates.google_calendar?.message}
-          </p>
-        )}
+        <h3 className="settings-group__title">
+          <span className="settings-group__icon"><AppIcon name="pin" className="icon" /></span>
+          {t('settingsGoogleCalendarTitle')}
+        </h3>
         <p className="settings-note__text">
-          {t('settingsGoogleCalendarNote1')} <code>credentials.json</code> {t('settingsGoogleCalendarNote2')} <code>./data/</code> {t('settingsGoogleCalendarNote3')} <code>GOOGLE_CREDENTIALS_JSON</code> {t('settingsGoogleCalendarNote4')} <code>.env</code> {t('settingsGoogleCalendarNote5')}
+          {t('settingsGoogleCalendarSetupNote')}
         </p>
         <p className="settings-note__text">
           {t('settingsGoogleCalendarMultiNote')}
