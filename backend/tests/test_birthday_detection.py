@@ -1,10 +1,12 @@
 """Unit tests for birthday detection keyword matching and name extraction."""
 import pytest
+from unittest.mock import patch
 
 from app.services.birthday_detection import (
     _matches_keyword,
     _extract_name,
     _extract_age_from_title,
+    _is_birthday_calendar,
 )
 
 
@@ -116,3 +118,56 @@ class TestExtractAgeFromTitle:
 
     def test_no_age_returns_none(self):
         assert _extract_age_from_title("John's Birthday") is None
+
+
+# ---------------------------------------------------------------------------
+# _is_birthday_calendar
+# ---------------------------------------------------------------------------
+
+class TestIsBirthdayCalendar:
+    """Calendar-name matching should be case-insensitive and respect the setting."""
+
+    def test_exact_match(self):
+        with patch("app.services.birthday_detection.settings") as mock_settings:
+            mock_settings.BIRTHDAY_CALENDAR_NAMES = "Bdays,Birthdays"
+            assert _is_birthday_calendar("Bdays") is True
+
+    def test_case_insensitive_match(self):
+        with patch("app.services.birthday_detection.settings") as mock_settings:
+            mock_settings.BIRTHDAY_CALENDAR_NAMES = "Bdays,Birthdays"
+            assert _is_birthday_calendar("bdays") is True
+            assert _is_birthday_calendar("BDAYS") is True
+            assert _is_birthday_calendar("Birthdays") is True
+
+    def test_whitespace_trimmed(self):
+        with patch("app.services.birthday_detection.settings") as mock_settings:
+            mock_settings.BIRTHDAY_CALENDAR_NAMES = " Bdays , Geburtstage "
+            assert _is_birthday_calendar("Bdays") is True
+            assert _is_birthday_calendar("Geburtstage") is True
+
+    def test_non_matching_calendar(self):
+        with patch("app.services.birthday_detection.settings") as mock_settings:
+            mock_settings.BIRTHDAY_CALENDAR_NAMES = "Bdays,Birthdays"
+            assert _is_birthday_calendar("Work") is False
+            assert _is_birthday_calendar("Family") is False
+
+    def test_none_calendar_name_returns_false(self):
+        with patch("app.services.birthday_detection.settings") as mock_settings:
+            mock_settings.BIRTHDAY_CALENDAR_NAMES = "Bdays"
+            assert _is_birthday_calendar(None) is False
+
+    def test_empty_calendar_name_returns_false(self):
+        with patch("app.services.birthday_detection.settings") as mock_settings:
+            mock_settings.BIRTHDAY_CALENDAR_NAMES = "Bdays"
+            assert _is_birthday_calendar("") is False
+
+    def test_empty_setting_returns_false(self):
+        with patch("app.services.birthday_detection.settings") as mock_settings:
+            mock_settings.BIRTHDAY_CALENDAR_NAMES = ""
+            assert _is_birthday_calendar("Bdays") is False
+
+    def test_contacts_calendar_default(self):
+        """'Contacts' is in the default list – Google Contacts birthdays use this name."""
+        with patch("app.services.birthday_detection.settings") as mock_settings:
+            mock_settings.BIRTHDAY_CALENDAR_NAMES = "Bdays,Birthdays,Geburtstage,Contacts"
+            assert _is_birthday_calendar("Contacts") is True

@@ -10,7 +10,8 @@ class CalendarEvent(BaseModel):
     end: datetime
     location: Optional[str] = None
     description: Optional[str] = None
-    source: str  # "google" | "apple"
+    source: str  # "ical" | "apple" | "local"
+    calendar_name: Optional[str] = None  # e.g. "Bdays", "Work", …
 
 
 class TodoItem(BaseModel):
@@ -156,6 +157,8 @@ class UserSettings(BaseModel):
     WEATHER_CITY: Optional[str] = None
     WEATHER_UNITS: Optional[str] = None
     ICAL_URLS: Optional[str] = None
+    # Comma-separated list of calendar names treated as birthday-only calendars.
+    BIRTHDAY_CALENDAR_NAMES: Optional[str] = None
     CALDAV_URL: Optional[str] = None
     CALDAV_USERNAME: Optional[str] = None
     CALDAV_PASSWORD: Optional[str] = None

@@ -5,6 +5,10 @@
   min-height: 1.5rem;
 }
 
+.upcoming-birthdays__loading {
+  opacity: 0.45;
+}
+
 .upcoming-birthdays__list {
   list-style: none;
   display: flex;

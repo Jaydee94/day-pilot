@@ -49,7 +49,9 @@ export default function UpcomingBirthdays() {
       </div>
 
       {loading ? (
-        <div className="upcoming-birthdays__empty" aria-busy="true" aria-label={t('upcomingBirthdays')} />
+        <p className="upcoming-birthdays__empty upcoming-birthdays__loading" aria-busy="true">
+          {'…'}
+        </p>
       ) : displayed.length === 0 ? (
         <p className="upcoming-birthdays__empty">{t('noUpcomingBirthdays')}</p>
       ) : (
