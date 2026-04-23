@@ -721,12 +721,32 @@ class TestGoogleCredentialsManagementJourney:
              patch("app.services.settings_store.SETTINGS_FILE", settings_file):
             resp = client.post(
                 "/api/settings/google-credentials/upload",
-                files={"file": ("credentials.json", b'{"installed":{}}', "application/json")},
+                files={"file": ("credentials.json", b'{"installed":{"client_id":"x"}}', "application/json")},
             )
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "uploaded"
         assert data["filename"] == "credentials.json"
+
+    def test_upload_rejects_non_json_file(self, client, tmp_path):
+        creds_dir = str(tmp_path / "creds")
+        with patch("app.api.settings_router.app_settings.GOOGLE_CREDENTIALS_DIR", creds_dir), \
+             patch("app.api.settings_router.app_settings.GOOGLE_CREDENTIALS_JSON", ""):
+            resp = client.post(
+                "/api/settings/google-credentials/upload",
+                files={"file": ("credentials.txt", b"not json", "text/plain")},
+            )
+        assert resp.status_code == 400
+
+    def test_upload_rejects_invalid_json_content(self, client, tmp_path):
+        creds_dir = str(tmp_path / "creds")
+        with patch("app.api.settings_router.app_settings.GOOGLE_CREDENTIALS_DIR", creds_dir), \
+             patch("app.api.settings_router.app_settings.GOOGLE_CREDENTIALS_JSON", ""):
+            resp = client.post(
+                "/api/settings/google-credentials/upload",
+                files={"file": ("bad.json", b"this is not json", "application/json")},
+            )
+        assert resp.status_code == 400
 
     def test_delete_credentials_entry(self, client, tmp_path):
         creds_file = tmp_path / "credentials.json"

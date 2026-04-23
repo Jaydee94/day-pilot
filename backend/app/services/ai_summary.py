@@ -11,7 +11,7 @@ The model to use is read from ``AI_MODEL``.  When ``AI_MODEL`` is empty the
 service falls back to the provider-specific default defined in ``_PROVIDER_DEFAULTS``.
 """
 import logging
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 try:
     from openai import OpenAI
@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 # restarts or when the scheduler's daily pipeline explicitly invalidates it
 # before generating the fresh morning briefing.
 # ---------------------------------------------------------------------------
-_ai_summary_cache: dict = {}
+_ai_summary_cache: Dict[str, Dict[str, Any]] = {}
 
 
 def invalidate_ai_cache(date_key: Optional[str] = None) -> None:

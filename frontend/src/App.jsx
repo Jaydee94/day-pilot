@@ -51,9 +51,11 @@ function AppContent({ setLanguage }) {
 
   useEffect(() => {
     fetchSummary()
-    // Auto-refresh every 60 minutes. The AI summary is cached on the backend
-    // (one call per day), so frequent refreshes here are cheap and only
-    // re-fetch calendar/weather data, not a new AI generation.
+    // Auto-refresh every 60 minutes to keep the Today page reasonably fresh.
+    // More frequent refreshes are NOT needed here because:
+    //  - Calendar and Tasks pages fetch their own data directly (no AI)
+    //  - The AI briefing is cached per day on the backend (one AI call per day)
+    //  - Weather and event data changes slowly enough that 60 min is acceptable
     const interval = setInterval(fetchSummary, 60 * 60 * 1000)
     return () => clearInterval(interval)
   }, [fetchSummary])

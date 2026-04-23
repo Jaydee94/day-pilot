@@ -16,7 +16,6 @@ DELETE /api/settings/caldav-accounts/{index} – remove a CalDAV account
 import json
 import logging
 import os
-import shutil
 from contextlib import contextmanager
 from datetime import datetime
 from typing import Any, Dict, Iterator, List
@@ -357,13 +356,31 @@ async def upload_google_credentials(file: UploadFile = File(...)) -> dict:
     if not safe_filename or safe_filename in {".", ".."}:
         raise HTTPException(status_code=400, detail="Invalid filename")
 
+    # Only accept .json files
+    if not safe_filename.lower().endswith(".json"):
+        raise HTTPException(
+            status_code=400,
+            detail="Only JSON files (.json) are accepted as Google credentials",
+        )
+
     creds_dir = app_settings.GOOGLE_CREDENTIALS_DIR
     os.makedirs(creds_dir, exist_ok=True)
 
     dest_path = os.path.join(creds_dir, safe_filename)
+
+    # Read and validate the file is parseable JSON before saving
+    try:
+        raw_content = await file.read()
+        json.loads(raw_content)  # raises ValueError if not valid JSON
+    except (ValueError, Exception) as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File is not valid JSON: {exc}",
+        ) from exc
+
     try:
         with open(dest_path, "wb") as fh:
-            shutil.copyfileobj(file.file, fh)
+            fh.write(raw_content)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to save file: {exc}") from exc
 
@@ -494,7 +511,12 @@ def list_caldav_accounts() -> List[dict]:
     summary="Add a CalDAV account",
 )
 def add_caldav_account(account: CalDAVAccount) -> dict:
-    """Add a new CalDAV / Apple Calendar account."""
+    """Add a new CalDAV / Apple Calendar account.
+
+    Note: The password is stored in plaintext in the settings file.  For a
+    home-server deployment ensure that the settings file is readable only by
+    the application user (e.g. ``chmod 600 settings.json``).
+    """
     accounts = _parse_caldav_accounts()
     new_entry = {"url": account.url, "username": account.username or "", "password": account.password or ""}
     accounts.append(new_entry)
