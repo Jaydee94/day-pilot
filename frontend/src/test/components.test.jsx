@@ -7,6 +7,7 @@ import TodoList from '../components/TodoList.jsx'
 import Birthdays from '../components/Birthdays.jsx'
 import AISummary from '../components/AISummary.jsx'
 import DailySummary from '../components/DailySummary.jsx'
+import TodayDoableCard from '../components/TodayDoableCard.jsx'
 
 vi.mock('../api.js', () => ({
   fetchBirthdays: vi.fn().mockResolvedValue([]),
@@ -245,6 +246,23 @@ describe('AISummary', () => {
   })
 })
 
+
+// ---- TodayDoableCard ----
+describe('TodayDoableCard', () => {
+  it('renders exactly three actionable suggestions', () => {
+    render(<TodayDoableCard events={mockEvents} todos={mockTodos} weather={mockWeather} />)
+    const items = screen.getAllByRole('listitem')
+    expect(items).toHaveLength(3)
+  })
+
+  it('shows energy chips', () => {
+    render(<TodayDoableCard events={mockEvents} todos={mockTodos} weather={mockWeather} />)
+    expect(screen.getByRole('button', { name: 'Focused' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Steady' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Light' })).toBeInTheDocument()
+  })
+})
+
 // ---- DailySummary (integration) ----
 describe('DailySummary', () => {
   it('renders date', () => {
@@ -256,9 +274,9 @@ describe('DailySummary', () => {
   it('renders all sections', () => {
     render(withRouter(<DailySummary summary={mockSummary} />))
     expect(screen.getByText(/DayPilot Briefing/i)).toBeInTheDocument()
-    expect(screen.getByText(/Weather/i)).toBeInTheDocument()
-    expect(screen.getByText(/Events/i)).toBeInTheDocument()
-    expect(screen.getByText(/Tasks/i)).toBeInTheDocument()
+    expect(screen.getByText(/Weather\s+-\s+Berlin/i)).toBeInTheDocument()
+    expect(screen.getByText(/Events \(2\)/i)).toBeInTheDocument()
+    expect(screen.getByText(/Tasks \(1 open\)/i)).toBeInTheDocument()
     expect(screen.getByText(/Birthdays Today/i)).toBeInTheDocument()
     expect(screen.getByText(/Upcoming Birthdays/i)).toBeInTheDocument()
   })
