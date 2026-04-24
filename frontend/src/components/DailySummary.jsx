@@ -4,6 +4,7 @@ import TodoList from './TodoList.jsx'
 import Birthdays from './Birthdays.jsx'
 import UpcomingBirthdays from './UpcomingBirthdays.jsx'
 import AISummary from './AISummary.jsx'
+import TodayDoableCard from './TodayDoableCard.jsx'
 import { useI18n } from '../i18n.jsx'
 import './DailySummary.css'
 
@@ -32,6 +33,13 @@ export default function DailySummary({ summary, onDeleteEvent }) {
           priorities={summary.top_priorities}
         />
       )}
+
+
+      <TodayDoableCard
+        events={summary.events || []}
+        todos={summary.todos || []}
+        weather={summary.weather || null}
+      />
 
       {/* Grid: weather + today's birthdays */}
       <div className="daily-summary__row">
