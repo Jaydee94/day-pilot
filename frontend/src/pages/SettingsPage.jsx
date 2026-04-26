@@ -52,6 +52,7 @@ const FIELD_LABEL_KEYS = {
   CALDAV_PASSWORD: 'settingsFieldAppSpecificPassword',
   CALDAV_CONFIGS: 'settingsCaldavConfigsLabel',
   VOICE_WEBHOOK_SECRET: 'settingsFieldWebhookSecret',
+  FAMILY_MEMBERS: 'familyMembers',
 }
 
 const FIELD_DESC_KEYS = {
@@ -72,6 +73,7 @@ const FIELD_DESC_KEYS = {
   CALDAV_PASSWORD: 'settingsFieldAppSpecificPasswordDesc',
   CALDAV_CONFIGS: 'settingsCaldavConfigsDesc',
   VOICE_WEBHOOK_SECRET: 'settingsFieldWebhookSecretDesc',
+  FAMILY_MEMBERS: 'familyMembersDesc',
 }
 
 function localizeField(t, field) {
@@ -121,7 +123,7 @@ const SETTING_GROUPS = [
         ],
       },
       { key: 'DAILY_SUMMARY_TIME', label: 'Daily briefing time', desc: 'HH:MM – when the morning summary is generated', type: 'time' },
-      { key: 'FAMILY_MEMBERS', label: t('familyMembers'), desc: t('familyMembersDesc'), type: 'text' },
+      { key: 'FAMILY_MEMBERS', label: 'Family Members', desc: 'Comma-separated names, e.g. Anna,Ben,Clara', type: 'text' },
     ],
   },
   {

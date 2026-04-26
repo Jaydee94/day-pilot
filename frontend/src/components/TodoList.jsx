@@ -15,8 +15,8 @@ export default function TodoList({ todos, onComplete }) {
     9: { label: t('priorityLow'), color: 'var(--success)' },
   }
 
-  const open = todos.filter((t) => !t.completed)
-  const done = todos.filter((t) => t.completed)
+  const open = todos.filter((todo) => !todo.completed)
+  const done = todos.filter((todo) => todo.completed)
 
   return (
     <div className="todo-list card">
