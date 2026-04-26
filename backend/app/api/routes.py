@@ -225,7 +225,7 @@ def delete_event(event_id: str):
 @router.post("/todos", summary="Create a task")
 def create_todo(payload: CreateTodoRequest):
     """Add a new task to the internal local store."""
-    local_todo = add_local_todo(title=payload.title, due=payload.due)
+    local_todo = add_local_todo(title=payload.title, due=payload.due, recurrence=payload.recurrence)
     return local_todo
 
 

@@ -228,6 +228,91 @@ class TestTodosRoute:
         assert resp.status_code == 404
 
 
+class TestRecurringTodos:
+    def test_create_todo_with_recurrence(self, client, tmp_path):
+        local_todos_file = str(tmp_path / "local_todos.json")
+        with patch("app.config.settings.LOCAL_TODOS_FILE", local_todos_file), \
+             patch("app.services.local_todos.settings.LOCAL_TODOS_FILE", local_todos_file):
+            resp = client.post("/api/todos", json={
+                "title": "Daily standup",
+                "due": "2026-05-01T09:00:00",
+                "recurrence": "daily",
+            })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["recurrence"] == "daily"
+        assert data["title"] == "Daily standup"
+
+    def test_completing_daily_todo_creates_next_instance(self, client, tmp_path):
+        local_todos_file = str(tmp_path / "local_todos.json")
+        with patch("app.config.settings.LOCAL_TODOS_FILE", local_todos_file), \
+             patch("app.services.local_todos.settings.LOCAL_TODOS_FILE", local_todos_file):
+            create_resp = client.post("/api/todos", json={
+                "title": "Morning run",
+                "due": "2026-05-01T07:00:00",
+                "recurrence": "daily",
+            })
+            assert create_resp.status_code == 200
+            todo_id = create_resp.json()["id"]
+
+            complete_resp = client.patch(f"/api/todos/{todo_id}/complete")
+            assert complete_resp.status_code == 200
+
+            list_resp = client.get("/api/todos")
+            titles = [t["title"] for t in list_resp.json()]
+            # The next instance must appear
+            assert "Morning run" in titles
+            # Verify it has next due (2026-05-02)
+            next_todo = next(t for t in list_resp.json() if t["title"] == "Morning run")
+            assert "2026-05-02" in next_todo["due"]
+
+    def test_completing_weekly_todo_advances_by_7_days(self, client, tmp_path):
+        local_todos_file = str(tmp_path / "local_todos.json")
+        with patch("app.config.settings.LOCAL_TODOS_FILE", local_todos_file), \
+             patch("app.services.local_todos.settings.LOCAL_TODOS_FILE", local_todos_file):
+            create_resp = client.post("/api/todos", json={
+                "title": "Weekly review",
+                "due": "2026-05-04T10:00:00",
+                "recurrence": "weekly",
+            })
+            todo_id = create_resp.json()["id"]
+            client.patch(f"/api/todos/{todo_id}/complete")
+
+            list_resp = client.get("/api/todos")
+            next_todo = next(t for t in list_resp.json() if t["title"] == "Weekly review")
+            # 2026-05-04 + 7 days = 2026-05-11
+            assert "2026-05-11" in next_todo["due"]
+
+    def test_completing_todo_without_due_does_not_create_next(self, client, tmp_path):
+        local_todos_file = str(tmp_path / "local_todos.json")
+        with patch("app.config.settings.LOCAL_TODOS_FILE", local_todos_file), \
+             patch("app.services.local_todos.settings.LOCAL_TODOS_FILE", local_todos_file):
+            create_resp = client.post("/api/todos", json={
+                "title": "No due recurrence",
+                "recurrence": "daily",
+            })
+            todo_id = create_resp.json()["id"]
+            client.patch(f"/api/todos/{todo_id}/complete")
+
+            list_resp = client.get("/api/todos")
+            # No next instance because there was no due date
+            assert list_resp.json() == []
+
+    def test_completing_non_recurring_todo_no_next_instance(self, client, tmp_path):
+        local_todos_file = str(tmp_path / "local_todos.json")
+        with patch("app.config.settings.LOCAL_TODOS_FILE", local_todos_file), \
+             patch("app.services.local_todos.settings.LOCAL_TODOS_FILE", local_todos_file):
+            create_resp = client.post("/api/todos", json={
+                "title": "One-off task",
+                "due": "2026-05-01T09:00:00",
+            })
+            todo_id = create_resp.json()["id"]
+            client.patch(f"/api/todos/{todo_id}/complete")
+
+            list_resp = client.get("/api/todos")
+            assert list_resp.json() == []
+
+
 class TestAIRoutes:
     def test_get_ai_config(self, client):
         from app.models.schemas import AIConfig

@@ -37,6 +37,7 @@ export default function QuickAddButton({ onSuccess, defaultTab = 'Event' }) {
   // Task form state
   const [taskTitle, setTaskTitle] = useState('')
   const [taskDue, setTaskDue] = useState('')
+  const [taskRecurrence, setTaskRecurrence] = useState('')
 
   function handleClose() {
     setOpen(false)
@@ -48,6 +49,7 @@ export default function QuickAddButton({ onSuccess, defaultTab = 'Event' }) {
     setEventLocation('')
     setTaskTitle('')
     setTaskDue('')
+    setTaskRecurrence('')
     setTab(defaultTab)
   }
 
@@ -82,6 +84,7 @@ export default function QuickAddButton({ onSuccess, defaultTab = 'Event' }) {
       } else {
         const body = { title: taskTitle }
         if (taskDue) body.due = new Date(taskDue).toISOString()
+        if (taskRecurrence) body.recurrence = taskRecurrence
 
         const resp = await fetch(`${API_BASE}/todos`, {
           method: 'POST',
@@ -217,6 +220,19 @@ export default function QuickAddButton({ onSuccess, defaultTab = 'Event' }) {
                         value={taskDue}
                         onChange={(e) => setTaskDue(e.target.value)}
                       />
+                    </label>
+                    <label className="quick-add-label">
+                      {t('recurrenceLabel')}
+                      <select
+                        className="quick-add-input"
+                        value={taskRecurrence}
+                        onChange={(e) => setTaskRecurrence(e.target.value)}
+                      >
+                        <option value="">{t('recurrence_none')}</option>
+                        <option value="daily">{t('recurrence_daily')}</option>
+                        <option value="weekly">{t('recurrence_weekly')}</option>
+                        <option value="monthly">{t('recurrence_monthly')}</option>
+                      </select>
                     </label>
                   </>
                 )}

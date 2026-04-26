@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Literal, Optional
 from datetime import datetime
 
 
@@ -21,6 +21,7 @@ class TodoItem(BaseModel):
     completed: bool = False
     priority: Optional[int] = None  # 1 (high) – 9 (low)
     source: str  # "google" | "apple" | "local"
+    recurrence: Optional[Literal["daily", "weekly", "monthly"]] = None
 
 
 class CalDAVAccount(BaseModel):
@@ -88,6 +89,7 @@ class CreateEventRequest(BaseModel):
 class CreateTodoRequest(BaseModel):
     title: str
     due: Optional[datetime] = None
+    recurrence: Optional[Literal["daily", "weekly", "monthly"]] = None
 
 
 class UpdateEventRequest(BaseModel):

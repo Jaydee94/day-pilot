@@ -41,6 +41,9 @@ export default function TodoList({ todos, onComplete }) {
                   title={t('completeTask')}
                 />
                 <span className="todo-list__text">{item.title}</span>
+                {item.recurrence && (
+                  <span className="todo-list__recurrence">{t(`recurrence_${item.recurrence}`)}</span>
+                )}
                 {formatDue(item.due, locale) && (
                   <span className="todo-list__due">{formatDue(item.due, locale)}</span>
                 )}
