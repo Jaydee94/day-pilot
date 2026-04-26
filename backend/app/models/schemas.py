@@ -178,6 +178,7 @@ class UserSettings(BaseModel):
     NTFY_TOPIC: Optional[str] = None
     NTFY_TOKEN: Optional[str] = None
     VOICE_WEBHOOK_SECRET: Optional[str] = None
+    AI_PROMPT_TEMPLATE: Optional[str] = None
     SETUP_COMPLETE: Optional[bool] = None
 
 

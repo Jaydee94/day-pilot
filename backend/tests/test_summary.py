@@ -519,3 +519,82 @@ class TestBuildPromptContent:
         prompt = _build_prompt(_make_summary())
 
         assert "at least one concrete time-window recommendation" in prompt
+
+
+class TestCustomPromptTemplate:
+    """Custom AI_PROMPT_TEMPLATE replaces the built-in instruction when set."""
+
+    def test_custom_template_is_used_when_set(self, monkeypatch):
+        from app.services.ai_summary import _build_prompt
+
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_LANGUAGE", "en")
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_TIMEZONE", "Europe/Berlin")
+        monkeypatch.setattr(
+            "app.services.ai_summary.settings.AI_PROMPT_TEMPLATE",
+            "Lang={language} | Date={date} | Data follows:\n{data}",
+        )
+
+        prompt = _build_prompt(_make_summary())
+
+        assert prompt.startswith("Lang=English")
+        assert "Date=" in prompt
+        assert "Data follows:" in prompt
+        # Must NOT contain built-in instruction text
+        assert "Good morning" not in prompt
+
+    def test_template_receives_german_language_name(self, monkeypatch):
+        from app.services.ai_summary import _build_prompt
+
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_LANGUAGE", "de")
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_TIMEZONE", "Europe/Berlin")
+        monkeypatch.setattr(
+            "app.services.ai_summary.settings.AI_PROMPT_TEMPLATE",
+            "Sprache: {language}",
+        )
+
+        prompt = _build_prompt(_make_summary())
+
+        assert "Sprache: Deutsch" in prompt
+
+    def test_unknown_placeholder_falls_back_to_default(self, monkeypatch):
+        from app.services.ai_summary import _build_prompt
+
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_LANGUAGE", "en")
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_TIMEZONE", "Europe/Berlin")
+        monkeypatch.setattr(
+            "app.services.ai_summary.settings.AI_PROMPT_TEMPLATE",
+            "Hello {language} {unknown_key}",
+        )
+
+        prompt = _build_prompt(_make_summary())
+
+        # Fell back to built-in prompt which contains the standard instruction
+        assert "You are a friendly personal assistant" in prompt
+
+    def test_empty_template_uses_default_prompt(self, monkeypatch):
+        from app.services.ai_summary import _build_prompt
+
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_LANGUAGE", "en")
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_TIMEZONE", "Europe/Berlin")
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_PROMPT_TEMPLATE", "")
+
+        prompt = _build_prompt(_make_summary())
+
+        assert "You are a friendly personal assistant" in prompt
+
+    def test_template_data_contains_event_info(self, monkeypatch):
+        """The {data} placeholder must include the assembled event/todo/weather text."""
+        from app.services.ai_summary import _build_prompt
+
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_LANGUAGE", "en")
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_TIMEZONE", "Europe/Berlin")
+        monkeypatch.setattr(
+            "app.services.ai_summary.settings.AI_PROMPT_TEMPLATE",
+            "CUSTOM:\n{data}",
+        )
+
+        prompt = _build_prompt(_make_summary())
+
+        # _make_summary() includes a "Team Standup" event and "Report abschließen" task
+        assert "Team Standup" in prompt
+        assert "Report abschließen" in prompt

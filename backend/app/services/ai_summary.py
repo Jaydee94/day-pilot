@@ -440,6 +440,19 @@ def _build_prompt(summary: DailySummary) -> str:
 
     data_text = "\n".join(lines)
 
+    # Custom prompt template — replaces the built-in instruction when configured.
+    # Supported placeholders: {language}, {date}, {data}
+    if settings.AI_PROMPT_TEMPLATE:
+        try:
+            language_name = "Deutsch" if is_de else "English"
+            return settings.AI_PROMPT_TEMPLATE.format_map({
+                "language": language_name,
+                "date": local_date.strftime("%A, %B %d, %Y"),
+                "data": data_text,
+            })
+        except KeyError as exc:
+            logger.warning("AI_PROMPT_TEMPLATE contains unknown placeholder %s – using default", exc)
+
     if is_de:
         return (
             "Du bist ein freundlicher persoenlicher Assistent fuer eine Familie mit Kleinkind (3 Jahre). "

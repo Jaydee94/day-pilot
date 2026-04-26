@@ -209,6 +209,38 @@
   cursor: pointer;
 }
 
+.settings-field__textarea {
+  resize: vertical;
+  font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  min-height: 8rem;
+}
+
+.settings-field__label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.settings-field__reset-btn {
+  background: none;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.settings-field__reset-btn:hover {
+  color: var(--error);
+  border-color: var(--error);
+}
+
 .settings-field__toggle {
   position: absolute;
   right: 0.5rem;
