@@ -18,6 +18,7 @@ from app.models.schemas import (
     VoiceCommand,
     CreateEventRequest,
     CreateTodoRequest,
+    UpdateEventRequest,
 )
 from app.services.scheduler import build_daily_summary, run_daily_pipeline, get_jobs, trigger_job
 from app.services.calendar_sync import (
@@ -31,11 +32,13 @@ from app.services.local_calendar import (
     fetch_local_events,
     add_local_event,
     delete_local_event,
+    update_local_event,
 )
 from app.services.local_todos import (
     fetch_local_todos,
     add_local_todo,
     delete_local_todo,
+    complete_local_todo,
 )
 from app.services.weather import fetch_weather
 from app.services.notifications import send_daily_push
@@ -180,6 +183,28 @@ def create_event(payload: CreateEventRequest):
     return local_event
 
 
+@router.put("/events/{event_id}", summary="Update a local calendar event")
+def update_event(event_id: str, payload: UpdateEventRequest):
+    """Update fields of a locally stored event.
+
+    Only events with source='local' can be edited through this endpoint.
+    """
+    updated = update_local_event(
+        event_id=event_id,
+        title=payload.title,
+        start=payload.start,
+        end=payload.end,
+        location=payload.location,
+        description=payload.description,
+    )
+    if not updated:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No local event with id '{event_id}' found. Only internal events can be edited here.",
+        )
+    return updated
+
+
 @router.delete("/events/{event_id}", summary="Delete a local calendar event")
 def delete_event(event_id: str):
     """Delete an event from the internal local calendar.
@@ -202,6 +227,18 @@ def create_todo(payload: CreateTodoRequest):
     """Add a new task to the internal local store."""
     local_todo = add_local_todo(title=payload.title, due=payload.due)
     return local_todo
+
+
+@router.patch("/todos/{todo_id}/complete", summary="Mark a task as completed")
+def complete_todo(todo_id: str):
+    """Mark a local task as completed."""
+    updated = complete_local_todo(todo_id)
+    if not updated:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No local task with id '{todo_id}' found.",
+        )
+    return {"status": "completed", "todo_id": todo_id}
 
 
 @router.delete("/todos/{todo_id}", summary="Delete an internal (local) task")

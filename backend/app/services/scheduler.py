@@ -24,6 +24,7 @@ from app.services.weather import fetch_weather
 from app.services.weather import refresh_weather_cache
 from app.services.ai_summary import generate_summary, invalidate_ai_cache
 from app.services.notifications import send_daily_push
+from app.services.birthday_detection import refresh_upcoming_birthdays_cache
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +82,8 @@ def run_calendar_sync() -> None:
     try:
         sync_calendars()
         logger.info("Calendar sync completed.")
+        refresh_upcoming_birthdays_cache()
+        logger.info("Birthday cache refreshed after calendar sync.")
     except Exception as exc:
         logger.error("Calendar sync failed: %s", exc)
 

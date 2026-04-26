@@ -18,8 +18,8 @@ function formatDate(iso, locale) {
   })
 }
 
-/** @param {{ summary: object, onDeleteEvent?: (id: string) => void }} props */
-export default function DailySummary({ summary, onDeleteEvent }) {
+/** @param {{ summary: object, onDeleteEvent?: (id: string) => void, onEditEvent?: (id: string, data: object) => Promise<void>, onCompleteTodo?: (id: string) => void }} props */
+export default function DailySummary({ summary, onDeleteEvent, onEditEvent, onCompleteTodo }) {
   const { locale } = useI18n()
 
   return (
@@ -56,8 +56,8 @@ export default function DailySummary({ summary, onDeleteEvent }) {
 
       {/* Full-width: events + todos */}
       <div className="daily-summary__grid">
-        <CalendarEvents events={summary.events || []} onDeleteEvent={onDeleteEvent} />
-        <TodoList todos={summary.todos || []} />
+        <CalendarEvents events={summary.events || []} onDeleteEvent={onDeleteEvent} onEditEvent={onEditEvent} />
+        <TodoList todos={summary.todos || []} onComplete={onCompleteTodo} />
       </div>
     </div>
   )

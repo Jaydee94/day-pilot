@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import TodoList from '../components/TodoList.jsx'
 import QuickAddButton from '../components/QuickAddButton.jsx'
-import { fetchTodos } from '../api.js'
+import { fetchTodos, completeTodo } from '../api.js'
 import { useI18n } from '../i18n.jsx'
 import './Page.css'
 
@@ -28,6 +28,15 @@ export default function TasksPage() {
     }
   }
 
+  async function handleCompleteTodo(todoId) {
+    try {
+      await completeTodo(todoId)
+      await loadTodos()
+    } catch (err) {
+      console.error('Failed to complete todo:', err)
+    }
+  }
+
   useEffect(() => {
     loadTodos()
   }, [])
@@ -48,7 +57,7 @@ export default function TasksPage() {
           <button className="btn" onClick={loadTodos}>{t('tryAgain')}</button>
         </div>
       )}
-      {!loading && !error && <TodoList todos={todos} />}
+      {!loading && !error && <TodoList todos={todos} onComplete={handleCompleteTodo} />}
       <QuickAddButton defaultTab="Task" onSuccess={loadTodos} />
     </div>
   )

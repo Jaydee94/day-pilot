@@ -32,6 +32,15 @@
 
 .todo-list__checkbox--open {
   border: 2px solid var(--card-border);
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.todo-list__checkbox--open:hover {
+  border-color: var(--success);
+  background: rgba(126, 217, 87, 0.12);
 }
 
 .todo-list__checkbox--done {
