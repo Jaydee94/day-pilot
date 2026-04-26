@@ -198,6 +198,19 @@ class UserSettings(BaseModel):
     FAMILY_MEMBERS: Optional[str] = None
 
 
+class FamilyMemberProfile(BaseModel):
+    id: str
+    name: str
+    age: Optional[int] = None
+    notes: List[str] = []
+
+
+class CreateFamilyMemberRequest(BaseModel):
+    name: str
+    age: Optional[int] = None
+    notes: List[str] = []
+
+
 class ShoppingItem(BaseModel):
     id: str
     name: str

@@ -168,6 +168,25 @@ def _parse_time_blocks(text: str) -> List[TimeBlock]:
         return []
 
 
+def _build_family_context() -> str:
+    """Return a formatted string of family member profiles for the AI prompt."""
+    try:
+        from app.services.family_members import fetch_family_members
+        members = fetch_family_members()
+        if not members:
+            return ""
+        lines = []
+        for m in members:
+            age_str = f", {m.age} Jahre" if m.age is not None else ""
+            line = f"- {m.name}{age_str}"
+            if m.notes:
+                line += ": " + "; ".join(m.notes)
+            lines.append(line)
+        return "\n".join(lines)
+    except Exception:
+        return ""
+
+
 def _resolve_model() -> str:
     """Return the model name to use, respecting AI_MODEL > legacy OPENAI_MODEL > provider default."""
     if settings.AI_MODEL:
@@ -497,75 +516,45 @@ def _build_prompt(summary: DailySummary) -> str:
         except KeyError as exc:
             logger.warning("AI_PROMPT_TEMPLATE contains unknown placeholder %s – using default", exc)
 
-    time_blocks_format_de = (
+    # Build family context from profiles
+    family_context = _build_family_context()
+    location = settings.WEATHER_CITY or "unbekannter Ort"
+    weekday_de = local_date.strftime("%A")  # locale-independent fallback
+    _de_weekdays = {
+        "Monday": "Montag", "Tuesday": "Dienstag", "Wednesday": "Mittwoch",
+        "Thursday": "Donnerstag", "Friday": "Freitag", "Saturday": "Samstag", "Sunday": "Sonntag",
+    }
+    weekday_de = _de_weekdays.get(local_date.strftime("%A"), local_date.strftime("%A"))
+    is_weekend = local_date.weekday() >= 5
+
+    time_blocks_format = (
         "\n\nTIME_BLOCKS:\n"
         "```json\n"
-        "[{\"start\":\"09:00\",\"end\":\"11:00\",\"task\":\"...\",\"type\":\"focus\"}, ...]\n"
+        "[{\"start\":\"09:00\",\"end\":\"11:00\",\"task\":\"...\",\"type\":\"focus\"}]\n"
         "```"
-    )
-    time_blocks_format_en = (
-        "\n\nTIME_BLOCKS:\n"
-        "```json\n"
-        "[{\"start\":\"09:00\",\"end\":\"11:00\",\"task\":\"...\",\"type\":\"focus\"}, ...]\n"
-        "```"
-    )
-    time_blocks_instruction_de = (
-        "Erstelle danach einen realistischen Tagesplan als JSON-Block (TIME_BLOCKS) "
-        "mit konkreten Zeitblöcken für die freien Zeitfenster. "
-        "Typen: 'focus' (Fokusarbeit), 'buffer' (Puffer/Übergänge), 'break' (Pause). "
-        "Gib maximal 5 Blöcke aus."
-    )
-    time_blocks_instruction_en = (
-        "Then create a realistic daily schedule as a JSON block (TIME_BLOCKS) "
-        "with concrete time slots for the free windows. "
-        "Types: 'focus' (deep work), 'buffer' (transitions/buffers), 'break' (rest). "
-        "Include at most 5 blocks."
     )
 
-    if is_de:
-        return (
-            "Du bist ein freundlicher persoenlicher Assistent fuer eine Familie mit Kleinkind (3 Jahre). "
-            "Schreibe auf Basis der folgenden Daten ein warmes, kurzes Tagesbriefing auf Deutsch "
-            "(maximal 6 Saetze, beginne mit 'Guten Morgen'). "
-            "Verwende KEIN Markdown (keine **, keine *, keine #), nur normalen Text. "
-            "Schreibe persoenlich und zugewandt (du/ihr-Ansprache), ruhig und motivierend. "
-            "Wenn es gut passt, nutze 1-2 passende Emojis im SUMMARY zur Auflockerung (nicht ueberladen). "
-            "Nutze keine Emojis im PRIORITIES-Block. "
-            "Das Briefing MUSS enthalten: "
-            "1) eine kurze Wetterzusammenfassung, "
-            "2) 1-2 konkrete Dinge, die man wegen des Wetters beachten sollte, "
-            "3) eine Zusammenfassung der anstehenden Termine in sinnvoller (chronologischer) Reihenfolge, "
-            "4) mindestens eine konkrete Zeitfenster-Empfehlung aus den angegebenen 'Empfohlenen Zeitfenstern', "
-            "5) falls heute Geburtstag ist, eine deutlich hervorgehobene, positive Geburtstags-Erwaehnung, "
-            "6) genau 2 konkrete, familienfreundliche Vorschlaege fuer Aktivitäten mit einem 3-jaehrigen Kind: "
-            "an Werktagen als Idee fuer NACH der Arbeit, am Wochenende fuer tagsueber. "
-            "Achte darauf, dass die Vorschlaege zum Wetter passen. "
-            "Extrahiere danach die 3 wichtigsten Prioritaeten als nummerierte Liste. "
-            f"{time_blocks_instruction_de}\n\n"
-            f"FORMAT:\nSUMMARY:\n<text>\n\nPRIORITIES:\n1. ...\n2. ...\n3. ...{time_blocks_format_de}\n\n"
-            f"DATA:\n{data_text}"
-        )
+    family_section = f"\n\nFAMILIE:\n{family_context}" if family_context else ""
+    day_type = "Wochenende" if is_weekend else "Werktag"
 
     return (
-        "You are a friendly personal assistant for a family with a 3-year-old toddler. "
-        "Based on the following data, write a warm, concise daily briefing in English "
-        "(maximum 6 sentences, starting with 'Good morning'). "
-        "Use NO markdown formatting (no **, no *, no #). Plain text only. "
-        "Use a personal, supportive tone (speak to the family directly as you/your). "
-        "If it fits naturally, include 1-2 relevant emojis in the SUMMARY for readability (do not overuse). "
-        "Do not use emojis in the PRIORITIES block. "
-        "The briefing MUST include: "
-        "1) a short weather summary, "
-        "2) 1-2 concrete weather precautions, "
-        "3) a summary of upcoming events in sensible (chronological) order, "
-        "4) at least one concrete time-window recommendation based on the provided 'Suggested time windows', "
-        "5) if there is a birthday today, a clearly emphasized positive birthday mention, "
-        "6) exactly 2 concrete family activity ideas suitable for a 3-year-old: "
-        "on weekdays as after-work ideas, on weekends as daytime ideas. "
-        "Ensure those ideas fit the weather conditions. "
-        "Then extract the 3 most important priorities for the day as a numbered list. "
-        f"{time_blocks_instruction_en}\n\n"
-        f"FORMAT:\nSUMMARY:\n<text>\n\nPRIORITIES:\n1. ...\n2. ...\n3. ...{time_blocks_format_en}\n\n"
+        f"Du bist ein herzlicher, persoenlicher Familienassistent fuer den Ort {location}."
+        f"{family_section}\n\n"
+        "Schreibe ein sehr kurzes, warmes Tagesbriefing auf Deutsch (maximal 3 Saetze, beginne mit 'Guten Morgen'). "
+        "Verwende KEIN Markdown. Kein **, kein *, kein #. Nur normalen Text. "
+        "Hoechstens 1 Emoji im gesamten SUMMARY. "
+        "Schreibe persoenlich (du/ihr), motivierend und alltagsnah. "
+        f"Heute ist {weekday_de} ({day_type}). "
+        "Passe die Vorschlaege ans Wetter an: bei Regen oder Kaelte Innenaktivitaeten, bei Sonne Outdoor-Ideen. "
+        "Beziehe die Familienmitglieder ein: nenne konkrete, altersgerechte Aktivitaeten, Routinen und Interessen wenn passend. "
+        "Falls heute Geburtstag ist, hebe ihn positiv hervor. "
+        "Extrahiere danach exakt 3 Prioritaeten als nummerierte Liste (keine Erklaerungen, nur den Kern). "
+        "Erstelle einen realistischen Tagesplan (maximal 5 Zeitbloecke). "
+        "Typen: 'focus' (Fokuszeit), 'buffer' (Puffer/Uebergang), 'break' (Pause/Mahlzeit). "
+        "Halte das FORMAT exakt ein — keine zusaetzlichen Abschnitte, keine Erklaerungen ausserhalb.\n\n"
+        f"FORMAT (exakt so ausgeben):\n"
+        f"SUMMARY:\n<maximal 3 Saetze>\n\n"
+        f"PRIORITIES:\n1. ...\n2. ...\n3. ...{time_blocks_format}\n\n"
         f"DATA:\n{data_text}"
     )
 
@@ -614,20 +603,24 @@ def generate_summary(summary: DailySummary) -> DailySummary:
         )
         text: str = response.choices[0].message.content.strip()
 
-        # Parse sections
+        # Parse sections — robust against missing SUMMARY: marker
         ai_text: Optional[str] = None
         priorities: List[str] = []
 
-        if "SUMMARY:" in text and "PRIORITIES:" in text:
-            parts = text.split("PRIORITIES:")
-            ai_text = parts[0].replace("SUMMARY:", "").strip()
-            prio_block = parts[1].strip()
-            for line in prio_block.splitlines():
+        if "PRIORITIES:" in text:
+            # Split on first PRIORITIES: — everything before is the summary
+            summary_raw, _, prio_rest = text.partition("PRIORITIES:")
+            ai_text = summary_raw.replace("SUMMARY:", "").strip()
+            # Strip any TIME_BLOCKS: block that bled into the summary
+            if "TIME_BLOCKS:" in ai_text:
+                ai_text = ai_text.split("TIME_BLOCKS:")[0].strip()
+            for line in prio_rest.splitlines():
                 line = line.strip()
                 if line and line[0].isdigit():
                     priorities.append(line.split(".", 1)[-1].strip())
         else:
-            ai_text = text
+            # Fallback: strip TIME_BLOCKS from the raw text
+            ai_text = text.replace("SUMMARY:", "").split("TIME_BLOCKS:")[0].strip()
 
         time_blocks = _parse_time_blocks(text)
 
