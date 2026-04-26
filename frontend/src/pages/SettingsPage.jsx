@@ -12,6 +12,7 @@ import {
   deleteCalDAVAccount,
 } from '../api.js'
 import AppIcon from '../components/AppIcon.jsx'
+import FamilySettingsSection from '../components/FamilySettingsSection.jsx'
 import { useI18n } from '../i18n.jsx'
 import './Page.css'
 import './SettingsPage.css'
@@ -123,7 +124,6 @@ const SETTING_GROUPS = [
         ],
       },
       { key: 'DAILY_SUMMARY_TIME', label: 'Daily briefing time', desc: 'HH:MM – when the morning summary is generated', type: 'time' },
-      { key: 'FAMILY_MEMBERS', label: 'Family Members', desc: 'Comma-separated names, e.g. Anna,Ben,Clara', type: 'text' },
     ],
   },
   {
@@ -487,6 +487,9 @@ export default function SettingsPage({ onLanguageChange }) {
           {t('settingsVoiceWebhookNote1')} <code>POST /api/voice/command</code> {t('settingsVoiceWebhookNote2')}
         </p>
       </div>
+
+      {/* Family member profiles */}
+      <FamilySettingsSection />
 
       {/* Save button */}
       <div className="settings-actions">

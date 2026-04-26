@@ -2,21 +2,26 @@ import './AISummary.css'
 import AppIcon from './AppIcon.jsx'
 import { useI18n } from '../i18n.jsx'
 
-/** Strip common markdown artefacts the AI might produce (bold, italic, headers). */
-function stripMarkdown(text) {
-  return text
+/** Strip markdown and any raw FORMAT sections the AI leaked into the summary. */
+function cleanSummaryText(text) {
+  let t = text
+  // Remove everything from PRIORITIES: or TIME_BLOCKS: onwards (defensive strip)
+  t = t.split(/\n?PRIORITIES:/)[0]
+  t = t.split(/\n?TIME_BLOCKS:/)[0]
+  // Remove markdown
+  t = t
     .replace(/\*\*(.+?)\*\*/g, '$1')
     .replace(/\*(.+?)\*/g, '$1')
     .replace(/^#+\s+/gm, '')
     .replace(/^[-*]\s+/gm, '')
-    .trim()
+  return t.trim()
 }
 
 export default function AISummary({ text, priorities }) {
   const { t } = useI18n()
 
   const paragraphs = text
-    ? stripMarkdown(text)
+    ? cleanSummaryText(text)
         .split(/\n+/)
         .map(l => l.trim())
         .filter(Boolean)

@@ -298,7 +298,6 @@ def run_scheduled_job(job_id: str):
 
 @router.get("/family-members", summary="List configured family members")
 def list_family_members():
-    """Return the list of configured family members (from FAMILY_MEMBERS setting)."""
-    raw = settings.FAMILY_MEMBERS or ""
-    members = [m.strip() for m in raw.split(",") if m.strip()]
-    return members
+    """Return member names from profiles (falls back to legacy FAMILY_MEMBERS setting)."""
+    from app.services.family_members import fetch_family_member_names
+    return fetch_family_member_names()

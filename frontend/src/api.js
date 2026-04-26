@@ -115,6 +115,49 @@ export async function fetchFamilyMembers() {
   return resp.json()
 }
 
+export async function fetchFamilyProfiles() {
+  const resp = await fetch(`${API_BASE}/family-members/profiles`)
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  return resp.json()
+}
+
+export async function createFamilyMember(data) {
+  const resp = await fetch(`${API_BASE}/family-members/profiles`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({}))
+    throw new Error(body.detail || `HTTP ${resp.status}`)
+  }
+  return resp.json()
+}
+
+export async function updateFamilyMember(id, data) {
+  const resp = await fetch(`${API_BASE}/family-members/profiles/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({}))
+    throw new Error(body.detail || `HTTP ${resp.status}`)
+  }
+  return resp.json()
+}
+
+export async function deleteFamilyMember(id) {
+  const resp = await fetch(`${API_BASE}/family-members/profiles/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  })
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({}))
+    throw new Error(body.detail || `HTTP ${resp.status}`)
+  }
+  return resp.json()
+}
+
 /**
  * List all configured iCal feed URLs.
  * @returns {Promise<Array<{index: number, url: string}>>}
