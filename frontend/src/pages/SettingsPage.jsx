@@ -121,6 +121,7 @@ const SETTING_GROUPS = [
         ],
       },
       { key: 'DAILY_SUMMARY_TIME', label: 'Daily briefing time', desc: 'HH:MM – when the morning summary is generated', type: 'time' },
+      { key: 'FAMILY_MEMBERS', label: t('familyMembers'), desc: t('familyMembersDesc'), type: 'text' },
     ],
   },
   {

@@ -72,6 +72,7 @@ def _dict_to_todo(d: dict) -> Optional[TodoItem]:
             completed=d.get("completed", False),
             source="local",
             recurrence=d.get("recurrence"),
+            assigned_to=d.get("assigned_to"),
         )
     except Exception as exc:
         logger.warning("Skipping malformed local todo %s: %s", d.get("id"), exc)
@@ -88,14 +89,19 @@ def _next_due(current: datetime, recurrence: str) -> datetime:
     return current
 
 
-def fetch_local_todos() -> List[TodoItem]:
-    """Return all incomplete local todos."""
+def fetch_local_todos(assigned_to: Optional[str] = None) -> List[TodoItem]:
+    """Return all incomplete local todos.
+
+    When *assigned_to* is provided only todos assigned to that member are returned.
+    """
     todos: List[TodoItem] = []
     for raw in _load_all_todos():
         todo = _dict_to_todo(raw)
         if todo is None:
             continue
         if not todo.completed:
+            if assigned_to and todo.assigned_to != assigned_to:
+                continue
             todos.append(todo)
     return todos
 
@@ -104,6 +110,7 @@ def add_local_todo(
     title: str,
     due: Optional[datetime] = None,
     recurrence: Optional[str] = None,
+    assigned_to: Optional[str] = None,
 ) -> TodoItem:
     """Create a new local todo and persist it."""
     todo_id = str(uuid.uuid4())
@@ -117,6 +124,8 @@ def add_local_todo(
         raw["due"] = due.isoformat()
     if recurrence:
         raw["recurrence"] = recurrence
+    if assigned_to:
+        raw["assigned_to"] = assigned_to
 
     all_todos = _load_all_todos()
     all_todos.append(raw)
@@ -129,6 +138,7 @@ def add_local_todo(
         completed=False,
         source="local",
         recurrence=recurrence,
+        assigned_to=assigned_to,
     )
 
 

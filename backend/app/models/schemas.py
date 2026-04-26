@@ -12,6 +12,7 @@ class CalendarEvent(BaseModel):
     description: Optional[str] = None
     source: str  # "ical" | "apple" | "local"
     calendar_name: Optional[str] = None  # e.g. "Bdays", "Work", …
+    assigned_to: Optional[str] = None
 
 
 class TodoItem(BaseModel):
@@ -22,6 +23,7 @@ class TodoItem(BaseModel):
     priority: Optional[int] = None  # 1 (high) – 9 (low)
     source: str  # "google" | "apple" | "local"
     recurrence: Optional[Literal["daily", "weekly", "monthly"]] = None
+    assigned_to: Optional[str] = None
 
 
 class CalDAVAccount(BaseModel):
@@ -92,12 +94,14 @@ class CreateEventRequest(BaseModel):
     end: Optional[datetime] = None
     location: Optional[str] = None
     description: Optional[str] = None
+    assigned_to: Optional[str] = None
 
 
 class CreateTodoRequest(BaseModel):
     title: str
     due: Optional[datetime] = None
     recurrence: Optional[Literal["daily", "weekly", "monthly"]] = None
+    assigned_to: Optional[str] = None
 
 
 class UpdateEventRequest(BaseModel):
@@ -106,6 +110,7 @@ class UpdateEventRequest(BaseModel):
     end: Optional[datetime] = None
     location: Optional[str] = None
     description: Optional[str] = None
+    assigned_to: Optional[str] = None
 
 
 class VoiceCommand(BaseModel):
@@ -190,6 +195,7 @@ class UserSettings(BaseModel):
     VOICE_WEBHOOK_SECRET: Optional[str] = None
     AI_PROMPT_TEMPLATE: Optional[str] = None
     SETUP_COMPLETE: Optional[bool] = None
+    FAMILY_MEMBERS: Optional[str] = None
 
 
 class ShoppingItem(BaseModel):

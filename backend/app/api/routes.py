@@ -112,7 +112,8 @@ def get_status():
 
 @router.get("/events", summary="List today's calendar events")
 def list_events(
-    date: Optional[str] = Query(None, description="ISO date YYYY-MM-DD")
+    date: Optional[str] = Query(None, description="ISO date YYYY-MM-DD"),
+    assigned_to: Optional[str] = Query(None, description="Filter by family member name"),
 ):
     target: Optional[datetime] = None
     if date:
@@ -123,14 +124,16 @@ def list_events(
             raise HTTPException(status_code=400, detail="Invalid date format.")
     ical = fetch_ical_events(date=target)
     apple = fetch_apple_events(date=target)
-    local = fetch_local_events(date=target)
+    local = fetch_local_events(date=target, assigned_to=assigned_to)
     all_events = sorted(ical + apple + local, key=lambda e: e.start)
+    if assigned_to:
+        all_events = [e for e in all_events if e.assigned_to == assigned_to]
     return all_events
 
 
 @router.get("/todos", summary="List open to-dos")
-def list_todos():
-    local_tasks = fetch_local_todos()
+def list_todos(assigned_to: Optional[str] = Query(None, description="Filter by family member name")):
+    local_tasks = fetch_local_todos(assigned_to=assigned_to)
     return local_tasks
 
 
@@ -179,6 +182,7 @@ def create_event(payload: CreateEventRequest):
         end=end,
         location=payload.location,
         description=payload.description,
+        assigned_to=payload.assigned_to,
     )
     return local_event
 
@@ -196,6 +200,7 @@ def update_event(event_id: str, payload: UpdateEventRequest):
         end=payload.end,
         location=payload.location,
         description=payload.description,
+        assigned_to=payload.assigned_to,
     )
     if not updated:
         raise HTTPException(
@@ -225,7 +230,7 @@ def delete_event(event_id: str):
 @router.post("/todos", summary="Create a task")
 def create_todo(payload: CreateTodoRequest):
     """Add a new task to the internal local store."""
-    local_todo = add_local_todo(title=payload.title, due=payload.due, recurrence=payload.recurrence)
+    local_todo = add_local_todo(title=payload.title, due=payload.due, recurrence=payload.recurrence, assigned_to=payload.assigned_to)
     return local_todo
 
 
@@ -289,3 +294,11 @@ def run_scheduled_job(job_id: str):
     if not ok:
         raise HTTPException(status_code=404, detail=f"No job with id '{job_id}'")
     return {"status": "triggered", "job_id": job_id}
+
+
+@router.get("/family-members", summary="List configured family members")
+def list_family_members():
+    """Return the list of configured family members (from FAMILY_MEMBERS setting)."""
+    raw = settings.FAMILY_MEMBERS or ""
+    members = [m.strip() for m in raw.split(",") if m.strip()]
+    return members

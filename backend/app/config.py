@@ -86,6 +86,10 @@ class Settings(BaseSettings):
     # Local / internal shopping list storage
     LOCAL_SHOPPING_FILE: str = "/app/data/local_shopping.json"
 
+    # Comma-separated family member names for event/todo assignment
+    # e.g. "Anna,Ben,Clara"
+    FAMILY_MEMBERS: str = ""
+
     # Dedup marker — prevents duplicate push notifications on the same day
     NOTIFICATIONS_DEDUP_FILE: str = "/app/data/notification_dedup.json"
 

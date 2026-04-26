@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import AppIcon from './AppIcon.jsx'
 import { useI18n } from '../i18n.jsx'
+import { fetchFamilyMembers } from '../api.js'
 import './QuickAddButton.css'
 
 const API_BASE = import.meta.env.VITE_API_URL
@@ -28,16 +29,24 @@ export default function QuickAddButton({ onSuccess, defaultTab = 'Event' }) {
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
 
+  // Family members for assignment
+  const [members, setMembers] = useState([])
+  useEffect(() => {
+    fetchFamilyMembers().then(setMembers).catch(() => {})
+  }, [])
+
   // Event form state
   const [eventTitle, setEventTitle] = useState('')
   const [eventStart, setEventStart] = useState(toLocalDateTimeInput())
   const [eventEnd, setEventEnd] = useState('')
   const [eventLocation, setEventLocation] = useState('')
+  const [eventAssignedTo, setEventAssignedTo] = useState('')
 
   // Task form state
   const [taskTitle, setTaskTitle] = useState('')
   const [taskDue, setTaskDue] = useState('')
   const [taskRecurrence, setTaskRecurrence] = useState('')
+  const [taskAssignedTo, setTaskAssignedTo] = useState('')
 
   function handleClose() {
     setOpen(false)
@@ -47,9 +56,11 @@ export default function QuickAddButton({ onSuccess, defaultTab = 'Event' }) {
     setEventStart(toLocalDateTimeInput())
     setEventEnd('')
     setEventLocation('')
+    setEventAssignedTo('')
     setTaskTitle('')
     setTaskDue('')
     setTaskRecurrence('')
+    setTaskAssignedTo('')
     setTab(defaultTab)
   }
 
@@ -71,6 +82,7 @@ export default function QuickAddButton({ onSuccess, defaultTab = 'Event' }) {
         }
         if (eventEnd) body.end = new Date(eventEnd).toISOString()
         if (eventLocation) body.location = eventLocation
+        if (eventAssignedTo) body.assigned_to = eventAssignedTo
 
         const resp = await fetch(`${API_BASE}/events`, {
           method: 'POST',
@@ -85,6 +97,7 @@ export default function QuickAddButton({ onSuccess, defaultTab = 'Event' }) {
         const body = { title: taskTitle }
         if (taskDue) body.due = new Date(taskDue).toISOString()
         if (taskRecurrence) body.recurrence = taskRecurrence
+        if (taskAssignedTo) body.assigned_to = taskAssignedTo
 
         const resp = await fetch(`${API_BASE}/todos`, {
           method: 'POST',
@@ -197,6 +210,15 @@ export default function QuickAddButton({ onSuccess, defaultTab = 'Event' }) {
                         placeholder="e.g. City Hospital"
                       />
                     </label>
+                    {members.length > 0 && (
+                      <label className="quick-add-label">
+                        {t('assignTo')}
+                        <select className="quick-add-input" value={eventAssignedTo} onChange={e => setEventAssignedTo(e.target.value)}>
+                          <option value="">—</option>
+                          {members.map(m => <option key={m} value={m}>{m}</option>)}
+                        </select>
+                      </label>
+                    )}
                   </>
                 ) : (
                   <>
@@ -234,6 +256,15 @@ export default function QuickAddButton({ onSuccess, defaultTab = 'Event' }) {
                         <option value="monthly">{t('recurrence_monthly')}</option>
                       </select>
                     </label>
+                    {members.length > 0 && (
+                      <label className="quick-add-label">
+                        {t('assignTo')}
+                        <select className="quick-add-input" value={taskAssignedTo} onChange={e => setTaskAssignedTo(e.target.value)}>
+                          <option value="">—</option>
+                          {members.map(m => <option key={m} value={m}>{m}</option>)}
+                        </select>
+                      </label>
+                    )}
                   </>
                 )}
 

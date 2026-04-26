@@ -38,7 +38,7 @@ class TestSendDailyPush:
         result = send_daily_push(_make_summary())
         assert result is False
 
-    def test_sends_push_on_success(self, monkeypatch):
+    def test_sends_push_on_success(self, monkeypatch, tmp_path):
         monkeypatch.setattr(
             "app.services.notifications.settings.NTFY_TOPIC", "my-topic"
         )
@@ -47,6 +47,11 @@ class TestSendDailyPush:
         )
         monkeypatch.setattr(
             "app.services.notifications.settings.NTFY_TOKEN", ""
+        )
+        # Use a fresh dedup file so the guard never blocks
+        monkeypatch.setattr(
+            "app.services.notifications.settings.NOTIFICATIONS_DEDUP_FILE",
+            str(tmp_path / "dedup.json"),
         )
 
         mock_resp = MagicMock()

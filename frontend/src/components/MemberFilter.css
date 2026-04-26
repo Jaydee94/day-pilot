@@ -1,0 +1,30 @@
+.member-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.member-filter__chip {
+  padding: 0.28rem 0.75rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--card-border);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.member-filter__chip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.member-filter__chip--active {
+  background: rgba(79, 142, 247, 0.12);
+  border-color: var(--primary);
+  color: var(--primary);
+}

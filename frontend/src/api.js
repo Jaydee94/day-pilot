@@ -86,8 +86,11 @@ export async function triggerSchedulerJob(jobId) {
  * Does NOT trigger any AI calls.
  * @returns {Promise<Array>} list of CalendarEvent objects
  */
-export async function fetchEvents() {
-  const resp = await fetch(`${API_BASE}/events`)
+export async function fetchEvents(assignedTo = null) {
+  const url = assignedTo
+    ? `${API_BASE}/events?assigned_to=${encodeURIComponent(assignedTo)}`
+    : `${API_BASE}/events`
+  const resp = await fetch(url)
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
   return resp.json()
 }
@@ -97,8 +100,17 @@ export async function fetchEvents() {
  * Does NOT trigger any AI calls.
  * @returns {Promise<Array>} list of TodoItem objects
  */
-export async function fetchTodos() {
-  const resp = await fetch(`${API_BASE}/todos`)
+export async function fetchTodos(assignedTo = null) {
+  const url = assignedTo
+    ? `${API_BASE}/todos?assigned_to=${encodeURIComponent(assignedTo)}`
+    : `${API_BASE}/todos`
+  const resp = await fetch(url)
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  return resp.json()
+}
+
+export async function fetchFamilyMembers() {
+  const resp = await fetch(`${API_BASE}/family-members`)
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
   return resp.json()
 }
