@@ -13,6 +13,7 @@ from app.config import settings
 from app.models.schemas import VoiceCommand
 from app.services.calendar_sync import add_apple_event
 from app.services.local_calendar import add_local_event
+from app.services.local_todos import add_local_todo
 
 logger = logging.getLogger(__name__)
 voice_router = APIRouter()
@@ -61,5 +62,9 @@ def voice_command(cmd: VoiceCommand):
             location=cmd.location,
         )
         return {"status": "created", "source": "local", "event": event}
+
+    if cmd.command == "add_todo":
+        todo = add_local_todo(title=cmd.title, due=cmd.due)
+        return {"status": "created", "source": "local", "todo": todo}
 
     raise HTTPException(status_code=400, detail=f"Unknown command: {cmd.command}")

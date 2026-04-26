@@ -90,6 +90,14 @@ class CreateTodoRequest(BaseModel):
     due: Optional[datetime] = None
 
 
+class UpdateEventRequest(BaseModel):
+    title: Optional[str] = None
+    start: Optional[datetime] = None
+    end: Optional[datetime] = None
+    location: Optional[str] = None
+    description: Optional[str] = None
+
+
 class VoiceCommand(BaseModel):
     secret: str
     command: str  # "add_event" | "add_todo"

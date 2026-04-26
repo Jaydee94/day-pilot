@@ -250,3 +250,38 @@ export async function fetchBirthdays(daysAhead = 366, limit = 5) {
   return resp.json()
 }
 
+/**
+ * Mark a local task as completed.
+ * @param {string} todoId
+ * @returns {Promise<{status: string, todo_id: string}>}
+ */
+export async function completeTodo(todoId) {
+  const resp = await fetch(`${API_BASE}/todos/${encodeURIComponent(todoId)}/complete`, {
+    method: 'PATCH',
+  })
+  if (!resp.ok) {
+    const data = await resp.json().catch(() => ({}))
+    throw new Error(data.detail || `HTTP ${resp.status}`)
+  }
+  return resp.json()
+}
+
+/**
+ * Update a locally stored calendar event.
+ * @param {string} eventId
+ * @param {{title?: string, start?: string, end?: string, location?: string, description?: string}} data
+ * @returns {Promise<Object>} updated CalendarEvent
+ */
+export async function updateEvent(eventId, data) {
+  const resp = await fetch(`${API_BASE}/events/${encodeURIComponent(eventId)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({}))
+    throw new Error(body.detail || `HTTP ${resp.status}`)
+  }
+  return resp.json()
+}
+

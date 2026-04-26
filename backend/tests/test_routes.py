@@ -136,6 +136,29 @@ class TestEventsRoute:
         assert resp.status_code == 200
         assert resp.json()["source"] == "local"
 
+    def test_update_event_success(self, client):
+        from app.models.schemas import CalendarEvent
+        from datetime import timedelta
+
+        start = datetime(2024, 6, 1, 9, 0, tzinfo=BERLIN_TZ)
+        updated_event = CalendarEvent(
+            id="local-1",
+            title="Updated title",
+            start=start,
+            end=start + timedelta(hours=1),
+            source="local",
+        )
+        with patch("app.api.routes.update_local_event", return_value=updated_event):
+            resp = client.put("/api/events/local-1", json={"title": "Updated title"})
+        assert resp.status_code == 200
+        assert resp.json()["title"] == "Updated title"
+        assert resp.json()["source"] == "local"
+
+    def test_update_event_not_found(self, client):
+        with patch("app.api.routes.update_local_event", return_value=None):
+            resp = client.put("/api/events/nonexistent-id", json={"title": "Nope"})
+        assert resp.status_code == 404
+
     def test_create_event_service_unavailable(self, client):
         """When Apple CalDAV fails the event is saved locally (source='local')."""
         from app.models.schemas import CalendarEvent
@@ -186,6 +209,23 @@ class TestTodosRoute:
             resp = client.post("/api/todos", json={"title": "Broken task"})
         assert resp.status_code == 200
         assert resp.json()["source"] == "local"
+
+    def test_complete_todo_success(self, client, tmp_path):
+        local_todos_file = str(tmp_path / "local_todos.json")
+        with patch("app.config.settings.LOCAL_TODOS_FILE", local_todos_file), \
+             patch("app.services.local_todos.settings.LOCAL_TODOS_FILE", local_todos_file):
+            create_resp = client.post("/api/todos", json={"title": "Test todo"})
+            assert create_resp.status_code == 200
+            todo_id = create_resp.json()["id"]
+            resp = client.patch(f"/api/todos/{todo_id}/complete")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "completed"
+        assert resp.json()["todo_id"] == todo_id
+
+    def test_complete_todo_not_found(self, client):
+        with patch("app.api.routes.complete_local_todo", return_value=False):
+            resp = client.patch("/api/todos/nonexistent-id/complete")
+        assert resp.status_code == 404
 
 
 class TestAIRoutes:
@@ -256,6 +296,21 @@ class TestVoiceRoute:
             }
             resp = client.post("/api/voice/command", json=payload)
         assert resp.status_code == 400
+
+    def test_add_todo_success(self, client):
+        from app.models.schemas import TodoItem
+        fake_todo = TodoItem(id="todo-1", title="Buy milk", completed=False, source="local")
+        with patch("app.api.voice.settings.VOICE_WEBHOOK_SECRET", "test-secret"), \
+             patch("app.api.voice.add_local_todo", return_value=fake_todo):
+            payload = {
+                "secret": "test-secret",
+                "command": "add_todo",
+                "title": "Buy milk",
+            }
+            resp = client.post("/api/voice/command", json=payload)
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "created"
+        assert resp.json()["todo"]["title"] == "Buy milk"
 
     def test_unknown_command(self, client):
         with patch("app.api.voice.settings.VOICE_WEBHOOK_SECRET", "test-secret"):

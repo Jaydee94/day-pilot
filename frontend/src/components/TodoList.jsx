@@ -7,7 +7,7 @@ function formatDue(iso, locale) {
   return new Date(iso).toLocaleDateString(locale, { month: 'short', day: 'numeric' })
 }
 
-export default function TodoList({ todos }) {
+export default function TodoList({ todos, onComplete }) {
   const { t, locale } = useI18n()
   const PRIORITY_MAP = {
     1: { label: t('priorityHigh'), color: 'var(--error)' },
@@ -29,14 +29,20 @@ export default function TodoList({ todos }) {
         <p className="card__empty">{t('noTasks')}</p>
       ) : (
         <ul className="todo-list__list">
-          {open.map((t) => {
-            const prio = PRIORITY_MAP[t.priority]
+          {open.map((item) => {
+            const prio = PRIORITY_MAP[item.priority]
             return (
-              <li key={t.id} className="todo-list__item">
-                <span className="todo-list__checkbox todo-list__checkbox--open" />
-                <span className="todo-list__text">{t.title}</span>
-                {formatDue(t.due, locale) && (
-                  <span className="todo-list__due">{formatDue(t.due, locale)}</span>
+              <li key={item.id} className="todo-list__item">
+                <button
+                  type="button"
+                  className="todo-list__checkbox todo-list__checkbox--open"
+                  onClick={() => onComplete && onComplete(item.id)}
+                  aria-label={t('completeTask')}
+                  title={t('completeTask')}
+                />
+                <span className="todo-list__text">{item.title}</span>
+                {formatDue(item.due, locale) && (
+                  <span className="todo-list__due">{formatDue(item.due, locale)}</span>
                 )}
                 {prio && (
                   <span
@@ -49,10 +55,10 @@ export default function TodoList({ todos }) {
               </li>
             )
           })}
-          {done.map((t) => (
-            <li key={t.id} className="todo-list__item todo-list__item--done">
+          {done.map((item) => (
+            <li key={item.id} className="todo-list__item todo-list__item--done">
               <span className="todo-list__checkbox todo-list__checkbox--done">✓</span>
-              <span className="todo-list__text">{t.title}</span>
+              <span className="todo-list__text">{item.title}</span>
             </li>
           ))}
         </ul>
