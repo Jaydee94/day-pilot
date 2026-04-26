@@ -596,6 +596,7 @@ const STRINGS = {
 }
 
 function interpolate(template, params = {}) {
+  if (typeof template !== 'string') return template
   return template.replace(/{{\s*(\w+)\s*}}/g, (_, key) => String(params[key] ?? ''))
 }
 
