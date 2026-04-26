@@ -121,6 +121,7 @@ const SETTING_GROUPS = [
         ],
       },
       { key: 'DAILY_SUMMARY_TIME', label: 'Daily briefing time', desc: 'HH:MM – when the morning summary is generated', type: 'time' },
+      { key: 'FAMILY_MEMBERS', label: t('familyMembers'), desc: t('familyMembersDesc'), type: 'text' },
     ],
   },
   {
@@ -642,6 +643,34 @@ function AIProviderSection({ values, onChange, onTest, connectionState, t }) {
               ))}
             </select>
           </div>
+        </div>
+
+        {/* Custom prompt template */}
+        <div className="settings-field">
+          <div className="settings-field__label-row">
+            <label className="settings-field__label" htmlFor="setting-AI_PROMPT_TEMPLATE">
+              {t('settingsAiPromptLabel')}
+            </label>
+            {values.AI_PROMPT_TEMPLATE && (
+              <button
+                type="button"
+                className="settings-field__reset-btn"
+                onClick={() => onChange('AI_PROMPT_TEMPLATE', '')}
+              >
+                {t('settingsAiPromptReset')}
+              </button>
+            )}
+          </div>
+          <span className="settings-field__desc">{t('settingsAiPromptDesc')}</span>
+          <textarea
+            id="setting-AI_PROMPT_TEMPLATE"
+            className="settings-field__input settings-field__textarea"
+            value={values.AI_PROMPT_TEMPLATE || ''}
+            onChange={e => onChange('AI_PROMPT_TEMPLATE', e.target.value)}
+            placeholder={t('settingsAiPromptPlaceholder')}
+            rows={8}
+            spellCheck={false}
+          />
         </div>
       </div>
     </div>

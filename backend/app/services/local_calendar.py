@@ -67,17 +67,23 @@ def _dict_to_event(d: dict) -> Optional[CalendarEvent]:
             location=d.get("location"),
             description=d.get("description"),
             source="local",
+            assigned_to=d.get("assigned_to"),
         )
     except Exception as exc:
         logger.warning("Skipping malformed local event %s: %s", d.get("id"), exc)
         return None
 
 
-def fetch_local_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
-    """Return local events for the given day (defaults to today)."""
+def fetch_local_events(
+    date: Optional[datetime] = None,
+    assigned_to: Optional[str] = None,
+) -> List[CalendarEvent]:
+    """Return local events for the given day (defaults to today).
+
+    When *assigned_to* is provided only events assigned to that member are returned.
+    """
     tz = _local_tz()
     if date:
-        # Convert to local tz first, then zero out the time components.
         start = date.astimezone(tz).replace(hour=0, minute=0, second=0, microsecond=0)
     else:
         now = datetime.now(tz)
@@ -88,6 +94,8 @@ def fetch_local_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
     for raw in _load_all_events():
         ev = _dict_to_event(raw)
         if ev is None:
+            continue
+        if assigned_to and ev.assigned_to != assigned_to:
             continue
         ev_start = ev.start
         if ev_start.tzinfo is None:
@@ -106,6 +114,7 @@ def add_local_event(
     end: datetime,
     location: Optional[str] = None,
     description: Optional[str] = None,
+    assigned_to: Optional[str] = None,
 ) -> CalendarEvent:
     """Create a new local event and persist it."""
     event_id = str(uuid.uuid4())
@@ -120,6 +129,8 @@ def add_local_event(
         raw["location"] = location
     if description:
         raw["description"] = description
+    if assigned_to:
+        raw["assigned_to"] = assigned_to
 
     all_events = _load_all_events()
     all_events.append(raw)
@@ -133,6 +144,7 @@ def add_local_event(
         location=location,
         description=description,
         source="local",
+        assigned_to=assigned_to,
     )
 
 
@@ -154,6 +166,7 @@ def update_local_event(
     end: Optional[datetime] = None,
     location: Optional[str] = None,
     description: Optional[str] = None,
+    assigned_to: Optional[str] = None,
 ) -> Optional[CalendarEvent]:
     """Update an existing local event.  Returns the updated event or None if not found."""
     all_events = _load_all_events()
@@ -169,6 +182,8 @@ def update_local_event(
                 raw["location"] = location
             if description is not None:
                 raw["description"] = description
+            if assigned_to is not None:
+                raw["assigned_to"] = assigned_to
             _save_all_events(all_events)
             return _dict_to_event(raw)
     return None

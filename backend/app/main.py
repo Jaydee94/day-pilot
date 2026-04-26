@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router
 from app.api.settings_router import settings_router
 from app.api.voice import voice_router
+from app.api.shopping_router import shopping_router
 from app.services.scheduler import start_scheduler, stop_scheduler
 
 logging.basicConfig(
@@ -45,6 +46,7 @@ app.add_middleware(
 app.include_router(router, prefix="/api")
 app.include_router(settings_router, prefix="/api")
 app.include_router(voice_router, prefix="/api")
+app.include_router(shopping_router, prefix="/api")
 
 
 @app.get("/", tags=["health"])

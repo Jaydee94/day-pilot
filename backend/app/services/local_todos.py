@@ -9,8 +9,10 @@ import json
 import logging
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
+
+from dateutil.relativedelta import relativedelta
 
 import pytz
 
@@ -69,20 +71,37 @@ def _dict_to_todo(d: dict) -> Optional[TodoItem]:
             due=due,
             completed=d.get("completed", False),
             source="local",
+            recurrence=d.get("recurrence"),
+            assigned_to=d.get("assigned_to"),
         )
     except Exception as exc:
         logger.warning("Skipping malformed local todo %s: %s", d.get("id"), exc)
         return None
 
 
-def fetch_local_todos() -> List[TodoItem]:
-    """Return all incomplete local todos."""
+def _next_due(current: datetime, recurrence: str) -> datetime:
+    if recurrence == "daily":
+        return current + timedelta(days=1)
+    if recurrence == "weekly":
+        return current + timedelta(weeks=1)
+    if recurrence == "monthly":
+        return current + relativedelta(months=1)
+    return current
+
+
+def fetch_local_todos(assigned_to: Optional[str] = None) -> List[TodoItem]:
+    """Return all incomplete local todos.
+
+    When *assigned_to* is provided only todos assigned to that member are returned.
+    """
     todos: List[TodoItem] = []
     for raw in _load_all_todos():
         todo = _dict_to_todo(raw)
         if todo is None:
             continue
         if not todo.completed:
+            if assigned_to and todo.assigned_to != assigned_to:
+                continue
             todos.append(todo)
     return todos
 
@@ -90,6 +109,8 @@ def fetch_local_todos() -> List[TodoItem]:
 def add_local_todo(
     title: str,
     due: Optional[datetime] = None,
+    recurrence: Optional[str] = None,
+    assigned_to: Optional[str] = None,
 ) -> TodoItem:
     """Create a new local todo and persist it."""
     todo_id = str(uuid.uuid4())
@@ -101,6 +122,10 @@ def add_local_todo(
     }
     if due:
         raw["due"] = due.isoformat()
+    if recurrence:
+        raw["recurrence"] = recurrence
+    if assigned_to:
+        raw["assigned_to"] = assigned_to
 
     all_todos = _load_all_todos()
     all_todos.append(raw)
@@ -112,16 +137,33 @@ def add_local_todo(
         due=due,
         completed=False,
         source="local",
+        recurrence=recurrence,
+        assigned_to=assigned_to,
     )
 
 
 def complete_local_todo(todo_id: str) -> bool:
-    """Mark a local todo as completed.  Returns True if found and updated."""
+    """Mark a local todo as completed.  Returns True if found and updated.
+
+    When the completed todo has a recurrence and a due date the next instance
+    is automatically created with the calculated next due date.
+    """
     all_todos = _load_all_todos()
     for raw in all_todos:
         if raw.get("id") == todo_id:
             raw["completed"] = True
             _save_all_todos(all_todos)
+            recurrence = raw.get("recurrence")
+            if recurrence and raw.get("due"):
+                try:
+                    due = datetime.fromisoformat(raw["due"])
+                    add_local_todo(
+                        title=raw["title"],
+                        due=_next_due(due, recurrence),
+                        recurrence=recurrence,
+                    )
+                except Exception as exc:
+                    logger.warning("Failed to create next recurrence for %s: %s", todo_id, exc)
             return True
     return False
 

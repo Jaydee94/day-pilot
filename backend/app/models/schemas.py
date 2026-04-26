@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Literal, Optional
 from datetime import datetime
 
 
@@ -12,6 +12,7 @@ class CalendarEvent(BaseModel):
     description: Optional[str] = None
     source: str  # "ical" | "apple" | "local"
     calendar_name: Optional[str] = None  # e.g. "Bdays", "Work", …
+    assigned_to: Optional[str] = None
 
 
 class TodoItem(BaseModel):
@@ -21,6 +22,8 @@ class TodoItem(BaseModel):
     completed: bool = False
     priority: Optional[int] = None  # 1 (high) – 9 (low)
     source: str  # "google" | "apple" | "local"
+    recurrence: Optional[Literal["daily", "weekly", "monthly"]] = None
+    assigned_to: Optional[str] = None
 
 
 class CalDAVAccount(BaseModel):
@@ -67,6 +70,13 @@ class WeatherInfo(BaseModel):
     daily_forecast: List[DailyForecastPoint] = []
 
 
+class TimeBlock(BaseModel):
+    start: str           # "09:00"
+    end: str             # "11:00"
+    task: str
+    type: str = "focus"  # "focus" | "buffer" | "break"
+
+
 class DailySummary(BaseModel):
     date: datetime
     events: List[CalendarEvent] = []
@@ -75,6 +85,7 @@ class DailySummary(BaseModel):
     weather: Optional[WeatherInfo] = None
     ai_summary: Optional[str] = None
     top_priorities: List[str] = []
+    time_blocks: List[TimeBlock] = []
 
 
 class CreateEventRequest(BaseModel):
@@ -83,11 +94,14 @@ class CreateEventRequest(BaseModel):
     end: Optional[datetime] = None
     location: Optional[str] = None
     description: Optional[str] = None
+    assigned_to: Optional[str] = None
 
 
 class CreateTodoRequest(BaseModel):
     title: str
     due: Optional[datetime] = None
+    recurrence: Optional[Literal["daily", "weekly", "monthly"]] = None
+    assigned_to: Optional[str] = None
 
 
 class UpdateEventRequest(BaseModel):
@@ -96,6 +110,7 @@ class UpdateEventRequest(BaseModel):
     end: Optional[datetime] = None
     location: Optional[str] = None
     description: Optional[str] = None
+    assigned_to: Optional[str] = None
 
 
 class VoiceCommand(BaseModel):
@@ -178,7 +193,23 @@ class UserSettings(BaseModel):
     NTFY_TOPIC: Optional[str] = None
     NTFY_TOKEN: Optional[str] = None
     VOICE_WEBHOOK_SECRET: Optional[str] = None
+    AI_PROMPT_TEMPLATE: Optional[str] = None
     SETUP_COMPLETE: Optional[bool] = None
+    FAMILY_MEMBERS: Optional[str] = None
+
+
+class ShoppingItem(BaseModel):
+    id: str
+    name: str
+    category: str = "Sonstiges"
+    quantity: Optional[str] = None
+    checked: bool = False
+
+
+class CreateShoppingItemRequest(BaseModel):
+    name: str
+    category: str = "Sonstiges"
+    quantity: Optional[str] = None
 
 
 class SetupStatus(BaseModel):

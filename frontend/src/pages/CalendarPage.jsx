@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import CalendarEvents from '../components/CalendarEvents.jsx'
 import QuickAddButton from '../components/QuickAddButton.jsx'
-import { fetchEvents, fetchSyncStatus, triggerSchedulerJob, deleteEvent, updateEvent } from '../api.js'
+import { fetchEvents, fetchSyncStatus, triggerSchedulerJob, deleteEvent, updateEvent, fetchFamilyMembers } from '../api.js'
+import MemberFilter from '../components/MemberFilter.jsx'
 import { useI18n } from '../i18n.jsx'
 import './Page.css'
 import './CalendarPage.css'
@@ -37,12 +38,18 @@ export default function CalendarPage() {
   const [lastSync, setLastSync] = useState(null)
   const [syncing, setSyncing] = useState(false)
   const [syncFeedback, setSyncFeedback] = useState(null)
+  const [members, setMembers] = useState([])
+  const [selectedMember, setSelectedMember] = useState(null)
+
+  useEffect(() => {
+    fetchFamilyMembers().then(setMembers).catch(() => {})
+  }, [])
 
   async function loadEvents() {
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchEvents()
+      const data = await fetchEvents(selectedMember)
       setEvents(data)
     } catch (err) {
       setError(err.message)
@@ -98,12 +105,14 @@ export default function CalendarPage() {
   useEffect(() => {
     loadEvents()
     loadSyncStatus()
-  }, [])
+  }, [selectedMember])
 
   return (
     <div className="page">
       <h2 className="page__title">{t('calendarTitle')}</h2>
       <p className="page__subtitle">{t('calendarSubtitle')}</p>
+
+      <MemberFilter members={members} selected={selectedMember} onChange={setSelectedMember} />
 
       <div className="calendar-sync-bar">
         <span className="calendar-sync-bar__status">

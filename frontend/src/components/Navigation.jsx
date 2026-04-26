@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { to: '/today', icon: 'home', key: 'navToday' },
   { to: '/calendar', icon: 'calendar', key: 'navCalendar' },
   { to: '/tasks', icon: 'tasks', key: 'navTasks' },
+  { to: '/shopping', icon: 'shoppingCart', key: 'navShopping' },
   { to: '/scheduler', icon: 'scheduler', key: 'navScheduler' },
   { to: '/settings', icon: 'settings', key: 'navSettings' },
 ]

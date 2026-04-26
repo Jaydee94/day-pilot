@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import TodoList from '../components/TodoList.jsx'
 import QuickAddButton from '../components/QuickAddButton.jsx'
-import { fetchTodos, completeTodo } from '../api.js'
+import { fetchTodos, completeTodo, fetchFamilyMembers } from '../api.js'
+import MemberFilter from '../components/MemberFilter.jsx'
 import { useI18n } from '../i18n.jsx'
 import './Page.css'
 
@@ -14,12 +15,18 @@ export default function TasksPage() {
   const [todos, setTodos] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [members, setMembers] = useState([])
+  const [selectedMember, setSelectedMember] = useState(null)
+
+  useEffect(() => {
+    fetchFamilyMembers().then(setMembers).catch(() => {})
+  }, [])
 
   async function loadTodos() {
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchTodos()
+      const data = await fetchTodos(selectedMember)
       setTodos(data)
     } catch (err) {
       setError(err.message)
@@ -39,12 +46,13 @@ export default function TasksPage() {
 
   useEffect(() => {
     loadTodos()
-  }, [])
+  }, [selectedMember])
 
   return (
     <div className="page">
       <h2 className="page__title">{t('tasksTitle')}</h2>
       <p className="page__subtitle">{t('tasksSubtitle')}</p>
+      <MemberFilter members={members} selected={selectedMember} onChange={setSelectedMember} />
       {loading && todos.length === 0 && (
         <div className="loading-state">
           <div className="spinner" />

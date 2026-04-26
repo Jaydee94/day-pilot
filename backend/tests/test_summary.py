@@ -519,3 +519,159 @@ class TestBuildPromptContent:
         prompt = _build_prompt(_make_summary())
 
         assert "at least one concrete time-window recommendation" in prompt
+
+
+class TestCustomPromptTemplate:
+    """Custom AI_PROMPT_TEMPLATE replaces the built-in instruction when set."""
+
+    def test_custom_template_is_used_when_set(self, monkeypatch):
+        from app.services.ai_summary import _build_prompt
+
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_LANGUAGE", "en")
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_TIMEZONE", "Europe/Berlin")
+        monkeypatch.setattr(
+            "app.services.ai_summary.settings.AI_PROMPT_TEMPLATE",
+            "Lang={language} | Date={date} | Data follows:\n{data}",
+        )
+
+        prompt = _build_prompt(_make_summary())
+
+        assert prompt.startswith("Lang=English")
+        assert "Date=" in prompt
+        assert "Data follows:" in prompt
+        # Must NOT contain built-in instruction text
+        assert "Good morning" not in prompt
+
+    def test_template_receives_german_language_name(self, monkeypatch):
+        from app.services.ai_summary import _build_prompt
+
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_LANGUAGE", "de")
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_TIMEZONE", "Europe/Berlin")
+        monkeypatch.setattr(
+            "app.services.ai_summary.settings.AI_PROMPT_TEMPLATE",
+            "Sprache: {language}",
+        )
+
+        prompt = _build_prompt(_make_summary())
+
+        assert "Sprache: Deutsch" in prompt
+
+    def test_unknown_placeholder_falls_back_to_default(self, monkeypatch):
+        from app.services.ai_summary import _build_prompt
+
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_LANGUAGE", "en")
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_TIMEZONE", "Europe/Berlin")
+        monkeypatch.setattr(
+            "app.services.ai_summary.settings.AI_PROMPT_TEMPLATE",
+            "Hello {language} {unknown_key}",
+        )
+
+        prompt = _build_prompt(_make_summary())
+
+        # Fell back to built-in prompt which contains the standard instruction
+        assert "You are a friendly personal assistant" in prompt
+
+    def test_empty_template_uses_default_prompt(self, monkeypatch):
+        from app.services.ai_summary import _build_prompt
+
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_LANGUAGE", "en")
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_TIMEZONE", "Europe/Berlin")
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_PROMPT_TEMPLATE", "")
+
+        prompt = _build_prompt(_make_summary())
+
+        assert "You are a friendly personal assistant" in prompt
+
+    def test_template_data_contains_event_info(self, monkeypatch):
+        """The {data} placeholder must include the assembled event/todo/weather text."""
+        from app.services.ai_summary import _build_prompt
+
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_LANGUAGE", "en")
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_TIMEZONE", "Europe/Berlin")
+        monkeypatch.setattr(
+            "app.services.ai_summary.settings.AI_PROMPT_TEMPLATE",
+            "CUSTOM:\n{data}",
+        )
+
+        prompt = _build_prompt(_make_summary())
+
+        # _make_summary() includes a "Team Standup" event and "Report abschließen" task
+        assert "Team Standup" in prompt
+        assert "Report abschließen" in prompt
+
+
+class TestParseTimeBlocks:
+    """Unit tests for _parse_time_blocks()."""
+
+    def test_parses_fenced_json_block(self):
+        from app.services.ai_summary import _parse_time_blocks
+
+        text = (
+            "SUMMARY:\nGood morning!\n\nPRIORITIES:\n1. A\n2. B\n3. C\n\n"
+            "TIME_BLOCKS:\n```json\n"
+            '[{"start":"09:00","end":"11:00","task":"Report","type":"focus"},'
+            '{"start":"11:00","end":"11:15","task":"Break","type":"buffer"}]\n'
+            "```"
+        )
+        blocks = _parse_time_blocks(text)
+        assert len(blocks) == 2
+        assert blocks[0].start == "09:00"
+        assert blocks[0].end == "11:00"
+        assert blocks[0].task == "Report"
+        assert blocks[0].type == "focus"
+        assert blocks[1].type == "buffer"
+
+    def test_parses_bare_json_array(self):
+        from app.services.ai_summary import _parse_time_blocks
+
+        text = (
+            "PRIORITIES:\n1. X\n\n"
+            'TIME_BLOCKS:\n[{"start":"14:00","end":"15:00","task":"Sport","type":"break"}]'
+        )
+        blocks = _parse_time_blocks(text)
+        assert len(blocks) == 1
+        assert blocks[0].type == "break"
+
+    def test_returns_empty_when_no_marker(self):
+        from app.services.ai_summary import _parse_time_blocks
+
+        text = "SUMMARY:\nHello\n\nPRIORITIES:\n1. A\n2. B\n3. C"
+        assert _parse_time_blocks(text) == []
+
+    def test_returns_empty_for_malformed_json(self):
+        from app.services.ai_summary import _parse_time_blocks
+
+        text = "TIME_BLOCKS:\n```json\n{not valid json}\n```"
+        assert _parse_time_blocks(text) == []
+
+    def test_skips_invalid_items_keeps_valid(self):
+        from app.services.ai_summary import _parse_time_blocks
+
+        text = (
+            "TIME_BLOCKS:\n```json\n"
+            '[{"start":"09:00","end":"10:00","task":"Work","type":"focus"},'
+            '"this is not a dict"]\n'
+            "```"
+        )
+        blocks = _parse_time_blocks(text)
+        assert len(blocks) == 1
+        assert blocks[0].task == "Work"
+
+    def test_default_type_is_focus(self):
+        from app.services.ai_summary import _parse_time_blocks
+
+        text = 'TIME_BLOCKS:\n[{"start":"09:00","end":"10:00","task":"Standup"}]'
+        blocks = _parse_time_blocks(text)
+        assert blocks[0].type == "focus"
+
+    def test_prompt_includes_time_blocks_format_section(self, monkeypatch):
+        from app.services.ai_summary import _build_prompt
+
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_LANGUAGE", "en")
+        monkeypatch.setattr("app.services.ai_summary.settings.APP_TIMEZONE", "Europe/Berlin")
+        monkeypatch.setattr("app.services.ai_summary.settings.AI_PROMPT_TEMPLATE", "")
+
+        prompt = _build_prompt(_make_summary())
+
+        assert "TIME_BLOCKS:" in prompt
+        assert "focus" in prompt

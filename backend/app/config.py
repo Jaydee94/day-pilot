@@ -83,6 +83,16 @@ class Settings(BaseSettings):
     # Local / internal todo storage
     LOCAL_TODOS_FILE: str = "/app/data/local_todos.json"
 
+    # Local / internal shopping list storage
+    LOCAL_SHOPPING_FILE: str = "/app/data/local_shopping.json"
+
+    # Comma-separated family member names for event/todo assignment
+    # e.g. "Anna,Ben,Clara"
+    FAMILY_MEMBERS: str = ""
+
+    # Dedup marker — prevents duplicate push notifications on the same day
+    NOTIFICATIONS_DEDUP_FILE: str = "/app/data/notification_dedup.json"
+
     # Directory where uploaded Google credentials files are stored (kept for
     # backwards compatibility; no longer actively used after iCal migration).
     GOOGLE_CREDENTIALS_DIR: str = "/app/data/google_credentials"
@@ -94,6 +104,11 @@ class Settings(BaseSettings):
 
     # Voice Webhook secret (used by Siri Shortcuts / Google Assistant IFTTT)
     VOICE_WEBHOOK_SECRET: str = "change-me-in-production"
+
+    # Custom AI prompt template (optional). When non-empty, replaces the built-in
+    # briefing instruction. Available placeholders: {language}, {date}, {data}.
+    # {data} is auto-filled with today's events, weather and todos.
+    AI_PROMPT_TEMPLATE: str = ""
 
     # How often the calendar sync job runs (in full hours, default: 1).
     CALENDAR_SYNC_INTERVAL_HOURS: int = 1

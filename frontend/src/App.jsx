@@ -4,9 +4,11 @@ import Navigation from './components/Navigation.jsx'
 import TodayPage from './pages/TodayPage.jsx'
 import CalendarPage from './pages/CalendarPage.jsx'
 import TasksPage from './pages/TasksPage.jsx'
+import ShoppingPage from './pages/ShoppingPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
 import SchedulerPage from './pages/SchedulerPage.jsx'
 import SetupWizard from './pages/SetupWizard.jsx'
+import KioskPage from './pages/KioskPage.jsx'
 import AppIcon from './components/AppIcon.jsx'
 import { fetchSetupStatus, fetchSettings } from './api.js'
 import { I18nProvider, useI18n } from './i18n.jsx'
@@ -129,6 +131,7 @@ function AppContent({ setLanguage }) {
               <Route path="/today" element={<TodayPage summary={summary} onAddSuccess={fetchSummary} />} />
               <Route path="/calendar" element={<CalendarPage />} />
               <Route path="/tasks" element={<TasksPage />} />
+              <Route path="/shopping" element={<ShoppingPage />} />
               <Route path="/settings" element={<SettingsPage onLanguageChange={setLanguage} />} />
               <Route path="/scheduler" element={<SchedulerPage />} />
               <Route path="*" element={<Navigate to="/today" replace />} />
@@ -155,6 +158,17 @@ function App() {
         setLanguage('en')
       })
   }, [])
+
+  // Kiosk mode — full-screen view without header/navigation
+  if (window.location.pathname.startsWith('/kiosk')) {
+    return (
+      <I18nProvider language={language} setLanguage={setLanguage}>
+        <BrowserRouter>
+          <KioskPage />
+        </BrowserRouter>
+      </I18nProvider>
+    )
+  }
 
   return (
     <I18nProvider language={language} setLanguage={setLanguage}>

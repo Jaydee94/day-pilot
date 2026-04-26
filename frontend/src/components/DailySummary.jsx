@@ -5,6 +5,7 @@ import Birthdays from './Birthdays.jsx'
 import UpcomingBirthdays from './UpcomingBirthdays.jsx'
 import AISummary from './AISummary.jsx'
 import TodayDoableCard from './TodayDoableCard.jsx'
+import TimePlanCard from './TimePlanCard.jsx'
 import { useI18n } from '../i18n.jsx'
 import './DailySummary.css'
 
@@ -40,6 +41,10 @@ export default function DailySummary({ summary, onDeleteEvent, onEditEvent, onCo
         todos={summary.todos || []}
         weather={summary.weather || null}
       />
+
+      {summary.time_blocks?.length > 0 && (
+        <TimePlanCard timeBlocks={summary.time_blocks} />
+      )}
 
       {/* Grid: weather + today's birthdays */}
       <div className="daily-summary__row">

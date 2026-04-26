@@ -1,0 +1,72 @@
+.time-plan__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.time-plan__item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  border-left: 3px solid transparent;
+}
+
+.time-plan__item--focus {
+  background: rgba(79, 142, 247, 0.07);
+  border-left-color: var(--primary);
+}
+
+.time-plan__item--buffer {
+  background: rgba(150, 150, 150, 0.07);
+  border-left-color: var(--text-muted);
+}
+
+.time-plan__item--break {
+  background: rgba(126, 217, 87, 0.08);
+  border-left-color: var(--accent);
+}
+
+.time-plan__slot {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+  min-width: 8rem;
+}
+
+.time-plan__task {
+  flex: 1;
+  color: var(--text);
+}
+
+.time-plan__badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.12rem 0.4rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.time-plan__badge--focus {
+  background: rgba(79, 142, 247, 0.15);
+  color: var(--primary);
+}
+
+.time-plan__badge--buffer {
+  background: rgba(150, 150, 150, 0.15);
+  color: var(--text-muted);
+}
+
+.time-plan__badge--break {
+  background: rgba(126, 217, 87, 0.15);
+  color: var(--accent-hover, #5cb85c);
+}

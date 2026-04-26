@@ -10,7 +10,9 @@ Provider selection is controlled by the ``AI_PROVIDER`` environment variable:
 The model to use is read from ``AI_MODEL``.  When ``AI_MODEL`` is empty the
 service falls back to the provider-specific default defined in ``_PROVIDER_DEFAULTS``.
 """
+import json
 import logging
+import re
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
@@ -20,7 +22,7 @@ except ImportError:  # pragma: no cover
     OpenAI = None  # type: ignore[assignment,misc]
 
 from app.config import settings
-from app.models.schemas import DailySummary, AIConfig, AIModelInfo
+from app.models.schemas import DailySummary, AIConfig, AIModelInfo, TimeBlock
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +124,48 @@ _GOOGLE_KNOWN_MODELS: List[AIModelInfo] = [
     AIModelInfo(id="gemini-1.5-flash-8b", name="Gemini 1.5 Flash-8B (free)", provider="google"),
     AIModelInfo(id="gemini-1.5-pro", name="Gemini 1.5 Pro", provider="google"),
 ]
+
+
+def _parse_time_blocks(text: str) -> List[TimeBlock]:
+    """Extract and parse the TIME_BLOCKS JSON section from an AI response.
+
+    Looks for a JSON array either inside a ```json ... ``` code fence or
+    raw after the 'TIME_BLOCKS:' marker.  Returns an empty list when nothing
+    is found or the JSON is malformed.
+    """
+    # Isolate the part after TIME_BLOCKS:
+    marker = "TIME_BLOCKS:"
+    if marker not in text:
+        return []
+    after = text.split(marker, 1)[1]
+
+    # Prefer a fenced code block  (```json … ```)
+    fenced = re.search(r"```(?:json)?\s*(\[.*?\])\s*```", after, re.DOTALL)
+    if fenced:
+        raw = fenced.group(1)
+    else:
+        # Fall back to the first bare JSON array
+        bare = re.search(r"(\[.*?\])", after, re.DOTALL)
+        if not bare:
+            return []
+        raw = bare.group(1)
+
+    try:
+        data = json.loads(raw)
+        if not isinstance(data, list):
+            return []
+        blocks: List[TimeBlock] = []
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            try:
+                blocks.append(TimeBlock(**item))
+            except Exception:
+                continue
+        return blocks
+    except Exception as exc:
+        logger.warning("Failed to parse TIME_BLOCKS JSON: %s", exc)
+        return []
 
 
 def _resolve_model() -> str:
@@ -440,6 +484,44 @@ def _build_prompt(summary: DailySummary) -> str:
 
     data_text = "\n".join(lines)
 
+    # Custom prompt template — replaces the built-in instruction when configured.
+    # Supported placeholders: {language}, {date}, {data}
+    if settings.AI_PROMPT_TEMPLATE:
+        try:
+            language_name = "Deutsch" if is_de else "English"
+            return settings.AI_PROMPT_TEMPLATE.format_map({
+                "language": language_name,
+                "date": local_date.strftime("%A, %B %d, %Y"),
+                "data": data_text,
+            })
+        except KeyError as exc:
+            logger.warning("AI_PROMPT_TEMPLATE contains unknown placeholder %s – using default", exc)
+
+    time_blocks_format_de = (
+        "\n\nTIME_BLOCKS:\n"
+        "```json\n"
+        "[{\"start\":\"09:00\",\"end\":\"11:00\",\"task\":\"...\",\"type\":\"focus\"}, ...]\n"
+        "```"
+    )
+    time_blocks_format_en = (
+        "\n\nTIME_BLOCKS:\n"
+        "```json\n"
+        "[{\"start\":\"09:00\",\"end\":\"11:00\",\"task\":\"...\",\"type\":\"focus\"}, ...]\n"
+        "```"
+    )
+    time_blocks_instruction_de = (
+        "Erstelle danach einen realistischen Tagesplan als JSON-Block (TIME_BLOCKS) "
+        "mit konkreten Zeitblöcken für die freien Zeitfenster. "
+        "Typen: 'focus' (Fokusarbeit), 'buffer' (Puffer/Übergänge), 'break' (Pause). "
+        "Gib maximal 5 Blöcke aus."
+    )
+    time_blocks_instruction_en = (
+        "Then create a realistic daily schedule as a JSON block (TIME_BLOCKS) "
+        "with concrete time slots for the free windows. "
+        "Types: 'focus' (deep work), 'buffer' (transitions/buffers), 'break' (rest). "
+        "Include at most 5 blocks."
+    )
+
     if is_de:
         return (
             "Du bist ein freundlicher persoenlicher Assistent fuer eine Familie mit Kleinkind (3 Jahre). "
@@ -458,8 +540,9 @@ def _build_prompt(summary: DailySummary) -> str:
             "6) genau 2 konkrete, familienfreundliche Vorschlaege fuer Aktivitäten mit einem 3-jaehrigen Kind: "
             "an Werktagen als Idee fuer NACH der Arbeit, am Wochenende fuer tagsueber. "
             "Achte darauf, dass die Vorschlaege zum Wetter passen. "
-            "Extrahiere danach die 3 wichtigsten Prioritaeten als nummerierte Liste.\n\n"
-            "FORMAT:\nSUMMARY:\n<text>\n\nPRIORITIES:\n1. ...\n2. ...\n3. ...\n\n"
+            "Extrahiere danach die 3 wichtigsten Prioritaeten als nummerierte Liste. "
+            f"{time_blocks_instruction_de}\n\n"
+            f"FORMAT:\nSUMMARY:\n<text>\n\nPRIORITIES:\n1. ...\n2. ...\n3. ...{time_blocks_format_de}\n\n"
             f"DATA:\n{data_text}"
         )
 
@@ -480,8 +563,9 @@ def _build_prompt(summary: DailySummary) -> str:
         "6) exactly 2 concrete family activity ideas suitable for a 3-year-old: "
         "on weekdays as after-work ideas, on weekends as daytime ideas. "
         "Ensure those ideas fit the weather conditions. "
-        "Then extract the 3 most important priorities for the day as a numbered list.\n\n"
-        "FORMAT:\nSUMMARY:\n<text>\n\nPRIORITIES:\n1. ...\n2. ...\n3. ...\n\n"
+        "Then extract the 3 most important priorities for the day as a numbered list. "
+        f"{time_blocks_instruction_en}\n\n"
+        f"FORMAT:\nSUMMARY:\n<text>\n\nPRIORITIES:\n1. ...\n2. ...\n3. ...{time_blocks_format_en}\n\n"
         f"DATA:\n{data_text}"
     )
 
@@ -503,6 +587,7 @@ def generate_summary(summary: DailySummary) -> DailySummary:
         logger.debug("AI summary cache hit for %s – skipping AI call", cache_key)
         summary.ai_summary = cached["ai_summary"]
         summary.top_priorities = cached["top_priorities"]
+        summary.time_blocks = cached.get("time_blocks", [])
         return summary
 
     if not _is_configured():
@@ -525,7 +610,7 @@ def generate_summary(summary: DailySummary) -> DailySummary:
             model=model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
-            max_tokens=512,
+            max_tokens=700,
         )
         text: str = response.choices[0].message.content.strip()
 
@@ -540,18 +625,21 @@ def generate_summary(summary: DailySummary) -> DailySummary:
             for line in prio_block.splitlines():
                 line = line.strip()
                 if line and line[0].isdigit():
-                    # strip leading "1. " etc.
                     priorities.append(line.split(".", 1)[-1].strip())
         else:
             ai_text = text
 
+        time_blocks = _parse_time_blocks(text)
+
         summary.ai_summary = ai_text
         summary.top_priorities = priorities[:3]
+        summary.time_blocks = time_blocks
 
         # Populate the daily cache
         _ai_summary_cache[cache_key] = {
             "ai_summary": ai_text,
             "top_priorities": priorities[:3],
+            "time_blocks": time_blocks,
         }
         logger.info("AI summary cached for %s", cache_key)
         return summary

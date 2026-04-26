@@ -2,15 +2,51 @@
 Push notification service using ntfy (https://ntfy.sh).
 Sends the daily summary as a formatted push message.
 """
+import json
 import logging
+import os
+from datetime import datetime
 from typing import Optional
 
 import httpx
+import pytz
 
 from app.config import settings
 from app.models.schemas import DailySummary
 
 logger = logging.getLogger(__name__)
+
+
+def _today_iso() -> str:
+    tz = pytz.timezone(settings.APP_TIMEZONE)
+    return datetime.now(tz).date().isoformat()
+
+
+def _has_sent_today() -> bool:
+    """Return True if a push notification was already sent today."""
+    path = settings.NOTIFICATIONS_DEDUP_FILE
+    if not os.path.exists(path):
+        return False
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        return data.get("date") == _today_iso()
+    except Exception as exc:
+        logger.warning("Could not read dedup file %s: %s", path, exc)
+        return False
+
+
+def _mark_sent_today() -> None:
+    """Persist today's date as the last-sent marker."""
+    path = settings.NOTIFICATIONS_DEDUP_FILE
+    dir_name = os.path.dirname(os.path.abspath(path))
+    if dir_name:
+        os.makedirs(dir_name, exist_ok=True)
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"date": _today_iso()}, f)
+    except Exception as exc:
+        logger.warning("Could not write dedup file %s: %s", path, exc)
 
 
 def _build_message(summary: DailySummary) -> str:
@@ -44,9 +80,17 @@ def _build_message(summary: DailySummary) -> str:
 
 
 def send_daily_push(summary: DailySummary) -> bool:
-    """Send the daily summary as a push notification via ntfy."""
+    """Send the daily summary as a push notification via ntfy.
+
+    Returns False without sending if a notification was already sent today
+    (dedup) or if ntfy is not configured.
+    """
     if not settings.NTFY_TOPIC:
         logger.warning("NTFY_TOPIC not configured – skipping push notification")
+        return False
+
+    if _has_sent_today():
+        logger.info("Push notification already sent today – skipping duplicate")
         return False
 
     url = f"{settings.NTFY_SERVER.rstrip('/')}/{settings.NTFY_TOPIC}"
@@ -68,6 +112,7 @@ def send_daily_push(summary: DailySummary) -> bool:
             resp = client.post(url, content=message.encode("utf-8"), headers=headers)
             resp.raise_for_status()
         logger.info("Push notification sent to %s", url)
+        _mark_sent_today()
         return True
     except httpx.HTTPStatusError as exc:
         logger.error(

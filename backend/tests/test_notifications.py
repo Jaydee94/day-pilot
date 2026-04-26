@@ -38,7 +38,7 @@ class TestSendDailyPush:
         result = send_daily_push(_make_summary())
         assert result is False
 
-    def test_sends_push_on_success(self, monkeypatch):
+    def test_sends_push_on_success(self, monkeypatch, tmp_path):
         monkeypatch.setattr(
             "app.services.notifications.settings.NTFY_TOPIC", "my-topic"
         )
@@ -47,6 +47,11 @@ class TestSendDailyPush:
         )
         monkeypatch.setattr(
             "app.services.notifications.settings.NTFY_TOKEN", ""
+        )
+        # Use a fresh dedup file so the guard never blocks
+        monkeypatch.setattr(
+            "app.services.notifications.settings.NOTIFICATIONS_DEDUP_FILE",
+            str(tmp_path / "dedup.json"),
         )
 
         mock_resp = MagicMock()
@@ -68,6 +73,58 @@ class TestSendDailyPush:
         assert "my-topic" in call_args[0][0]
         headers = call_args[1]["headers"]
         headers["Title"].encode("ascii")
+
+    def test_skips_duplicate_send_same_day(self, monkeypatch, tmp_path):
+        dedup_file = str(tmp_path / "dedup.json")
+        monkeypatch.setattr("app.services.notifications.settings.NTFY_TOPIC", "my-topic")
+        monkeypatch.setattr("app.services.notifications.settings.NTFY_SERVER", "https://ntfy.sh")
+        monkeypatch.setattr("app.services.notifications.settings.NTFY_TOKEN", "")
+        monkeypatch.setattr("app.services.notifications.settings.NOTIFICATIONS_DEDUP_FILE", dedup_file)
+
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status = MagicMock()
+
+        with patch("app.services.notifications.httpx.Client") as mock_cls:
+            mock_client = MagicMock()
+            mock_client.__enter__ = lambda s: mock_client
+            mock_client.__exit__ = MagicMock(return_value=False)
+            mock_client.post.return_value = mock_resp
+            mock_cls.return_value = mock_client
+
+            from app.services.notifications import send_daily_push
+            first = send_daily_push(_make_summary())
+            second = send_daily_push(_make_summary())
+
+        assert first is True
+        assert second is False
+        assert mock_client.post.call_count == 1
+
+    def test_dedup_resets_next_day(self, monkeypatch, tmp_path):
+        import json
+        dedup_file = str(tmp_path / "dedup.json")
+        # Write yesterday's date into the dedup file
+        with open(dedup_file, "w") as f:
+            json.dump({"date": "2000-01-01"}, f)
+        monkeypatch.setattr("app.services.notifications.settings.NTFY_TOPIC", "my-topic")
+        monkeypatch.setattr("app.services.notifications.settings.NTFY_SERVER", "https://ntfy.sh")
+        monkeypatch.setattr("app.services.notifications.settings.NTFY_TOKEN", "")
+        monkeypatch.setattr("app.services.notifications.settings.NOTIFICATIONS_DEDUP_FILE", dedup_file)
+
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status = MagicMock()
+
+        with patch("app.services.notifications.httpx.Client") as mock_cls:
+            mock_client = MagicMock()
+            mock_client.__enter__ = lambda s: mock_client
+            mock_client.__exit__ = MagicMock(return_value=False)
+            mock_client.post.return_value = mock_resp
+            mock_cls.return_value = mock_client
+
+            from app.services.notifications import send_daily_push
+            result = send_daily_push(_make_summary())
+
+        assert result is True
+        mock_client.post.assert_called_once()
 
     def test_returns_false_on_http_error(self, monkeypatch):
         monkeypatch.setattr(

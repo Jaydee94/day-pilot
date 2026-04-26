@@ -86,8 +86,11 @@ export async function triggerSchedulerJob(jobId) {
  * Does NOT trigger any AI calls.
  * @returns {Promise<Array>} list of CalendarEvent objects
  */
-export async function fetchEvents() {
-  const resp = await fetch(`${API_BASE}/events`)
+export async function fetchEvents(assignedTo = null) {
+  const url = assignedTo
+    ? `${API_BASE}/events?assigned_to=${encodeURIComponent(assignedTo)}`
+    : `${API_BASE}/events`
+  const resp = await fetch(url)
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
   return resp.json()
 }
@@ -97,8 +100,17 @@ export async function fetchEvents() {
  * Does NOT trigger any AI calls.
  * @returns {Promise<Array>} list of TodoItem objects
  */
-export async function fetchTodos() {
-  const resp = await fetch(`${API_BASE}/todos`)
+export async function fetchTodos(assignedTo = null) {
+  const url = assignedTo
+    ? `${API_BASE}/todos?assigned_to=${encodeURIComponent(assignedTo)}`
+    : `${API_BASE}/todos`
+  const resp = await fetch(url)
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  return resp.json()
+}
+
+export async function fetchFamilyMembers() {
+  const resp = await fetch(`${API_BASE}/family-members`)
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
   return resp.json()
 }
@@ -282,6 +294,53 @@ export async function updateEvent(eventId, data) {
     const body = await resp.json().catch(() => ({}))
     throw new Error(body.detail || `HTTP ${resp.status}`)
   }
+  return resp.json()
+}
+
+export async function fetchShoppingItems() {
+  const resp = await fetch(`${API_BASE}/shopping`)
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  return resp.json()
+}
+
+export async function addShoppingItem(name, category = 'Sonstiges', quantity = null) {
+  const resp = await fetch(`${API_BASE}/shopping`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, category, quantity }),
+  })
+  if (!resp.ok) {
+    const data = await resp.json().catch(() => ({}))
+    throw new Error(data.detail || `HTTP ${resp.status}`)
+  }
+  return resp.json()
+}
+
+export async function checkShoppingItem(itemId) {
+  const resp = await fetch(`${API_BASE}/shopping/${encodeURIComponent(itemId)}/check`, {
+    method: 'PATCH',
+  })
+  if (!resp.ok) {
+    const data = await resp.json().catch(() => ({}))
+    throw new Error(data.detail || `HTTP ${resp.status}`)
+  }
+  return resp.json()
+}
+
+export async function deleteShoppingItem(itemId) {
+  const resp = await fetch(`${API_BASE}/shopping/${encodeURIComponent(itemId)}`, {
+    method: 'DELETE',
+  })
+  if (!resp.ok) {
+    const data = await resp.json().catch(() => ({}))
+    throw new Error(data.detail || `HTTP ${resp.status}`)
+  }
+  return resp.json()
+}
+
+export async function clearCheckedShoppingItems() {
+  const resp = await fetch(`${API_BASE}/shopping/clear-checked`, { method: 'POST' })
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
   return resp.json()
 }
 
