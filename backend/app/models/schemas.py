@@ -68,6 +68,13 @@ class WeatherInfo(BaseModel):
     daily_forecast: List[DailyForecastPoint] = []
 
 
+class TimeBlock(BaseModel):
+    start: str           # "09:00"
+    end: str             # "11:00"
+    task: str
+    type: str = "focus"  # "focus" | "buffer" | "break"
+
+
 class DailySummary(BaseModel):
     date: datetime
     events: List[CalendarEvent] = []
@@ -76,6 +83,7 @@ class DailySummary(BaseModel):
     weather: Optional[WeatherInfo] = None
     ai_summary: Optional[str] = None
     top_priorities: List[str] = []
+    time_blocks: List[TimeBlock] = []
 
 
 class CreateEventRequest(BaseModel):
