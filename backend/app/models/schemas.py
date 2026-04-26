@@ -192,6 +192,20 @@ class UserSettings(BaseModel):
     SETUP_COMPLETE: Optional[bool] = None
 
 
+class ShoppingItem(BaseModel):
+    id: str
+    name: str
+    category: str = "Sonstiges"
+    quantity: Optional[str] = None
+    checked: bool = False
+
+
+class CreateShoppingItemRequest(BaseModel):
+    name: str
+    category: str = "Sonstiges"
+    quantity: Optional[str] = None
+
+
 class SetupStatus(BaseModel):
     """Setup / onboarding status returned by ``GET /api/settings/status``."""
 

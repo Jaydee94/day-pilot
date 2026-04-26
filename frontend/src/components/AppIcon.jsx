@@ -144,6 +144,13 @@ const ICON_PATHS = {
       <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
     </>
   ),
+  shoppingCart: (
+    <>
+      <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+      <path d="M3 6h18" />
+      <path d="M16 10a4 4 0 0 1-8 0" />
+    </>
+  ),
 }
 
 export default function AppIcon({ name, className = '', strokeWidth = 1.9 }) {

@@ -83,6 +83,9 @@ class Settings(BaseSettings):
     # Local / internal todo storage
     LOCAL_TODOS_FILE: str = "/app/data/local_todos.json"
 
+    # Local / internal shopping list storage
+    LOCAL_SHOPPING_FILE: str = "/app/data/local_shopping.json"
+
     # Dedup marker — prevents duplicate push notifications on the same day
     NOTIFICATIONS_DEDUP_FILE: str = "/app/data/notification_dedup.json"
 
