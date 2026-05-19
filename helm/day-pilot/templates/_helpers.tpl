@@ -84,24 +84,28 @@ Service account name
 
 {{/*
 Name of the Secret that holds sensitive environment variables.
-Returns either the user-supplied existing secret or the generated one.
+Returns either the user-supplied existing secret (from .Values.secrets.existingSecret)
+or the in-chart generated one (`<fullname>-secrets`). The external secret should
+expose the same keys as templates/secret.yaml (OPENAI_API_KEY, DATABASE_URL, ...).
 */}}
 {{- define "day-pilot.secretName" -}}
 {{- if .Values.secrets.existingSecret }}
 {{- .Values.secrets.existingSecret }}
 {{- else }}
-{{- include "day-pilot.fullname" . }}
+{{- printf "%s-secrets" (include "day-pilot.fullname" .) }}
 {{- end }}
 {{- end }}
 
 {{/*
 Resolve an image reference, honoring global.imageRegistry.
-Usage: {{ include "day-pilot.image" .Values.backend.image }}
+Falls back to .Chart.AppVersion when image.tag is empty so that the chart
+is always pinned to a concrete version rather than the floating "latest".
+Usage: {{ include "day-pilot.image" (dict "root" . "image" .Values.backend.image) }}
 */}}
 {{- define "day-pilot.image" -}}
 {{- $registry := .root.Values.global.imageRegistry -}}
 {{- $repo := .image.repository -}}
-{{- $tag := .image.tag | default "latest" -}}
+{{- $tag := .image.tag | default .root.Chart.AppVersion -}}
 {{- if $registry -}}
 {{- printf "%s/%s:%s" $registry $repo $tag -}}
 {{- else -}}

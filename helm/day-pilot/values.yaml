@@ -24,7 +24,8 @@ serviceAccount:
 backend:
   image:
     repository: ghcr.io/jaydee94/day-pilot-backend
-    tag: "latest"
+    # tag falls back to Chart.AppVersion when left empty (see _helpers.tpl)
+    tag: ""
     pullPolicy: IfNotPresent
 
   replicas: 1
@@ -54,8 +55,18 @@ backend:
     size: 500Mi
 
   podAnnotations: {}
-  podSecurityContext: {}
-  securityContext: {}
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
 
 # ---------------------------------------------------------------------------
 # Frontend – React PWA served via nginx
@@ -63,26 +74,38 @@ backend:
 frontend:
   image:
     repository: ghcr.io/jaydee94/day-pilot-frontend
-    tag: "latest"
+    # tag falls back to Chart.AppVersion when left empty (see _helpers.tpl)
+    tag: ""
     pullPolicy: IfNotPresent
 
   replicas: 1
 
   resources:
     requests:
-      cpu: 50m
-      memory: 64Mi
-    limits:
-      cpu: 200m
+      cpu: 100m
       memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
 
   service:
     type: ClusterIP
     port: 80
 
   podAnnotations: {}
-  podSecurityContext: {}
-  securityContext: {}
+  # NOTE: The current frontend Dockerfile uses the standard nginx:alpine image,
+  # whose master process needs root to bind to port 80 and to write its PID file.
+  # We therefore keep runAsNonRoot=false for now but still drop all capabilities
+  # and disable privilege escalation. Switch to nginxinc/nginx-unprivileged
+  # (listens on 8080) to fully enforce non-root execution.
+  podSecurityContext:
+    runAsNonRoot: false
+  securityContext:
+    runAsNonRoot: false
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
 
 # ---------------------------------------------------------------------------
 # Ingress
