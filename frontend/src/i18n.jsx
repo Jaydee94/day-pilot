@@ -633,7 +633,6 @@ function interpolate(template, params = {}) {
     const value = params[key]
     if (value === undefined || value === null) {
       if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
         console.warn(`[i18n] missing param "${key}" for template "${template}"`)
       }
       return match // leave the placeholder visible

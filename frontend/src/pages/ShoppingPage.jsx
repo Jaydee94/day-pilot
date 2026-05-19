@@ -7,7 +7,7 @@ import {
   checkShoppingItem,
   deleteShoppingItem,
   clearCheckedShoppingItems,
-} from '../api.js'
+} from '../api'
 import './ShoppingPage.css'
 
 export default function ShoppingPage() {

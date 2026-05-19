@@ -9,7 +9,7 @@ import AISummary from '../components/AISummary.jsx'
 import DailySummary from '../components/DailySummary.jsx'
 import TodayDoableCard from '../components/TodayDoableCard.jsx'
 
-vi.mock('../api.js', () => ({
+vi.mock('../api', () => ({
   fetchBirthdays: vi.fn().mockResolvedValue([]),
 }))
 

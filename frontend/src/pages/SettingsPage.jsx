@@ -10,7 +10,7 @@ import {
   fetchCalDAVAccounts,
   addCalDAVAccount,
   deleteCalDAVAccount,
-} from '../api.js'
+} from '../api'
 import AppIcon from '../components/AppIcon.jsx'
 import FamilySettingsSection from '../components/FamilySettingsSection.jsx'
 import { useI18n } from '../i18n.jsx'
@@ -278,7 +278,6 @@ export default function SettingsPage({ onLanguageChange }) {
   async function handleTestAllConnections() {
     for (const integration of TESTABLE_INTEGRATIONS) {
       // Run one-by-one to keep feedback readable in the UI.
-      // eslint-disable-next-line no-await-in-loop
       await handleTestConnection(integration)
     }
   }

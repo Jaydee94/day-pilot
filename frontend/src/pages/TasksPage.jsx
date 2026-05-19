@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import TodoList from '../components/TodoList.jsx'
 import QuickAddButton from '../components/QuickAddButton.jsx'
-import { fetchTodos, completeTodo, fetchFamilyMembers } from '../api.js'
+import { fetchTodos, completeTodo, fetchFamilyMembers } from '../api'
 import MemberFilter from '../components/MemberFilter.jsx'
 import { useI18n } from '../i18n.jsx'
 import './Page.css'

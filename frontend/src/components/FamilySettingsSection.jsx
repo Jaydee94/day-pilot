@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useI18n } from '../i18n.jsx'
 import AppIcon from './AppIcon.jsx'
-import { fetchFamilyProfiles, createFamilyMember, updateFamilyMember, deleteFamilyMember } from '../api.js'
+import { fetchFamilyProfiles, createFamilyMember, updateFamilyMember, deleteFamilyMember } from '../api'
 import './FamilySettingsSection.css'
 
 function MemberForm({ initial, onSave, onCancel }) {

@@ -1,6 +1,6 @@
 import DailySummary from '../components/DailySummary.jsx'
 import QuickAddButton from '../components/QuickAddButton.jsx'
-import { deleteEvent, updateEvent, completeTodo } from '../api.js'
+import { deleteEvent, updateEvent, completeTodo } from '../api'
 
 export default function TodayPage({ summary, onAddSuccess }) {
   async function handleDeleteEvent(eventId) {

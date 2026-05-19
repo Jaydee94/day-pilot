@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import AppIcon from './AppIcon.jsx'
-import { fetchBirthdays } from '../api.js'
+import { fetchBirthdays } from '../api'
 import { useI18n } from '../i18n.jsx'
 import './UpcomingBirthdays.css'
 

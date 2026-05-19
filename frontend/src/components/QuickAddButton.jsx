@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import AppIcon from './AppIcon.jsx'
 import { useI18n } from '../i18n.jsx'
-import { fetchFamilyMembers, API_BASE } from '../api.js'
+import { fetchFamilyMembers, API_BASE } from '../api'
 import './QuickAddButton.css'
 
 const TABS = ['Event', 'Task']

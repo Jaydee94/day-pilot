@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { fetchSchedulerJobs, triggerSchedulerJob } from '../api.js'
+import { fetchSchedulerJobs, triggerSchedulerJob } from '../api'
 import { useI18n } from '../i18n.jsx'
 import './SchedulerPage.css'
 

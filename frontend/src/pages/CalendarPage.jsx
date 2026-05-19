@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import CalendarEvents from '../components/CalendarEvents.jsx'
 import QuickAddButton from '../components/QuickAddButton.jsx'
-import { fetchEvents, fetchSyncStatus, triggerSchedulerJob, deleteEvent, updateEvent, fetchFamilyMembers } from '../api.js'
+import { fetchEvents, fetchSyncStatus, triggerSchedulerJob, deleteEvent, updateEvent, fetchFamilyMembers } from '../api'
 import MemberFilter from '../components/MemberFilter.jsx'
 import { useI18n } from '../i18n.jsx'
 import './Page.css'

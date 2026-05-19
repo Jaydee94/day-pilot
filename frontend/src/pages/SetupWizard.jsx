@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { saveSettings, addICalUrl } from '../api.js'
+import { saveSettings, addICalUrl } from '../api'
 import { useI18n } from '../i18n.jsx'
 import './SetupWizard.css'
 
