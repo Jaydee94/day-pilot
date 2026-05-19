@@ -10,6 +10,7 @@ No AI or keyword classification is used for birthday detection.
 """
 import logging
 import re
+import threading
 from datetime import datetime, timedelta
 from typing import List, Optional
 
@@ -81,20 +82,29 @@ def _extract_name(title: str) -> str:
 
 
 def _extract_age_from_title(title: str) -> Optional[int]:
-    """Try to extract an ordinal age like '30th' from the event title."""
+    """Try to extract an ordinal age like '30th' from the event title.
+
+    Returns ``None`` when no plausible age (1-130) could be extracted to guard
+    against years (e.g. "2024th") or other implausible matches.
+    """
     m = _AGE_FROM_TITLE_RE.search(title)
     if m:
         try:
-            return int(m.group(1))
+            age = int(m.group(1))
         except ValueError:
-            pass
+            return None
+        if 1 <= age <= 130:
+            return age
     return None
 
 
 # In-memory cache populated by scheduler-driven sync and used by the dashboard.
+# The cache may be accessed from the scheduler thread (refresh) and the HTTP
+# request threads (read) concurrently, so all access goes through the lock.
 _cached_birthdays: List[Birthday] = []
 _cache_days_ahead: int = DEFAULT_BIRTHDAY_LOOKAHEAD_DAYS
 _cache_limit: int = DEFAULT_BIRTHDAY_LIMIT
+_birthday_cache_lock = threading.Lock()
 
 
 # ---------------------------------------------------------------------------
@@ -154,10 +164,14 @@ def refresh_upcoming_birthdays_cache(
 ) -> List[Birthday]:
     """Refresh the in-memory upcoming birthdays cache and return the new list."""
     global _cached_birthdays, _cache_days_ahead, _cache_limit
-    _cached_birthdays = _compute_upcoming_birthdays(days_ahead=days_ahead, limit=limit)
-    _cache_days_ahead = days_ahead
-    _cache_limit = limit
-    return list(_cached_birthdays)
+    # Compute outside the lock to keep the critical section short — the calendar
+    # fetches inside ``_compute_upcoming_birthdays`` may take several seconds.
+    fresh = _compute_upcoming_birthdays(days_ahead=days_ahead, limit=limit)
+    with _birthday_cache_lock:
+        _cached_birthdays = fresh
+        _cache_days_ahead = days_ahead
+        _cache_limit = limit
+        return list(_cached_birthdays)
 
 
 def get_upcoming_birthdays(
@@ -170,18 +184,20 @@ def get_upcoming_birthdays(
     Uses the scheduler-populated in-memory cache when request parameters match
     the cache shape; otherwise computes the result on demand.
     """
-    if (
-        days_ahead == _cache_days_ahead
-        and limit == _cache_limit
-        and _cached_birthdays
-    ):
-        return list(_cached_birthdays)
+    with _birthday_cache_lock:
+        if (
+            days_ahead == _cache_days_ahead
+            and limit == _cache_limit
+            and _cached_birthdays
+        ):
+            return list(_cached_birthdays)
     return _compute_upcoming_birthdays(days_ahead=days_ahead, limit=limit)
 
 
 def invalidate_birthday_cache() -> None:
     """Clear the in-memory upcoming birthdays cache."""
     global _cached_birthdays, _cache_days_ahead, _cache_limit
-    _cached_birthdays = []
-    _cache_days_ahead = DEFAULT_BIRTHDAY_LOOKAHEAD_DAYS
-    _cache_limit = DEFAULT_BIRTHDAY_LIMIT
+    with _birthday_cache_lock:
+        _cached_birthdays = []
+        _cache_days_ahead = DEFAULT_BIRTHDAY_LOOKAHEAD_DAYS
+        _cache_limit = DEFAULT_BIRTHDAY_LIMIT

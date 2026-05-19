@@ -42,6 +42,7 @@ from app.services.settings_store import (
     is_setup_complete,
     save_user_settings,
 )
+from app.services._logging import redact
 
 logger = logging.getLogger(__name__)
 
@@ -279,7 +280,7 @@ def update_settings(payload: UserSettings) -> UserSettings:
     try:
         save_user_settings(updates)
     except Exception as exc:
-        logger.error("Could not persist settings: %s", exc)
+        logger.error("Could not persist settings: %s", redact(exc))
         raise HTTPException(status_code=500, detail="Failed to save settings") from exc
 
     # Update in-memory settings so they take effect without a restart.
@@ -294,7 +295,7 @@ def update_settings(payload: UserSettings) -> UserSettings:
                 logger.warning(
                     "Setting %s was persisted but failed to apply in-memory (restart may be required): %s",
                     key,
-                    exc,
+                    redact(exc),
                 )
 
     # Restart the scheduler when timing-related settings change.
@@ -365,8 +366,17 @@ def _parse_ical_feeds() -> List[dict]:
                     for f in feeds
                     if f.get("url", "").strip()
                 ]
-        except Exception:
-            pass
+        except json.JSONDecodeError as exc:
+            logger.warning(
+                "ICAL_FEEDS contains invalid JSON (%s at pos %d); falling back to ICAL_URLS",
+                exc.msg,
+                exc.pos,
+            )
+        except Exception as exc:
+            logger.warning(
+                "ICAL_FEEDS could not be parsed (%s); falling back to ICAL_URLS",
+                exc,
+            )
 
     # Migration: convert legacy ICAL_URLS to structured feeds.
     raw_urls = (app_settings.ICAL_URLS or "").strip()
@@ -490,8 +500,17 @@ def _parse_caldav_accounts() -> List[dict]:
             accounts = json.loads(raw)
             if isinstance(accounts, list):
                 return accounts
-        except Exception:
-            pass
+        except json.JSONDecodeError as exc:
+            logger.warning(
+                "CALDAV_CONFIGS contains invalid JSON (%s at pos %d); falling back to legacy single-account variables",
+                exc.msg,
+                exc.pos,
+            )
+        except Exception as exc:
+            logger.warning(
+                "CALDAV_CONFIGS could not be parsed (%s); falling back to legacy single-account variables",
+                exc,
+            )
 
     # Fall back to legacy single-account variables
     if app_settings.CALDAV_URL:

@@ -20,6 +20,14 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
 
   # ---------------------------------------------------------------------------
   # Redis – job queue and cache
@@ -39,6 +47,14 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
 
   # ---------------------------------------------------------------------------
   # Backend – FastAPI application
@@ -70,6 +86,14 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
 
   # ---------------------------------------------------------------------------
   # Frontend – React PWA served via nginx
@@ -92,6 +116,14 @@ services:
         condition: service_healthy
     networks:
       - daypilot-net
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
 
 networks:
   daypilot-net:

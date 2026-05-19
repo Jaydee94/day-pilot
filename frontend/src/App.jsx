@@ -10,13 +10,9 @@ import SchedulerPage from './pages/SchedulerPage.jsx'
 import SetupWizard from './pages/SetupWizard.jsx'
 import KioskPage from './pages/KioskPage.jsx'
 import AppIcon from './components/AppIcon.jsx'
-import { fetchSetupStatus, fetchSettings } from './api.js'
+import { fetchSetupStatus, fetchSettings, API_BASE } from './api.js'
 import { I18nProvider, useI18n } from './i18n.jsx'
 import './App.css'
-
-const API_BASE = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api`
-  : '/api'
 
 function AppContent({ setLanguage }) {
   const { t, locale } = useI18n()

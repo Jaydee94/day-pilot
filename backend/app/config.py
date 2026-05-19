@@ -95,17 +95,13 @@ class Settings(BaseSettings):
     # Dedup marker — prevents duplicate push notifications on the same day
     NOTIFICATIONS_DEDUP_FILE: str = "/app/data/notification_dedup.json"
 
-    # Directory where uploaded Google credentials files are stored (kept for
-    # backwards compatibility; no longer actively used after iCal migration).
-    GOOGLE_CREDENTIALS_DIR: str = "/app/data/google_credentials"
-
     # Push Notifications (ntfy.sh)
     NTFY_SERVER: str = "https://ntfy.sh"
     NTFY_TOPIC: str = ""
     NTFY_TOKEN: str = ""
 
     # Voice Webhook secret (used by Siri Shortcuts / Google Assistant IFTTT)
-    VOICE_WEBHOOK_SECRET: str = "change-me-in-production"
+    VOICE_WEBHOOK_SECRET: str = ""
 
     # Custom AI prompt template (optional). When non-empty, replaces the built-in
     # briefing instruction. Available placeholders: {language}, {date}, {data}.
@@ -114,6 +110,9 @@ class Settings(BaseSettings):
 
     # How often the calendar sync job runs (in full hours, default: 1).
     CALENDAR_SYNC_INTERVAL_HOURS: int = 1
+
+    # Comma-separated list of allowed CORS origins. Empty = localhost dev defaults.
+    CORS_ALLOW_ORIGINS: str = ""
 
 
 def _apply_settings_overlay(s: Settings) -> None:

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 from typing import List, Literal, Optional
 from datetime import datetime
 
@@ -37,7 +37,7 @@ class CalDAVAccount(BaseModel):
 class Birthday(BaseModel):
     name: str
     date: datetime
-    age: Optional[int] = None
+    age: Optional[int] = Field(default=None, ge=0, le=150)
 
 
 class HourlyForecastPoint(BaseModel):
@@ -96,6 +96,12 @@ class CreateEventRequest(BaseModel):
     description: Optional[str] = None
     assigned_to: Optional[str] = None
 
+    @model_validator(mode="after")
+    def _end_after_start(self):
+        if self.end is not None and self.end <= self.start:
+            raise ValueError("end must be after start")
+        return self
+
 
 class CreateTodoRequest(BaseModel):
     title: str
@@ -111,6 +117,12 @@ class UpdateEventRequest(BaseModel):
     location: Optional[str] = None
     description: Optional[str] = None
     assigned_to: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _end_after_start(self):
+        if self.start is not None and self.end is not None and self.end <= self.start:
+            raise ValueError("end must be after start")
+        return self
 
 
 class VoiceCommand(BaseModel):

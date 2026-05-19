@@ -9,6 +9,7 @@ from typing import Dict, List, Optional
 
 from app.config import settings
 from app.models.schemas import ShoppingItem
+from app.services._storage import atomic_write_json, file_lock
 
 logger = logging.getLogger(__name__)
 
@@ -33,10 +34,8 @@ def _load_all_items() -> List[dict]:
 
 def _save_all_items(items: List[dict]) -> None:
     path = _shopping_file()
-    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     try:
-        with open(path, "w", encoding="utf-8") as fh:
-            json.dump(items, fh, indent=2, ensure_ascii=False)
+        atomic_write_json(path, items)
     except Exception as exc:
         logger.error("Failed to write shopping file %s: %s", path, exc)
         raise
@@ -91,38 +90,42 @@ def add_shopping_item(
     }
     if quantity:
         raw["quantity"] = quantity
-    all_items = _load_all_items()
-    all_items.append(raw)
-    _save_all_items(all_items)
+    with file_lock(_shopping_file()):
+        all_items = _load_all_items()
+        all_items.append(raw)
+        _save_all_items(all_items)
     return ShoppingItem(id=item_id, name=name, category=category, quantity=quantity, checked=False)
 
 
 def check_shopping_item(item_id: str) -> bool:
     """Toggle checked state.  Returns True if found."""
-    all_items = _load_all_items()
-    for raw in all_items:
-        if raw.get("id") == item_id:
-            raw["checked"] = not raw.get("checked", False)
-            _save_all_items(all_items)
-            return True
+    with file_lock(_shopping_file()):
+        all_items = _load_all_items()
+        for raw in all_items:
+            if raw.get("id") == item_id:
+                raw["checked"] = not raw.get("checked", False)
+                _save_all_items(all_items)
+                return True
     return False
 
 
 def delete_shopping_item(item_id: str) -> bool:
     """Delete an item by ID.  Returns True if found."""
-    all_items = _load_all_items()
-    remaining = [i for i in all_items if i.get("id") != item_id]
-    if len(remaining) == len(all_items):
-        return False
-    _save_all_items(remaining)
+    with file_lock(_shopping_file()):
+        all_items = _load_all_items()
+        remaining = [i for i in all_items if i.get("id") != item_id]
+        if len(remaining) == len(all_items):
+            return False
+        _save_all_items(remaining)
     return True
 
 
 def clear_checked_items() -> int:
     """Remove all checked items.  Returns number of items removed."""
-    all_items = _load_all_items()
-    remaining = [i for i in all_items if not i.get("checked", False)]
-    removed = len(all_items) - len(remaining)
-    if removed:
-        _save_all_items(remaining)
+    with file_lock(_shopping_file()):
+        all_items = _load_all_items()
+        remaining = [i for i in all_items if not i.get("checked", False)]
+        removed = len(all_items) - len(remaining)
+        if removed:
+            _save_all_items(remaining)
     return removed

@@ -176,7 +176,7 @@ export default function CalendarEvents({ events, onDeleteEvent, onEditEvent }) {
                       )}
                       <span
                         className="cal-events__source"
-                        style={{ borderColor: src.color, color: src.color }}
+                        style={{ borderColor: src.color }}
                       >
                         {src.label}
                       </span>

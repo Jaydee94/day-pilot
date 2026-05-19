@@ -1,10 +1,19 @@
 """
 Shared pytest fixtures for Day Pilot backend tests.
 """
-from unittest.mock import patch
+import os
 
-import pytest
-from fastapi.testclient import TestClient
+# Ensure the voice webhook router is mounted during tests.  The app conditionally
+# mounts /api/voice/* only when VOICE_WEBHOOK_SECRET is non-empty (security
+# hardening — see backend/app/main.py).  Tests patch the secret on the imported
+# module after the app has been built, so we need a non-empty value at the time
+# settings are first read.
+os.environ.setdefault("VOICE_WEBHOOK_SECRET", "test-secret")
+
+from unittest.mock import patch  # noqa: E402
+
+import pytest  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
 
 
 @pytest.fixture()

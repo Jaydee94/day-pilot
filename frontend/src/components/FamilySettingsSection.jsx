@@ -53,7 +53,7 @@ function MemberForm({ initial, onSave, onCancel }) {
         <span className="family-form__label">{t('familyMemberNotes')}</span>
         <p className="family-form__notes-hint">{t('familyMemberNotesHint')}</p>
         {notes.map((note, i) => (
-          <div key={i} className="family-form__note-row">
+          <div key={`note-${i}`} className="family-form__note-row">
             <input
               className="family-form__input"
               type="text"
@@ -101,7 +101,7 @@ function MemberCard({ member, onEdit, onDelete }) {
       {member.notes?.length > 0 && (
         <ul className="family-card__notes">
           {member.notes.map((note, i) => (
-            <li key={i} className="family-card__note">{note}</li>
+            <li key={`${member.id}-note-${i}`} className="family-card__note">{note}</li>
           ))}
         </ul>
       )}

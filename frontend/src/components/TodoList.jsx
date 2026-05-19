@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import './TodoList.css'
 import AppIcon from './AppIcon.jsx'
 import { useI18n } from '../i18n.jsx'
@@ -9,11 +10,11 @@ function formatDue(iso, locale) {
 
 export default function TodoList({ todos, onComplete }) {
   const { t, locale } = useI18n()
-  const PRIORITY_MAP = {
+  const PRIORITY_MAP = useMemo(() => ({
     1: { label: t('priorityHigh'), color: 'var(--error)' },
     5: { label: t('priorityMedium'), color: 'var(--warning)' },
     9: { label: t('priorityLow'), color: 'var(--success)' },
-  }
+  }), [t])
 
   const open = todos.filter((todo) => !todo.completed)
   const done = todos.filter((todo) => todo.completed)

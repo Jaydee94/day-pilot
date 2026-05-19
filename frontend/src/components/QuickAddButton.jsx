@@ -1,12 +1,8 @@
 import { useState, useEffect } from 'react'
 import AppIcon from './AppIcon.jsx'
 import { useI18n } from '../i18n.jsx'
-import { fetchFamilyMembers } from '../api.js'
+import { fetchFamilyMembers, API_BASE } from '../api.js'
 import './QuickAddButton.css'
-
-const API_BASE = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api`
-  : '/api'
 
 const TABS = ['Event', 'Task']
 
@@ -76,6 +72,11 @@ export default function QuickAddButton({ onSuccess, defaultTab = 'Event' }) {
 
     try {
       if (tab === 'Event') {
+        if (eventEnd && new Date(eventEnd) <= new Date(eventStart)) {
+          setError(t('endBeforeStartError'))
+          setLoading(false)
+          return
+        }
         const body = {
           title: eventTitle,
           start: new Date(eventStart).toISOString(),
@@ -197,6 +198,7 @@ export default function QuickAddButton({ onSuccess, defaultTab = 'Event' }) {
                         className="quick-add-input"
                         type="datetime-local"
                         value={eventEnd}
+                        min={eventStart}
                         onChange={(e) => setEventEnd(e.target.value)}
                       />
                     </label>

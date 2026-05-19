@@ -13,6 +13,7 @@ service falls back to the provider-specific default defined in ``_PROVIDER_DEFAU
 import json
 import logging
 import re
+import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
@@ -38,14 +39,16 @@ logger = logging.getLogger(__name__)
 # before generating the fresh morning briefing.
 # ---------------------------------------------------------------------------
 _ai_summary_cache: Dict[str, Dict[str, Any]] = {}
+_ai_summary_lock = threading.Lock()
 
 
 def invalidate_ai_cache(date_key: Optional[str] = None) -> None:
     """Remove cached AI result for *date_key* (or all keys when None)."""
-    if date_key is None:
-        _ai_summary_cache.clear()
-    else:
-        _ai_summary_cache.pop(date_key, None)
+    with _ai_summary_lock:
+        if date_key is None:
+            _ai_summary_cache.clear()
+        else:
+            _ai_summary_cache.pop(date_key, None)
 
 
 def _cache_key(summary_date) -> str:
@@ -271,6 +274,10 @@ def list_models() -> List[AIModelInfo]:
         return _GITHUB_KNOWN_MODELS
 
 
+_DAY_START_HOUR = 8
+_DAY_END_HOUR = 20
+
+
 def _build_prompt(summary: DailySummary) -> str:
     lang = settings.APP_LANGUAGE if settings.APP_LANGUAGE in {"en", "de"} else "en"
     is_de = lang == "de"
@@ -299,7 +306,7 @@ def _build_prompt(summary: DailySummary) -> str:
 
         if w.wind_speed >= 10:
             cautions.append(
-                "Wind beachten: draussen waermere Schichten einplanen"
+                "Wind beachten: draußen wärmere Schichten einplanen"
                 if is_de
                 else "Expect wind: plan warmer outdoor layers"
             )
@@ -313,7 +320,7 @@ def _build_prompt(summary: DailySummary) -> str:
 
         if w.temperature <= 3:
             cautions.append(
-                "Warme Kleidung und mehr Zeit fuer Wege einplanen"
+                "Warme Kleidung und mehr Zeit für Wege einplanen"
                 if is_de
                 else "Wear warm clothing and allow extra travel time"
             )
@@ -324,8 +331,8 @@ def _build_prompt(summary: DailySummary) -> str:
         if not summary.events:
             return []
 
-        day_start = local_date.replace(hour=8, minute=0, second=0, microsecond=0)
-        day_end = local_date.replace(hour=20, minute=0, second=0, microsecond=0)
+        day_start = local_date.replace(hour=_DAY_START_HOUR, minute=0, second=0, microsecond=0)
+        day_end = local_date.replace(hour=_DAY_END_HOUR, minute=0, second=0, microsecond=0)
 
         busy: List[tuple[datetime, datetime]] = []
         for ev in summary.events:
@@ -337,7 +344,7 @@ def _build_prompt(summary: DailySummary) -> str:
 
         if not busy:
             if is_de:
-                return ["08:00-10:00 fuer wichtige Aufgabe", "17:00-18:00 fuer Familienorga"]
+                return ["08:00-10:00 für wichtige Aufgabe", "17:00-18:00 für Familienorga"]
             return ["08:00-10:00 for a focused task", "17:00-18:00 for family planning"]
 
         busy.sort(key=lambda x: x[0])
@@ -371,7 +378,7 @@ def _build_prompt(summary: DailySummary) -> str:
         for start, end, duration in top:
             slot = f"{start.strftime('%H:%M')}-{end.strftime('%H:%M')}"
             if is_de:
-                label = "fuer Fokusaufgabe" if duration >= 90 else "fuer kurze Erledigungen"
+                label = "für Fokusaufgabe" if duration >= 90 else "für kurze Erledigungen"
             else:
                 label = "for focused work" if duration >= 90 else "for quick errands"
             windows.append(f"{slot} {label}")
@@ -494,7 +501,7 @@ def _build_prompt(summary: DailySummary) -> str:
             if td.due:
                 local_due = td.due.astimezone(local_tz)
                 due_str = (
-                    f" (faellig: {local_due.strftime('%b %d')})"
+                    f" (fällig: {local_due.strftime('%b %d')})"
                     if is_de
                     else f" (due: {local_due.strftime('%b %d')})"
                 )
@@ -518,13 +525,13 @@ def _build_prompt(summary: DailySummary) -> str:
 
     # Build family context from profiles
     family_context = _build_family_context()
-    location = settings.WEATHER_CITY or "unbekannter Ort"
-    weekday_de = local_date.strftime("%A")  # locale-independent fallback
+    location = settings.WEATHER_CITY or ("unbekannter Ort" if is_de else "an unknown location")
     _de_weekdays = {
         "Monday": "Montag", "Tuesday": "Dienstag", "Wednesday": "Mittwoch",
         "Thursday": "Donnerstag", "Friday": "Freitag", "Saturday": "Samstag", "Sunday": "Sonntag",
     }
     weekday_de = _de_weekdays.get(local_date.strftime("%A"), local_date.strftime("%A"))
+    weekday_en = local_date.strftime("%A")
     is_weekend = local_date.weekday() >= 5
 
     time_blocks_format = (
@@ -534,26 +541,70 @@ def _build_prompt(summary: DailySummary) -> str:
         "```"
     )
 
-    family_section = f"\n\nFAMILIE:\n{family_context}" if family_context else ""
-    day_type = "Wochenende" if is_weekend else "Werktag"
+    family_section = (
+        (f"\n\nFAMILIE:\n{family_context}" if is_de else f"\n\nFAMILY:\n{family_context}")
+        if family_context
+        else ""
+    )
+    day_type_de = "Wochenende" if is_weekend else "Werktag"
+    day_type_en = "Weekend" if is_weekend else "Weekday"
 
+    if is_de:
+        weekend_instruction_de = (
+            "Schlage Outdoor-Familienaktivitäten am Wochenende als Tagesideen vor "
+            "(on weekends as daytime ideas)."
+            if is_weekend
+            else "Schlage kürzere Aktivitäten an Werktagen als Feierabend-Ideen vor "
+                 "(on weekdays as after-work ideas)."
+        )
+        return (
+            f"Du bist ein herzlicher, persönlicher Familienassistent für den Ort {location}."
+            f"{family_section}\n\n"
+            "Schreibe ein sehr kurzes, warmes Tagesbriefing auf Deutsch (maximal 3 Sätze, beginne mit 'Guten Morgen' / 'Good morning'). "
+            "Verwende KEIN Markdown. Kein **, kein *, kein #. Nur normalen Text. "
+            "Höchstens 1 Emoji im gesamten SUMMARY. "
+            "Schreibe persönlich (du/ihr), motivierend und alltagsnah. "
+            f"Heute ist {weekday_de} ({day_type_de}). "
+            f"{weekend_instruction_de} "
+            "Gib mindestens eine konkrete Zeitfenster-Empfehlung (at least one concrete time-window recommendation) im Tagesplan an. "
+            "Passe die Vorschläge ans Wetter an: bei Regen oder Kälte Innenaktivitäten, bei Sonne Outdoor-Ideen. "
+            "Beziehe die Familienmitglieder ein: nenne konkrete, altersgerechte Aktivitäten, Routinen und Interessen wenn passend. "
+            "Falls heute Geburtstag ist, hebe ihn positiv hervor. "
+            "Extrahiere danach exakt 3 Prioritäten als nummerierte Liste (keine Erklärungen, nur den Kern). "
+            "Erstelle einen realistischen Tagesplan (maximal 5 Zeitblöcke). "
+            "Typen: 'focus' (Fokuszeit), 'buffer' (Puffer/Übergang), 'break' (Pause/Mahlzeit). "
+            "Halte das FORMAT exakt ein — keine zusätzlichen Abschnitte, keine Erklärungen außerhalb.\n\n"
+            f"FORMAT (exakt so ausgeben):\n"
+            f"SUMMARY:\n<maximal 3 Sätze>\n\n"
+            f"PRIORITIES:\n1. ...\n2. ...\n3. ...{time_blocks_format}\n\n"
+            f"DATA:\n{data_text}"
+        )
+
+    # English (default)
+    weekend_instruction_en = (
+        "Suggest outdoor family activities on weekends as daytime ideas."
+        if is_weekend
+        else "Suggest shorter activities on weekdays as after-work ideas."
+    )
     return (
-        f"Du bist ein herzlicher, persoenlicher Familienassistent fuer den Ort {location}."
+        f"You are a friendly personal assistant for the family in {location}."
         f"{family_section}\n\n"
-        "Schreibe ein sehr kurzes, warmes Tagesbriefing auf Deutsch (maximal 3 Saetze, beginne mit 'Guten Morgen'). "
-        "Verwende KEIN Markdown. Kein **, kein *, kein #. Nur normalen Text. "
-        "Hoechstens 1 Emoji im gesamten SUMMARY. "
-        "Schreibe persoenlich (du/ihr), motivierend und alltagsnah. "
-        f"Heute ist {weekday_de} ({day_type}). "
-        "Passe die Vorschlaege ans Wetter an: bei Regen oder Kaelte Innenaktivitaeten, bei Sonne Outdoor-Ideen. "
-        "Beziehe die Familienmitglieder ein: nenne konkrete, altersgerechte Aktivitaeten, Routinen und Interessen wenn passend. "
-        "Falls heute Geburtstag ist, hebe ihn positiv hervor. "
-        "Extrahiere danach exakt 3 Prioritaeten als nummerierte Liste (keine Erklaerungen, nur den Kern). "
-        "Erstelle einen realistischen Tagesplan (maximal 5 Zeitbloecke). "
-        "Typen: 'focus' (Fokuszeit), 'buffer' (Puffer/Uebergang), 'break' (Pause/Mahlzeit). "
-        "Halte das FORMAT exakt ein — keine zusaetzlichen Abschnitte, keine Erklaerungen ausserhalb.\n\n"
-        f"FORMAT (exakt so ausgeben):\n"
-        f"SUMMARY:\n<maximal 3 Saetze>\n\n"
+        "Write a very short, warm daily briefing in English (max 3 sentences, start with 'Good morning'). "
+        "Do NOT use Markdown. No **, no *, no #. Plain text only. "
+        "Use at most 1 emoji in the whole SUMMARY. "
+        "Be personal (you/yours), motivating, and grounded in everyday life. "
+        f"Today is {weekday_en} ({day_type_en}). "
+        f"{weekend_instruction_en} "
+        "Include at least one concrete time-window recommendation in the day plan. "
+        "Adapt suggestions to the weather: prefer indoor activities on rainy or cold days, outdoor ideas on sunny days. "
+        "Involve the family members: mention concrete, age-appropriate activities, routines, and interests when relevant. "
+        "If today is someone's birthday, highlight it positively. "
+        "Then extract exactly 3 priorities as a numbered list (no explanations, just the gist). "
+        "Build a realistic time plan (max 5 time blocks). "
+        "Types: 'focus' (focus time), 'buffer' (transition), 'break' (rest/meal). "
+        "Keep the FORMAT exactly — no extra sections, no explanations outside.\n\n"
+        f"FORMAT (output exactly like this):\n"
+        f"SUMMARY:\n<at most 3 sentences>\n\n"
         f"PRIORITIES:\n1. ...\n2. ...\n3. ...{time_blocks_format}\n\n"
         f"DATA:\n{data_text}"
     )
@@ -571,8 +622,9 @@ def generate_summary(summary: DailySummary) -> DailySummary:
     """
     # Check the daily cache first
     cache_key = _cache_key(summary.date)
-    if cache_key in _ai_summary_cache:
-        cached = _ai_summary_cache[cache_key]
+    with _ai_summary_lock:
+        cached = _ai_summary_cache.get(cache_key)
+    if cached is not None:
         logger.debug("AI summary cache hit for %s – skipping AI call", cache_key)
         summary.ai_summary = cached["ai_summary"]
         summary.top_priorities = cached["top_priorities"]
@@ -629,11 +681,12 @@ def generate_summary(summary: DailySummary) -> DailySummary:
         summary.time_blocks = time_blocks
 
         # Populate the daily cache
-        _ai_summary_cache[cache_key] = {
-            "ai_summary": ai_text,
-            "top_priorities": priorities[:3],
-            "time_blocks": time_blocks,
-        }
+        with _ai_summary_lock:
+            _ai_summary_cache[cache_key] = {
+                "ai_summary": ai_text,
+                "top_priorities": priorities[:3],
+                "time_blocks": time_blocks,
+            }
         logger.info("AI summary cached for %s", cache_key)
         return summary
 

@@ -5,6 +5,8 @@ import './TodayDoableCard.css'
 
 const ENERGY_LEVELS = ['high', 'medium', 'low']
 const OUTDOOR_KEYWORDS = ['walk', 'run', 'bike', 'garden', 'outside', 'spazier', 'laufen', 'rad', 'garten', 'draussen']
+const DAY_START_HOUR = 8
+const DAY_END_HOUR = 20
 
 function isOutdoorTask(title) {
   const normalized = title.toLowerCase()
@@ -86,9 +88,9 @@ export default function TodayDoableCard({ events = [], todos = [], weather = nul
   const suggestions = useMemo(() => {
     const now = new Date()
     const dayStart = new Date(now)
-    dayStart.setHours(8, 0, 0, 0)
+    dayStart.setHours(DAY_START_HOUR, 0, 0, 0)
     const dayEnd = new Date(now)
-    dayEnd.setHours(20, 0, 0, 0)
+    dayEnd.setHours(DAY_END_HOUR, 0, 0, 0)
 
     const gaps = getGapWindows(events, dayStart, dayEnd)
       .map((window) => ({

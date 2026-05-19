@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import CalendarEvents from '../components/CalendarEvents.jsx'
 import QuickAddButton from '../components/QuickAddButton.jsx'
 import { fetchEvents, fetchSyncStatus, triggerSchedulerJob, deleteEvent, updateEvent, fetchFamilyMembers } from '../api.js'
@@ -40,10 +40,31 @@ export default function CalendarPage() {
   const [syncFeedback, setSyncFeedback] = useState(null)
   const [members, setMembers] = useState([])
   const [selectedMember, setSelectedMember] = useState(null)
+  const timersRef = useRef(new Set())
 
   useEffect(() => {
-    fetchFamilyMembers().then(setMembers).catch(() => {})
+    fetchFamilyMembers()
+      .then(setMembers)
+      .catch(err => console.error('fetchFamilyMembers failed:', err))
   }, [])
+
+  // Clear any pending timeouts on unmount to avoid setState-on-unmounted warnings.
+  useEffect(() => {
+    const timers = timersRef.current
+    return () => {
+      timers.forEach(id => clearTimeout(id))
+      timers.clear()
+    }
+  }, [])
+
+  function scheduleTimeout(fn, ms) {
+    const id = setTimeout(() => {
+      timersRef.current.delete(id)
+      fn()
+    }, ms)
+    timersRef.current.add(id)
+    return id
+  }
 
   async function loadEvents() {
     setLoading(true)
@@ -74,8 +95,10 @@ export default function CalendarPage() {
       await triggerSchedulerJob('calendar_sync')
       setSyncFeedback('ok')
       // Give the async sync job time to complete before reloading data
-      setTimeout(async () => {
-        await Promise.all([loadEvents(), loadSyncStatus()])
+      scheduleTimeout(() => {
+        Promise.all([loadEvents(), loadSyncStatus()]).catch(err =>
+          console.error('Sync reload failed:', err),
+        )
       }, SYNC_RELOAD_DELAY_MS)
     } catch {
       setSyncFeedback('error')

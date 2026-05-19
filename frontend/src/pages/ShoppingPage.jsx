@@ -149,7 +149,7 @@ export default function ShoppingPage() {
                       type="button"
                       className={`shopping-item__checkbox${item.checked ? ' shopping-item__checkbox--checked' : ''}`}
                       onClick={() => handleCheck(item.id)}
-                      aria-label={item.checked ? 'uncheck' : 'check'}
+                      aria-label={item.checked ? `Uncheck ${item.name}` : `Check ${item.name}`}
                     >
                       {item.checked && '✓'}
                     </button>
@@ -161,7 +161,7 @@ export default function ShoppingPage() {
                       type="button"
                       className="shopping-item__delete"
                       onClick={() => handleDelete(item.id)}
-                      aria-label="delete"
+                      aria-label={`Delete ${item.name}`}
                     >
                       <AppIcon name="trash" className="shopping-item__delete-icon" />
                     </button>

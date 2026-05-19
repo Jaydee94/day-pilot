@@ -26,7 +26,7 @@ export default function TimePlanCard({ timeBlocks = [] }) {
         <span className="card__icon"><AppIcon name="event" className="icon" /></span>
         <span className="card__title">{t('timePlanTitle')}</span>
       </div>
-      <ul className="time-plan__list">
+      <ul className="time-plan__list" aria-label={t('timePlanTitle')}>
         {timeBlocks.map((block, i) => (
           <li key={i} className={`time-plan__item time-plan__item--${block.type}`}>
             <span className="time-plan__slot">{block.start}–{block.end}</span>

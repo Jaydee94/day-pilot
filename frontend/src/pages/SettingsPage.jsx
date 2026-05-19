@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   fetchSettings,
   saveSettings,
@@ -190,6 +190,7 @@ export default function SettingsPage({ onLanguageChange }) {
   const [loadError, setLoadError] = useState(null)
   const [saveStatus, setSaveStatus] = useState(null) // 'success' | 'error' | null
   const [connectionStates, setConnectionStates] = useState({})
+  const timersRef = useRef(new Set())
 
   useEffect(() => {
     fetchSettings()
@@ -202,6 +203,24 @@ export default function SettingsPage({ onLanguageChange }) {
         setLoading(false)
       })
   }, [])
+
+  // Clear any pending timeouts on unmount to avoid setState-on-unmounted warnings.
+  useEffect(() => {
+    const timers = timersRef.current
+    return () => {
+      timers.forEach(id => clearTimeout(id))
+      timers.clear()
+    }
+  }, [])
+
+  function scheduleTimeout(fn, ms) {
+    const id = setTimeout(() => {
+      timersRef.current.delete(id)
+      fn()
+    }, ms)
+    timersRef.current.add(id)
+    return id
+  }
 
   function handleChange(key, value) {
     setValues(prev => ({ ...prev, [key]: value }))
@@ -218,7 +237,7 @@ export default function SettingsPage({ onLanguageChange }) {
         onLanguageChange((updated.APP_LANGUAGE || values.APP_LANGUAGE) === 'de' ? 'de' : 'en')
       }
       setSaveStatus('success')
-      setTimeout(() => setSaveStatus(null), 6000)
+      scheduleTimeout(() => setSaveStatus(null), 6000)
     } catch {
       setSaveStatus('error')
     } finally {
@@ -241,7 +260,7 @@ export default function SettingsPage({ onLanguageChange }) {
         [integration]: { loading: false, ok: result.ok, message: result.message },
       }))
       if (result.ok) {
-        setTimeout(() => {
+        scheduleTimeout(() => {
           setConnectionStates(prev => {
             if (!prev[integration]?.ok) return prev
             return { ...prev, [integration]: null }
