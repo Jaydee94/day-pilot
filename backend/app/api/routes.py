@@ -59,7 +59,7 @@ def get_summary(
     if date:
         try:
             tz = pytz.timezone(settings.APP_TIMEZONE)
-            target = datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=tz)
+            target = tz.localize(datetime.strptime(date, "%Y-%m-%d"))
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
     return build_daily_summary(date=target)
@@ -119,7 +119,7 @@ def list_events(
     if date:
         try:
             tz = pytz.timezone(settings.APP_TIMEZONE)
-            target = datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=tz)
+            target = tz.localize(datetime.strptime(date, "%Y-%m-%d"))
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid date format.")
     ical = fetch_ical_events(date=target)

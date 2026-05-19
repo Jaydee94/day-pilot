@@ -17,6 +17,7 @@ import pytz
 
 from app.config import settings
 from app.models.schemas import CalendarEvent
+from app.services._storage import atomic_write_json, file_lock
 
 logger = logging.getLogger(__name__)
 
@@ -47,10 +48,8 @@ def _load_all_events() -> List[dict]:
 def _save_all_events(events: List[dict]) -> None:
     """Persist event dicts to the local events file."""
     path = _events_file()
-    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     try:
-        with open(path, "w", encoding="utf-8") as fh:
-            json.dump(events, fh, indent=2, ensure_ascii=False)
+        atomic_write_json(path, events)
     except Exception as exc:
         logger.error("Failed to write local events file %s: %s", path, exc)
         raise
@@ -132,9 +131,10 @@ def add_local_event(
     if assigned_to:
         raw["assigned_to"] = assigned_to
 
-    all_events = _load_all_events()
-    all_events.append(raw)
-    _save_all_events(all_events)
+    with file_lock(_events_file()):
+        all_events = _load_all_events()
+        all_events.append(raw)
+        _save_all_events(all_events)
 
     return CalendarEvent(
         id=event_id,
@@ -150,12 +150,13 @@ def add_local_event(
 
 def delete_local_event(event_id: str) -> bool:
     """Delete a local event by ID.  Returns True if the event was found and removed."""
-    all_events = _load_all_events()
-    original_count = len(all_events)
-    remaining = [e for e in all_events if e.get("id") != event_id]
-    if len(remaining) == original_count:
-        return False
-    _save_all_events(remaining)
+    with file_lock(_events_file()):
+        all_events = _load_all_events()
+        original_count = len(all_events)
+        remaining = [e for e in all_events if e.get("id") != event_id]
+        if len(remaining) == original_count:
+            return False
+        _save_all_events(remaining)
     return True
 
 
@@ -169,21 +170,22 @@ def update_local_event(
     assigned_to: Optional[str] = None,
 ) -> Optional[CalendarEvent]:
     """Update an existing local event.  Returns the updated event or None if not found."""
-    all_events = _load_all_events()
-    for raw in all_events:
-        if raw.get("id") == event_id:
-            if title is not None:
-                raw["title"] = title
-            if start is not None:
-                raw["start"] = start.isoformat()
-            if end is not None:
-                raw["end"] = end.isoformat()
-            if location is not None:
-                raw["location"] = location
-            if description is not None:
-                raw["description"] = description
-            if assigned_to is not None:
-                raw["assigned_to"] = assigned_to
-            _save_all_events(all_events)
-            return _dict_to_event(raw)
+    with file_lock(_events_file()):
+        all_events = _load_all_events()
+        for raw in all_events:
+            if raw.get("id") == event_id:
+                if title is not None:
+                    raw["title"] = title
+                if start is not None:
+                    raw["start"] = start.isoformat()
+                if end is not None:
+                    raw["end"] = end.isoformat()
+                if location is not None:
+                    raw["location"] = location
+                if description is not None:
+                    raw["description"] = description
+                if assigned_to is not None:
+                    raw["assigned_to"] = assigned_to
+                _save_all_events(all_events)
+                return _dict_to_event(raw)
     return None

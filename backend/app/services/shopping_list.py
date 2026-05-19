@@ -9,6 +9,7 @@ from typing import Dict, List, Optional
 
 from app.config import settings
 from app.models.schemas import ShoppingItem
+from app.services._storage import atomic_write_json, file_lock
 
 logger = logging.getLogger(__name__)
 
@@ -33,10 +34,8 @@ def _load_all_items() -> List[dict]:
 
 def _save_all_items(items: List[dict]) -> None:
     path = _shopping_file()
-    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     try:
-        with open(path, "w", encoding="utf-8") as fh:
-            json.dump(items, fh, indent=2, ensure_ascii=False)
+        atomic_write_json(path, items)
     except Exception as exc:
         logger.error("Failed to write shopping file %s: %s", path, exc)
         raise
@@ -91,9 +90,10 @@ def add_shopping_item(
     }
     if quantity:
         raw["quantity"] = quantity
-    all_items = _load_all_items()
-    all_items.append(raw)
-    _save_all_items(all_items)
+    with file_lock(_shopping_file()):
+        all_items = _load_all_items()
+        all_items.append(raw)
+        _save_all_items(all_items)
     return ShoppingItem(id=item_id, name=name, category=category, quantity=quantity, checked=False)
 
 

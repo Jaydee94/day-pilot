@@ -18,6 +18,7 @@ import pytz
 
 from app.config import settings
 from app.models.schemas import TodoItem
+from app.services._storage import atomic_write_json, file_lock
 
 logger = logging.getLogger(__name__)
 
@@ -48,12 +49,8 @@ def _load_all_todos() -> List[dict]:
 def _save_all_todos(todos: List[dict]) -> None:
     """Persist todo dicts to the local todos file."""
     path = _todos_file()
-    dir_name = os.path.dirname(os.path.abspath(path))
-    if dir_name:
-        os.makedirs(dir_name, exist_ok=True)
     try:
-        with open(path, "w", encoding="utf-8") as fh:
-            json.dump(todos, fh, indent=2, ensure_ascii=False)
+        atomic_write_json(path, todos)
     except Exception as exc:
         logger.error("Failed to write local todos file %s: %s", path, exc)
         raise
@@ -127,9 +124,10 @@ def add_local_todo(
     if assigned_to:
         raw["assigned_to"] = assigned_to
 
-    all_todos = _load_all_todos()
-    all_todos.append(raw)
-    _save_all_todos(all_todos)
+    with file_lock(_todos_file()):
+        all_todos = _load_all_todos()
+        all_todos.append(raw)
+        _save_all_todos(all_todos)
 
     return TodoItem(
         id=todo_id,
@@ -148,32 +146,38 @@ def complete_local_todo(todo_id: str) -> bool:
     When the completed todo has a recurrence and a due date the next instance
     is automatically created with the calculated next due date.
     """
-    all_todos = _load_all_todos()
-    for raw in all_todos:
-        if raw.get("id") == todo_id:
-            raw["completed"] = True
-            _save_all_todos(all_todos)
-            recurrence = raw.get("recurrence")
-            if recurrence and raw.get("due"):
-                try:
-                    due = datetime.fromisoformat(raw["due"])
-                    add_local_todo(
-                        title=raw["title"],
-                        due=_next_due(due, recurrence),
-                        recurrence=recurrence,
-                    )
-                except Exception as exc:
-                    logger.warning("Failed to create next recurrence for %s: %s", todo_id, exc)
-            return True
-    return False
+    completed_raw: Optional[dict] = None
+    with file_lock(_todos_file()):
+        all_todos = _load_all_todos()
+        for raw in all_todos:
+            if raw.get("id") == todo_id:
+                raw["completed"] = True
+                _save_all_todos(all_todos)
+                completed_raw = raw
+                break
+    if completed_raw is None:
+        return False
+    recurrence = completed_raw.get("recurrence")
+    if recurrence and completed_raw.get("due"):
+        try:
+            due = datetime.fromisoformat(completed_raw["due"])
+            add_local_todo(
+                title=completed_raw["title"],
+                due=_next_due(due, recurrence),
+                recurrence=recurrence,
+            )
+        except Exception as exc:
+            logger.warning("Failed to create next recurrence for %s: %s", todo_id, exc)
+    return True
 
 
 def delete_local_todo(todo_id: str) -> bool:
     """Delete a local todo by ID.  Returns True if the todo was found and removed."""
-    all_todos = _load_all_todos()
-    original_count = len(all_todos)
-    remaining = [t for t in all_todos if t.get("id") != todo_id]
-    if len(remaining) == original_count:
-        return False
-    _save_all_todos(remaining)
+    with file_lock(_todos_file()):
+        all_todos = _load_all_todos()
+        original_count = len(all_todos)
+        remaining = [t for t in all_todos if t.get("id") != todo_id]
+        if len(remaining) == original_count:
+            return False
+        _save_all_todos(remaining)
     return True
