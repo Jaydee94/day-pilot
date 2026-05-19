@@ -306,7 +306,7 @@ def _build_prompt(summary: DailySummary) -> str:
 
         if w.wind_speed >= 10:
             cautions.append(
-                "Wind beachten: draussen waermere Schichten einplanen"
+                "Wind beachten: draußen wärmere Schichten einplanen"
                 if is_de
                 else "Expect wind: plan warmer outdoor layers"
             )
@@ -320,7 +320,7 @@ def _build_prompt(summary: DailySummary) -> str:
 
         if w.temperature <= 3:
             cautions.append(
-                "Warme Kleidung und mehr Zeit fuer Wege einplanen"
+                "Warme Kleidung und mehr Zeit für Wege einplanen"
                 if is_de
                 else "Wear warm clothing and allow extra travel time"
             )
@@ -344,7 +344,7 @@ def _build_prompt(summary: DailySummary) -> str:
 
         if not busy:
             if is_de:
-                return ["08:00-10:00 fuer wichtige Aufgabe", "17:00-18:00 fuer Familienorga"]
+                return ["08:00-10:00 für wichtige Aufgabe", "17:00-18:00 für Familienorga"]
             return ["08:00-10:00 for a focused task", "17:00-18:00 for family planning"]
 
         busy.sort(key=lambda x: x[0])
@@ -378,7 +378,7 @@ def _build_prompt(summary: DailySummary) -> str:
         for start, end, duration in top:
             slot = f"{start.strftime('%H:%M')}-{end.strftime('%H:%M')}"
             if is_de:
-                label = "fuer Fokusaufgabe" if duration >= 90 else "fuer kurze Erledigungen"
+                label = "für Fokusaufgabe" if duration >= 90 else "für kurze Erledigungen"
             else:
                 label = "for focused work" if duration >= 90 else "for quick errands"
             windows.append(f"{slot} {label}")
@@ -501,7 +501,7 @@ def _build_prompt(summary: DailySummary) -> str:
             if td.due:
                 local_due = td.due.astimezone(local_tz)
                 due_str = (
-                    f" (faellig: {local_due.strftime('%b %d')})"
+                    f" (fällig: {local_due.strftime('%b %d')})"
                     if is_de
                     else f" (due: {local_due.strftime('%b %d')})"
                 )
@@ -545,22 +545,22 @@ def _build_prompt(summary: DailySummary) -> str:
     day_type = "Wochenende" if is_weekend else "Werktag"
 
     return (
-        f"Du bist ein herzlicher, persoenlicher Familienassistent fuer den Ort {location}."
+        f"Du bist ein herzlicher, persönlicher Familienassistent für den Ort {location}."
         f"{family_section}\n\n"
-        "Schreibe ein sehr kurzes, warmes Tagesbriefing auf Deutsch (maximal 3 Saetze, beginne mit 'Guten Morgen'). "
+        "Schreibe ein sehr kurzes, warmes Tagesbriefing auf Deutsch (maximal 3 Sätze, beginne mit 'Guten Morgen'). "
         "Verwende KEIN Markdown. Kein **, kein *, kein #. Nur normalen Text. "
-        "Hoechstens 1 Emoji im gesamten SUMMARY. "
-        "Schreibe persoenlich (du/ihr), motivierend und alltagsnah. "
+        "Höchstens 1 Emoji im gesamten SUMMARY. "
+        "Schreibe persönlich (du/ihr), motivierend und alltagsnah. "
         f"Heute ist {weekday_de} ({day_type}). "
-        "Passe die Vorschlaege ans Wetter an: bei Regen oder Kaelte Innenaktivitaeten, bei Sonne Outdoor-Ideen. "
-        "Beziehe die Familienmitglieder ein: nenne konkrete, altersgerechte Aktivitaeten, Routinen und Interessen wenn passend. "
+        "Passe die Vorschläge ans Wetter an: bei Regen oder Kälte Innenaktivitäten, bei Sonne Outdoor-Ideen. "
+        "Beziehe die Familienmitglieder ein: nenne konkrete, altersgerechte Aktivitäten, Routinen und Interessen wenn passend. "
         "Falls heute Geburtstag ist, hebe ihn positiv hervor. "
-        "Extrahiere danach exakt 3 Prioritaeten als nummerierte Liste (keine Erklaerungen, nur den Kern). "
-        "Erstelle einen realistischen Tagesplan (maximal 5 Zeitbloecke). "
-        "Typen: 'focus' (Fokuszeit), 'buffer' (Puffer/Uebergang), 'break' (Pause/Mahlzeit). "
-        "Halte das FORMAT exakt ein — keine zusaetzlichen Abschnitte, keine Erklaerungen ausserhalb.\n\n"
+        "Extrahiere danach exakt 3 Prioritäten als nummerierte Liste (keine Erklärungen, nur den Kern). "
+        "Erstelle einen realistischen Tagesplan (maximal 5 Zeitblöcke). "
+        "Typen: 'focus' (Fokuszeit), 'buffer' (Puffer/Übergang), 'break' (Pause/Mahlzeit). "
+        "Halte das FORMAT exakt ein — keine zusätzlichen Abschnitte, keine Erklärungen außerhalb.\n\n"
         f"FORMAT (exakt so ausgeben):\n"
-        f"SUMMARY:\n<maximal 3 Saetze>\n\n"
+        f"SUMMARY:\n<maximal 3 Sätze>\n\n"
         f"PRIORITIES:\n1. ...\n2. ...\n3. ...{time_blocks_format}\n\n"
         f"DATA:\n{data_text}"
     )

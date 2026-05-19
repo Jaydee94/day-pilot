@@ -95,10 +95,6 @@ class Settings(BaseSettings):
     # Dedup marker — prevents duplicate push notifications on the same day
     NOTIFICATIONS_DEDUP_FILE: str = "/app/data/notification_dedup.json"
 
-    # Directory where uploaded Google credentials files are stored (kept for
-    # backwards compatibility; no longer actively used after iCal migration).
-    GOOGLE_CREDENTIALS_DIR: str = "/app/data/google_credentials"
-
     # Push Notifications (ntfy.sh)
     NTFY_SERVER: str = "https://ntfy.sh"
     NTFY_TOPIC: str = ""

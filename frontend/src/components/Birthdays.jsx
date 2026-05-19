@@ -11,7 +11,7 @@ export default function Birthdays({ birthdays }) {
         <span className="card__icon"><AppIcon name="birthday" className="icon" /></span>
         <span className="card__title">{t('birthdaysToday')}</span>
       </div>
-      <ul className="birthdays__list">
+      <ul className="birthdays__list" aria-label={t('birthdaysToday')}>
         {birthdays.map((b, i) => (
           <li key={`${b.name}-${b.date ?? ''}-${i}`} className="birthdays__item">
             <span className="birthdays__name">{b.name}</span>
