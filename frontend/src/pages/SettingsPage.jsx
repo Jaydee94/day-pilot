@@ -14,8 +14,6 @@ import {
 import AppIcon from '../components/AppIcon.jsx'
 import FamilySettingsSection from '../components/FamilySettingsSection.jsx'
 import { useI18n } from '../i18n.jsx'
-import './Page.css'
-import './SettingsPage.css'
 
 const TESTABLE_INTEGRATIONS = [
   'ai',
