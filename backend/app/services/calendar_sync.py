@@ -22,6 +22,7 @@ import recurring_ical_events
 
 from app.config import settings
 from app.models.schemas import CalendarEvent, TodoItem, Birthday
+from app.services._logging import redact
 
 logger = logging.getLogger(__name__)
 
@@ -240,7 +241,7 @@ def fetch_ical_events_in_range(start: datetime, end: datetime) -> List[CalendarE
             )
             events.extend(feed_events)
         except Exception as exc:
-            logger.error("Failed to fetch iCal events from %s: %s", url, exc)
+            logger.error("Failed to fetch iCal events from %s: %s", url, redact(exc))
 
     return events
 
@@ -403,10 +404,14 @@ def fetch_apple_events_in_range(start: datetime, end: datetime) -> List[Calendar
                             )
                         )
                 except Exception as cal_exc:
-                    logger.warning("Error reading CalDAV calendar %s: %s", cal, cal_exc)
+                    logger.warning(
+                        "Error reading CalDAV calendar %s: %s", cal, redact(cal_exc)
+                    )
 
         except Exception as exc:
-            logger.error("Failed to fetch Apple events for a CalDAV account: %s", exc)
+            logger.error(
+                "Failed to fetch Apple events for a CalDAV account: %s", redact(exc)
+            )
 
     return events
 
@@ -459,6 +464,6 @@ def add_apple_event(
         cal.add_event(vcal.serialize())
         return True
     except Exception as exc:
-        logger.error("Failed to add Apple event: %s", exc)
+        logger.error("Failed to add Apple event: %s", redact(exc))
         return False
 

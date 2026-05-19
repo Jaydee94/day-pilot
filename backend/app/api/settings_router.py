@@ -42,6 +42,7 @@ from app.services.settings_store import (
     is_setup_complete,
     save_user_settings,
 )
+from app.services._logging import redact
 
 logger = logging.getLogger(__name__)
 
@@ -279,7 +280,7 @@ def update_settings(payload: UserSettings) -> UserSettings:
     try:
         save_user_settings(updates)
     except Exception as exc:
-        logger.error("Could not persist settings: %s", exc)
+        logger.error("Could not persist settings: %s", redact(exc))
         raise HTTPException(status_code=500, detail="Failed to save settings") from exc
 
     # Update in-memory settings so they take effect without a restart.
@@ -294,7 +295,7 @@ def update_settings(payload: UserSettings) -> UserSettings:
                 logger.warning(
                     "Setting %s was persisted but failed to apply in-memory (restart may be required): %s",
                     key,
-                    exc,
+                    redact(exc),
                 )
 
     # Restart the scheduler when timing-related settings change.

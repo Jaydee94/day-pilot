@@ -13,6 +13,7 @@ service falls back to the provider-specific default defined in ``_PROVIDER_DEFAU
 import json
 import logging
 import re
+import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
@@ -38,14 +39,16 @@ logger = logging.getLogger(__name__)
 # before generating the fresh morning briefing.
 # ---------------------------------------------------------------------------
 _ai_summary_cache: Dict[str, Dict[str, Any]] = {}
+_ai_summary_lock = threading.Lock()
 
 
 def invalidate_ai_cache(date_key: Optional[str] = None) -> None:
     """Remove cached AI result for *date_key* (or all keys when None)."""
-    if date_key is None:
-        _ai_summary_cache.clear()
-    else:
-        _ai_summary_cache.pop(date_key, None)
+    with _ai_summary_lock:
+        if date_key is None:
+            _ai_summary_cache.clear()
+        else:
+            _ai_summary_cache.pop(date_key, None)
 
 
 def _cache_key(summary_date) -> str:
@@ -571,8 +574,9 @@ def generate_summary(summary: DailySummary) -> DailySummary:
     """
     # Check the daily cache first
     cache_key = _cache_key(summary.date)
-    if cache_key in _ai_summary_cache:
-        cached = _ai_summary_cache[cache_key]
+    with _ai_summary_lock:
+        cached = _ai_summary_cache.get(cache_key)
+    if cached is not None:
         logger.debug("AI summary cache hit for %s – skipping AI call", cache_key)
         summary.ai_summary = cached["ai_summary"]
         summary.top_priorities = cached["top_priorities"]
@@ -629,11 +633,12 @@ def generate_summary(summary: DailySummary) -> DailySummary:
         summary.time_blocks = time_blocks
 
         # Populate the daily cache
-        _ai_summary_cache[cache_key] = {
-            "ai_summary": ai_text,
-            "top_priorities": priorities[:3],
-            "time_blocks": time_blocks,
-        }
+        with _ai_summary_lock:
+            _ai_summary_cache[cache_key] = {
+                "ai_summary": ai_text,
+                "top_priorities": priorities[:3],
+                "time_blocks": time_blocks,
+            }
         logger.info("AI summary cached for %s", cache_key)
         return summary
 
