@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "lint": "eslint src --ext js,jsx,ts,tsx --report-unused-disable-directives --max-warnings 15",
+    "lint": "eslint src --ext js,jsx,ts,tsx --report-unused-disable-directives --max-warnings 5",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
