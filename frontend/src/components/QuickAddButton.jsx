@@ -72,6 +72,11 @@ export default function QuickAddButton({ onSuccess, defaultTab = 'Event' }) {
 
     try {
       if (tab === 'Event') {
+        if (eventEnd && new Date(eventEnd) <= new Date(eventStart)) {
+          setError(t('endBeforeStartError'))
+          setLoading(false)
+          return
+        }
         const body = {
           title: eventTitle,
           start: new Date(eventStart).toISOString(),
@@ -193,6 +198,7 @@ export default function QuickAddButton({ onSuccess, defaultTab = 'Event' }) {
                         className="quick-add-input"
                         type="datetime-local"
                         value={eventEnd}
+                        min={eventStart}
                         onChange={(e) => setEventEnd(e.target.value)}
                       />
                     </label>
