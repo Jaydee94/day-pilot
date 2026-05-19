@@ -314,7 +314,7 @@ const STRINGS = {
     unknown: 'Unknown',
   },
   de: {
-    appTagline: 'dein taeglicher Co-Pilot',
+    appTagline: 'dein täglicher Co-Pilot',
     updatedAt: 'Aktualisiert: {{time}}',
     refresh: 'Aktualisieren',
     loadingSummary: 'Deine Tagesuebersicht wird geladen...',
