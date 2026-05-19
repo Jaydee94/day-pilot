@@ -2,18 +2,75 @@
  * Centralised API helper for Day Pilot frontend.
  */
 
-const API_BASE = import.meta.env.VITE_API_URL
+export const API_BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api`
   : '/api'
+
+const DEFAULT_TIMEOUT_MS = 15000
+
+/**
+ * Generic fetch wrapper for the Day Pilot backend.
+ *
+ * - Prefixes `API_BASE` (path should start with `/`).
+ * - Applies a configurable `AbortController` timeout (default 15s).
+ * - Auto-serialises object bodies to JSON and sets `Content-Type` if absent.
+ * - On non-OK responses, attempts to parse `{detail}` and throws `Error(detail)`.
+ * - Returns parsed JSON by default; pass `raw: true` to receive the `Response`.
+ *
+ * @param {string} path
+ * @param {{
+ *   method?: string,
+ *   body?: any,
+ *   headers?: Record<string,string>,
+ *   timeoutMs?: number,
+ *   raw?: boolean,
+ * }} [options]
+ */
+export async function apiFetch(
+  path,
+  { method = 'GET', body, headers = {}, timeoutMs = DEFAULT_TIMEOUT_MS, raw = false } = {},
+) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  const finalHeaders = { ...headers }
+  let finalBody = body
+  if (body !== undefined && typeof body !== 'string' && !(body instanceof FormData)) {
+    finalBody = JSON.stringify(body)
+    if (!finalHeaders['Content-Type']) finalHeaders['Content-Type'] = 'application/json'
+  }
+  try {
+    const resp = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers: finalHeaders,
+      body: finalBody,
+      signal: controller.signal,
+    })
+    if (!resp.ok) {
+      let detail
+      try {
+        detail = (await resp.json()).detail
+      } catch {
+        /* ignore JSON parse errors on error responses */
+      }
+      throw new Error(detail || `HTTP ${resp.status}`)
+    }
+    return raw ? resp : resp.json()
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error(`Request timed out after ${timeoutMs}ms: ${path}`)
+    }
+    throw err
+  } finally {
+    clearTimeout(timer)
+  }
+}
 
 /**
  * Fetch the current user-configurable settings from the backend.
  * @returns {Promise<Object>} settings object
  */
 export async function fetchSettings() {
-  const resp = await fetch(`${API_BASE}/settings`)
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-  return resp.json()
+  return apiFetch('/settings')
 }
 
 /**
@@ -22,13 +79,7 @@ export async function fetchSettings() {
  * @returns {Promise<Object>} updated settings object
  */
 export async function saveSettings(updates) {
-  const resp = await fetch(`${API_BASE}/settings`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(updates),
-  })
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-  return resp.json()
+  return apiFetch('/settings', { method: 'PUT', body: updates })
 }
 
 /**
@@ -38,16 +89,10 @@ export async function saveSettings(updates) {
  * @returns {Promise<{integration: string, ok: boolean, message: string}>}
  */
 export async function testIntegrationConnection(integration, overrides = {}) {
-  const resp = await fetch(`${API_BASE}/settings/test-connection/${integration}`, {
+  return apiFetch(`/settings/test-connection/${integration}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ overrides }),
+    body: { overrides },
   })
-  if (!resp.ok) {
-    const data = await resp.json().catch(() => ({}))
-    throw new Error(data.detail || `HTTP ${resp.status}`)
-  }
-  return resp.json()
 }
 
 /**
@@ -55,9 +100,7 @@ export async function testIntegrationConnection(integration, overrides = {}) {
  * @returns {Promise<{setup_complete: boolean, needs_setup: boolean}>}
  */
 export async function fetchSetupStatus() {
-  const resp = await fetch(`${API_BASE}/settings/status`)
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-  return resp.json()
+  return apiFetch('/settings/status')
 }
 
 /**
@@ -65,9 +108,7 @@ export async function fetchSetupStatus() {
  * @returns {Promise<Array>} list of ScheduledJob objects
  */
 export async function fetchSchedulerJobs() {
-  const resp = await fetch(`${API_BASE}/scheduler/jobs`)
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-  return resp.json()
+  return apiFetch('/scheduler/jobs')
 }
 
 /**
@@ -76,9 +117,7 @@ export async function fetchSchedulerJobs() {
  * @returns {Promise<{status: string, job_id: string}>}
  */
 export async function triggerSchedulerJob(jobId) {
-  const resp = await fetch(`${API_BASE}/scheduler/jobs/${jobId}/run`, { method: 'POST' })
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-  return resp.json()
+  return apiFetch(`/scheduler/jobs/${jobId}/run`, { method: 'POST' })
 }
 
 /**
@@ -87,12 +126,10 @@ export async function triggerSchedulerJob(jobId) {
  * @returns {Promise<Array>} list of CalendarEvent objects
  */
 export async function fetchEvents(assignedTo = null) {
-  const url = assignedTo
-    ? `${API_BASE}/events?assigned_to=${encodeURIComponent(assignedTo)}`
-    : `${API_BASE}/events`
-  const resp = await fetch(url)
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-  return resp.json()
+  const path = assignedTo
+    ? `/events?assigned_to=${encodeURIComponent(assignedTo)}`
+    : '/events'
+  return apiFetch(path)
 }
 
 /**
@@ -101,61 +138,35 @@ export async function fetchEvents(assignedTo = null) {
  * @returns {Promise<Array>} list of TodoItem objects
  */
 export async function fetchTodos(assignedTo = null) {
-  const url = assignedTo
-    ? `${API_BASE}/todos?assigned_to=${encodeURIComponent(assignedTo)}`
-    : `${API_BASE}/todos`
-  const resp = await fetch(url)
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-  return resp.json()
+  const path = assignedTo
+    ? `/todos?assigned_to=${encodeURIComponent(assignedTo)}`
+    : '/todos'
+  return apiFetch(path)
 }
 
 export async function fetchFamilyMembers() {
-  const resp = await fetch(`${API_BASE}/family-members`)
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-  return resp.json()
+  return apiFetch('/family-members')
 }
 
 export async function fetchFamilyProfiles() {
-  const resp = await fetch(`${API_BASE}/family-members/profiles`)
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-  return resp.json()
+  return apiFetch('/family-members/profiles')
 }
 
 export async function createFamilyMember(data) {
-  const resp = await fetch(`${API_BASE}/family-members/profiles`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  if (!resp.ok) {
-    const body = await resp.json().catch(() => ({}))
-    throw new Error(body.detail || `HTTP ${resp.status}`)
-  }
-  return resp.json()
+  return apiFetch('/family-members/profiles', { method: 'POST', body: data })
 }
 
 export async function updateFamilyMember(id, data) {
-  const resp = await fetch(`${API_BASE}/family-members/profiles/${encodeURIComponent(id)}`, {
+  return apiFetch(`/family-members/profiles/${encodeURIComponent(id)}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: data,
   })
-  if (!resp.ok) {
-    const body = await resp.json().catch(() => ({}))
-    throw new Error(body.detail || `HTTP ${resp.status}`)
-  }
-  return resp.json()
 }
 
 export async function deleteFamilyMember(id) {
-  const resp = await fetch(`${API_BASE}/family-members/profiles/${encodeURIComponent(id)}`, {
+  return apiFetch(`/family-members/profiles/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   })
-  if (!resp.ok) {
-    const body = await resp.json().catch(() => ({}))
-    throw new Error(body.detail || `HTTP ${resp.status}`)
-  }
-  return resp.json()
 }
 
 /**
@@ -163,9 +174,7 @@ export async function deleteFamilyMember(id) {
  * @returns {Promise<Array<{index: number, url: string}>>}
  */
 export async function fetchICalUrls() {
-  const resp = await fetch(`${API_BASE}/settings/ical-urls`)
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-  return resp.json()
+  return apiFetch('/settings/ical-urls')
 }
 
 /**
@@ -175,16 +184,10 @@ export async function fetchICalUrls() {
  * @returns {Promise<{status: string, index: number, url: string, is_birthday: boolean}>}
  */
 export async function addICalUrl(url, isBirthday = false) {
-  const resp = await fetch(`${API_BASE}/settings/ical-urls`, {
+  return apiFetch('/settings/ical-urls', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url, is_birthday: isBirthday }),
+    body: { url, is_birthday: isBirthday },
   })
-  if (!resp.ok) {
-    const data = await resp.json().catch(() => ({}))
-    throw new Error(data.detail || `HTTP ${resp.status}`)
-  }
-  return resp.json()
 }
 
 /**
@@ -194,16 +197,7 @@ export async function addICalUrl(url, isBirthday = false) {
  * @returns {Promise<{status: string, index: number, url: string, is_birthday: boolean}>}
  */
 export async function patchICalFeed(index, patch) {
-  const resp = await fetch(`${API_BASE}/settings/ical-urls/${index}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(patch),
-  })
-  if (!resp.ok) {
-    const data = await resp.json().catch(() => ({}))
-    throw new Error(data.detail || `HTTP ${resp.status}`)
-  }
-  return resp.json()
+  return apiFetch(`/settings/ical-urls/${index}`, { method: 'PATCH', body: patch })
 }
 
 /**
@@ -212,14 +206,7 @@ export async function patchICalFeed(index, patch) {
  * @returns {Promise<{status: string, url: string}>}
  */
 export async function deleteICalUrl(index) {
-  const resp = await fetch(`${API_BASE}/settings/ical-urls/${index}`, {
-    method: 'DELETE',
-  })
-  if (!resp.ok) {
-    const data = await resp.json().catch(() => ({}))
-    throw new Error(data.detail || `HTTP ${resp.status}`)
-  }
-  return resp.json()
+  return apiFetch(`/settings/ical-urls/${index}`, { method: 'DELETE' })
 }
 
 /**
@@ -227,9 +214,7 @@ export async function deleteICalUrl(index) {
  * @returns {Promise<Array<{index: number, url: string, username: string, password_set: boolean}>>}
  */
 export async function fetchCalDAVAccounts() {
-  const resp = await fetch(`${API_BASE}/settings/caldav-accounts`)
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-  return resp.json()
+  return apiFetch('/settings/caldav-accounts')
 }
 
 /**
@@ -238,16 +223,7 @@ export async function fetchCalDAVAccounts() {
  * @returns {Promise<{status: string, index: number, url: string}>}
  */
 export async function addCalDAVAccount(account) {
-  const resp = await fetch(`${API_BASE}/settings/caldav-accounts`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(account),
-  })
-  if (!resp.ok) {
-    const data = await resp.json().catch(() => ({}))
-    throw new Error(data.detail || `HTTP ${resp.status}`)
-  }
-  return resp.json()
+  return apiFetch('/settings/caldav-accounts', { method: 'POST', body: account })
 }
 
 /**
@@ -256,14 +232,7 @@ export async function addCalDAVAccount(account) {
  * @returns {Promise<{status: string, url: string}>}
  */
 export async function deleteCalDAVAccount(index) {
-  const resp = await fetch(`${API_BASE}/settings/caldav-accounts/${index}`, {
-    method: 'DELETE',
-  })
-  if (!resp.ok) {
-    const data = await resp.json().catch(() => ({}))
-    throw new Error(data.detail || `HTTP ${resp.status}`)
-  }
-  return resp.json()
+  return apiFetch(`/settings/caldav-accounts/${index}`, { method: 'DELETE' })
 }
 
 /**
@@ -271,9 +240,7 @@ export async function deleteCalDAVAccount(index) {
  * @returns {Promise<{ical_calendar: boolean, apple_calendar: boolean, weather: boolean, last_sync: string|null, errors: string[]}>}
  */
 export async function fetchSyncStatus() {
-  const resp = await fetch(`${API_BASE}/status`)
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-  return resp.json()
+  return apiFetch('/status')
 }
 
 /**
@@ -283,14 +250,7 @@ export async function fetchSyncStatus() {
  * @returns {Promise<{status: string, event_id: string}>}
  */
 export async function deleteEvent(eventId) {
-  const resp = await fetch(`${API_BASE}/events/${encodeURIComponent(eventId)}`, {
-    method: 'DELETE',
-  })
-  if (!resp.ok) {
-    const data = await resp.json().catch(() => ({}))
-    throw new Error(data.detail || `HTTP ${resp.status}`)
-  }
-  return resp.json()
+  return apiFetch(`/events/${encodeURIComponent(eventId)}`, { method: 'DELETE' })
 }
 
 /**
@@ -300,9 +260,7 @@ export async function deleteEvent(eventId) {
  * @returns {Promise<Array>} list of Birthday objects
  */
 export async function fetchBirthdays(daysAhead = 366, limit = 5) {
-  const resp = await fetch(`${API_BASE}/birthdays?days_ahead=${daysAhead}&limit=${limit}`)
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-  return resp.json()
+  return apiFetch(`/birthdays?days_ahead=${daysAhead}&limit=${limit}`)
 }
 
 /**
@@ -311,14 +269,7 @@ export async function fetchBirthdays(daysAhead = 366, limit = 5) {
  * @returns {Promise<{status: string, todo_id: string}>}
  */
 export async function completeTodo(todoId) {
-  const resp = await fetch(`${API_BASE}/todos/${encodeURIComponent(todoId)}/complete`, {
-    method: 'PATCH',
-  })
-  if (!resp.ok) {
-    const data = await resp.json().catch(() => ({}))
-    throw new Error(data.detail || `HTTP ${resp.status}`)
-  }
-  return resp.json()
+  return apiFetch(`/todos/${encodeURIComponent(todoId)}/complete`, { method: 'PATCH' })
 }
 
 /**
@@ -328,62 +279,28 @@ export async function completeTodo(todoId) {
  * @returns {Promise<Object>} updated CalendarEvent
  */
 export async function updateEvent(eventId, data) {
-  const resp = await fetch(`${API_BASE}/events/${encodeURIComponent(eventId)}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  if (!resp.ok) {
-    const body = await resp.json().catch(() => ({}))
-    throw new Error(body.detail || `HTTP ${resp.status}`)
-  }
-  return resp.json()
+  return apiFetch(`/events/${encodeURIComponent(eventId)}`, { method: 'PUT', body: data })
 }
 
 export async function fetchShoppingItems() {
-  const resp = await fetch(`${API_BASE}/shopping`)
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-  return resp.json()
+  return apiFetch('/shopping')
 }
 
 export async function addShoppingItem(name, category = 'Sonstiges', quantity = null) {
-  const resp = await fetch(`${API_BASE}/shopping`, {
+  return apiFetch('/shopping', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, category, quantity }),
+    body: { name, category, quantity },
   })
-  if (!resp.ok) {
-    const data = await resp.json().catch(() => ({}))
-    throw new Error(data.detail || `HTTP ${resp.status}`)
-  }
-  return resp.json()
 }
 
 export async function checkShoppingItem(itemId) {
-  const resp = await fetch(`${API_BASE}/shopping/${encodeURIComponent(itemId)}/check`, {
-    method: 'PATCH',
-  })
-  if (!resp.ok) {
-    const data = await resp.json().catch(() => ({}))
-    throw new Error(data.detail || `HTTP ${resp.status}`)
-  }
-  return resp.json()
+  return apiFetch(`/shopping/${encodeURIComponent(itemId)}/check`, { method: 'PATCH' })
 }
 
 export async function deleteShoppingItem(itemId) {
-  const resp = await fetch(`${API_BASE}/shopping/${encodeURIComponent(itemId)}`, {
-    method: 'DELETE',
-  })
-  if (!resp.ok) {
-    const data = await resp.json().catch(() => ({}))
-    throw new Error(data.detail || `HTTP ${resp.status}`)
-  }
-  return resp.json()
+  return apiFetch(`/shopping/${encodeURIComponent(itemId)}`, { method: 'DELETE' })
 }
 
 export async function clearCheckedShoppingItems() {
-  const resp = await fetch(`${API_BASE}/shopping/clear-checked`, { method: 'POST' })
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-  return resp.json()
+  return apiFetch('/shopping/clear-checked', { method: 'POST' })
 }
-

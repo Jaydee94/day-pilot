@@ -627,7 +627,20 @@ const STRINGS = {
 
 function interpolate(template, params = {}) {
   if (typeof template !== 'string') return template
-  return template.replace(/{{\s*(\w+)\s*}}/g, (_, key) => String(params[key] ?? ''))
+  return template.replace(/{{\s*(\w+)\s*}}/g, (match, key) => {
+    const value = params[key]
+    if (value === undefined || value === null) {
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.warn(`[i18n] missing param "${key}" for template "${template}"`)
+      }
+      return match // leave the placeholder visible
+    }
+    if (Array.isArray(value)) {
+      return value.join(', ')
+    }
+    return String(value)
+  })
 }
 
 function createTranslator(language) {
@@ -639,6 +652,10 @@ function createTranslator(language) {
   }
 }
 
+// NOTE: This default context value is intentionally non-null so that
+// `useI18n()` can be called outside of a provider without crashing the app
+// (e.g. in isolated component tests or storybook-like setups). If you ever
+// change this default to `null`, the dev-only guard in `useI18n` will fire.
 const I18nContext = createContext({
   language: 'en',
   locale: 'en-US',
@@ -659,5 +676,12 @@ export function I18nProvider({ language, setLanguage, children }) {
 }
 
 export function useI18n() {
-  return useContext(I18nContext)
+  const ctx = useContext(I18nContext)
+  // Defensive guard: only fires if the createContext default above is ever
+  // changed to `null`. Today the default is a complete object, so this is a
+  // no-op in normal usage but documents the intended contract.
+  if (!ctx && import.meta.env.DEV) {
+    throw new Error('useI18n must be used within an I18nProvider')
+  }
+  return ctx
 }

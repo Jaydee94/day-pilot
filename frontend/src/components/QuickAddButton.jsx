@@ -1,12 +1,8 @@
 import { useState, useEffect } from 'react'
 import AppIcon from './AppIcon.jsx'
 import { useI18n } from '../i18n.jsx'
-import { fetchFamilyMembers } from '../api.js'
+import { fetchFamilyMembers, API_BASE } from '../api.js'
 import './QuickAddButton.css'
-
-const API_BASE = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api`
-  : '/api'
 
 const TABS = ['Event', 'Task']
 
