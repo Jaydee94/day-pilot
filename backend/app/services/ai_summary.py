@@ -274,6 +274,10 @@ def list_models() -> List[AIModelInfo]:
         return _GITHUB_KNOWN_MODELS
 
 
+_DAY_START_HOUR = 8
+_DAY_END_HOUR = 20
+
+
 def _build_prompt(summary: DailySummary) -> str:
     lang = settings.APP_LANGUAGE if settings.APP_LANGUAGE in {"en", "de"} else "en"
     is_de = lang == "de"
@@ -327,8 +331,8 @@ def _build_prompt(summary: DailySummary) -> str:
         if not summary.events:
             return []
 
-        day_start = local_date.replace(hour=8, minute=0, second=0, microsecond=0)
-        day_end = local_date.replace(hour=20, minute=0, second=0, microsecond=0)
+        day_start = local_date.replace(hour=_DAY_START_HOUR, minute=0, second=0, microsecond=0)
+        day_end = local_date.replace(hour=_DAY_END_HOUR, minute=0, second=0, microsecond=0)
 
         busy: List[tuple[datetime, datetime]] = []
         for ev in summary.events:

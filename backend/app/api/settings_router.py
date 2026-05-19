@@ -366,8 +366,17 @@ def _parse_ical_feeds() -> List[dict]:
                     for f in feeds
                     if f.get("url", "").strip()
                 ]
-        except Exception:
-            pass
+        except json.JSONDecodeError as exc:
+            logger.warning(
+                "ICAL_FEEDS contains invalid JSON (%s at pos %d); falling back to ICAL_URLS",
+                exc.msg,
+                exc.pos,
+            )
+        except Exception as exc:
+            logger.warning(
+                "ICAL_FEEDS could not be parsed (%s); falling back to ICAL_URLS",
+                exc,
+            )
 
     # Migration: convert legacy ICAL_URLS to structured feeds.
     raw_urls = (app_settings.ICAL_URLS or "").strip()
@@ -491,8 +500,17 @@ def _parse_caldav_accounts() -> List[dict]:
             accounts = json.loads(raw)
             if isinstance(accounts, list):
                 return accounts
-        except Exception:
-            pass
+        except json.JSONDecodeError as exc:
+            logger.warning(
+                "CALDAV_CONFIGS contains invalid JSON (%s at pos %d); falling back to legacy single-account variables",
+                exc.msg,
+                exc.pos,
+            )
+        except Exception as exc:
+            logger.warning(
+                "CALDAV_CONFIGS could not be parsed (%s); falling back to legacy single-account variables",
+                exc,
+            )
 
     # Fall back to legacy single-account variables
     if app_settings.CALDAV_URL:

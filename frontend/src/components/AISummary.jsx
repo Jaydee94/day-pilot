@@ -36,7 +36,7 @@ export default function AISummary({ text, priorities }) {
       {paragraphs.length > 0 && (
         <div className="ai-summary__text">
           {paragraphs.map((line, i) => (
-            <p key={i}>{line}</p>
+            <p key={`${i}-${line.slice(0, 20)}`}>{line}</p>
           ))}
         </div>
       )}
@@ -45,7 +45,7 @@ export default function AISummary({ text, priorities }) {
           <p className="ai-summary__prio-label">{t('topPriorities')}</p>
           <ol className="ai-summary__prio-list">
             {priorities.map((p, i) => (
-              <li key={i} className="ai-summary__prio-item">
+              <li key={`${i}-${String(p).slice(0, 20)}`} className="ai-summary__prio-item">
                 <span className="ai-summary__prio-num">{i + 1}</span>
                 <span>{p}</span>
               </li>
