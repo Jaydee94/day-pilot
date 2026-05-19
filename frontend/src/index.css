@@ -1,77 +1,291 @@
-/* Day Pilot – global styles */
-:root {
-  --bg: #F7F9FC;
-  --card: #FFFFFF;
-  --card-border: #E5EAF2;
-  --primary: #4F8EF7;
-  --primary-light: #A6C8FF;
-  --accent: #7ED957;
-  --accent-hover: #6BC445;
-  --text: #1F2937;
-  --text-muted: #6B7280;
-  --success: #7ED957;
-  --warning: #F59E0B;
-  --error: #EF4444;
-  --radius: 14px;
-  --radius-sm: 8px;
-  --item-bg: rgba(79, 142, 247, 0.04);
-  --bg-secondary: #EEF2FA;
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(79, 142, 247, 0.08);
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@media (prefers-color-scheme: dark) {
+/*
+ * DayPilot — Material 3 inspired design tokens.
+ *
+ * All colors are stored as raw HSL channels ("H S% L%") so Tailwind can apply
+ * arbitrary alpha values via "hsl(var(--token) / <alpha-value>)" syntax.
+ *
+ * Light theme derives from primary hue 217 (blue) — see tailwind.config.ts.
+ */
+
+@layer base {
   :root {
-    --bg: #111827;
-    --card: #1F2937;
-    --card-border: #374151;
-    --primary: #60A5FA;
-    --primary-light: #93C5FD;
-    --text: #F9FAFB;
-    --text-muted: #9CA3AF;
-    --item-bg: rgba(255, 255, 255, 0.04);
-    --bg-secondary: #2D3748;
-    --shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.2);
+    /* ---------- M3 Tonal Palette — Light ---------- */
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+
+    --surface: 210 40% 98%;
+    --surface-dim: 210 30% 92%;
+    --surface-bright: 0 0% 100%;
+    --surface-variant: 215 25% 94%;
+
+    --surface-container-lowest: 0 0% 100%;
+    --surface-container-low: 210 40% 97%;
+    --surface-container: 215 30% 95%;
+    --surface-container-high: 215 25% 92%;
+    --surface-container-highest: 215 22% 90%;
+
+    --on-surface: 222 47% 11%;
+    --on-surface-variant: 215 16% 35%;
+
+    /* Primary — DayPilot brand blue */
+    --primary: 217 91% 64%;
+    --primary-foreground: 0 0% 100%;
+    --primary-container: 217 100% 92%;
+    --primary-container-foreground: 217 91% 18%;
+
+    /* Secondary — fresh green */
+    --secondary: 100 65% 60%;
+    --secondary-foreground: 100 60% 12%;
+    --secondary-container: 100 70% 90%;
+    --secondary-container-foreground: 100 60% 16%;
+
+    /* Tertiary — warm amber accent */
+    --tertiary: 32 95% 60%;
+    --tertiary-foreground: 30 60% 12%;
+    --tertiary-container: 36 100% 92%;
+    --tertiary-container-foreground: 30 60% 18%;
+
+    --error: 0 84% 60%;
+    --error-foreground: 0 0% 100%;
+    --error-container: 0 90% 95%;
+    --error-container-foreground: 0 70% 28%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --success-container: 142 70% 92%;
+    --success-container-foreground: 142 70% 18%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 30 40% 10%;
+    --warning-container: 40 100% 92%;
+    --warning-container-foreground: 30 80% 20%;
+
+    --outline: 215 14% 65%;
+    --outline-variant: 215 18% 88%;
+
+    --shadow: 217 60% 30%;
+  }
+
+  .dark {
+    /* ---------- M3 Tonal Palette — Dark ---------- */
+    --background: 222 47% 7%;
+    --foreground: 210 30% 96%;
+
+    --surface: 222 47% 7%;
+    --surface-dim: 222 47% 5%;
+    --surface-bright: 220 25% 18%;
+    --surface-variant: 220 18% 18%;
+
+    --surface-container-lowest: 222 47% 4%;
+    --surface-container-low: 222 32% 10%;
+    --surface-container: 222 25% 13%;
+    --surface-container-high: 222 22% 17%;
+    --surface-container-highest: 222 20% 21%;
+
+    --on-surface: 210 30% 96%;
+    --on-surface-variant: 215 16% 70%;
+
+    --primary: 217 91% 72%;
+    --primary-foreground: 217 91% 10%;
+    --primary-container: 217 60% 26%;
+    --primary-container-foreground: 217 100% 92%;
+
+    --secondary: 100 65% 70%;
+    --secondary-foreground: 100 60% 8%;
+    --secondary-container: 100 50% 22%;
+    --secondary-container-foreground: 100 70% 90%;
+
+    --tertiary: 32 95% 70%;
+    --tertiary-foreground: 30 60% 8%;
+    --tertiary-container: 32 60% 26%;
+    --tertiary-container-foreground: 36 100% 92%;
+
+    --error: 0 84% 70%;
+    --error-foreground: 0 90% 10%;
+    --error-container: 0 60% 26%;
+    --error-container-foreground: 0 90% 95%;
+
+    --success: 142 71% 55%;
+    --success-foreground: 142 70% 8%;
+    --success-container: 142 50% 22%;
+    --success-container-foreground: 142 70% 92%;
+
+    --warning: 38 92% 60%;
+    --warning-foreground: 30 60% 10%;
+    --warning-container: 38 60% 26%;
+    --warning-container-foreground: 40 100% 92%;
+
+    --outline: 215 14% 45%;
+    --outline-variant: 220 14% 26%;
+
+    --shadow: 0 0% 0%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    min-height: 100vh;
+    min-height: 100dvh;
+    /* iOS safe-area padding awareness */
+    padding-top: env(safe-area-inset-top);
+    padding-right: env(safe-area-inset-right);
+    padding-left: env(safe-area-inset-left);
+  }
+
+  #root {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  /* Consistent focus ring across the app */
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
+    border-radius: 4px;
+  }
+
+  /* Respect reduced motion globally */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+@layer components {
+  /* M3 Type Scale — semantic typography utilities */
+  .text-display-lg {
+    @apply text-[57px] leading-[64px] font-normal tracking-[-0.25px];
+  }
+  .text-display-md {
+    @apply text-[45px] leading-[52px] font-normal tracking-normal;
+  }
+  .text-display-sm {
+    @apply text-[36px] leading-[44px] font-normal tracking-normal;
+  }
+  .text-headline-lg {
+    @apply text-[32px] leading-[40px] font-normal tracking-normal;
+  }
+  .text-headline-md {
+    @apply text-[28px] leading-[36px] font-normal tracking-normal;
+  }
+  .text-headline-sm {
+    @apply text-[24px] leading-[32px] font-normal tracking-normal;
+  }
+  .text-title-lg {
+    @apply text-[22px] leading-[28px] font-medium tracking-normal;
+  }
+  .text-title-md {
+    @apply text-[16px] leading-[24px] font-medium tracking-[0.15px];
+  }
+  .text-title-sm {
+    @apply text-[14px] leading-[20px] font-medium tracking-[0.1px];
+  }
+  .text-label-lg {
+    @apply text-[14px] leading-[20px] font-medium tracking-[0.1px];
+  }
+  .text-label-md {
+    @apply text-[12px] leading-[16px] font-medium tracking-[0.5px];
+  }
+  .text-label-sm {
+    @apply text-[11px] leading-[16px] font-medium tracking-[0.5px];
+  }
+  .text-body-lg {
+    @apply text-[16px] leading-[24px] font-normal tracking-[0.5px];
+  }
+  .text-body-md {
+    @apply text-[14px] leading-[20px] font-normal tracking-[0.25px];
+  }
+  .text-body-sm {
+    @apply text-[12px] leading-[16px] font-normal tracking-[0.4px];
+  }
+
+  /* M3 State Layer (subtle hover/press overlay used by interactive surfaces) */
+  .state-layer {
+    @apply relative isolate overflow-hidden;
+  }
+  .state-layer::after {
+    content: '';
+    @apply absolute inset-0 z-[1] pointer-events-none opacity-0 transition-opacity duration-short3;
+    background-color: currentColor;
+  }
+  .state-layer:hover::after {
+    opacity: 0.08;
+  }
+  .state-layer:focus-visible::after {
+    opacity: 0.12;
+  }
+  .state-layer:active::after {
+    opacity: 0.12;
+  }
+
+  /* Skeleton shimmer base */
+  .skeleton {
+    @apply bg-surface-container-high relative overflow-hidden rounded-md;
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0 -translate-x-full;
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      hsl(var(--surface-container-highest) / 0.6),
+      transparent
+    );
+    animation: shimmer 1.6s infinite;
+  }
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
 }
 
-html {
-  font-size: 16px;
-  -webkit-font-smoothing: antialiased;
-}
+@layer utilities {
+  /* Hide scrollbars while preserving scroll behavior */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 
-body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background:
-    radial-gradient(1200px 600px at 100% -10%, rgba(166, 200, 255, 0.28), transparent 55%),
-    radial-gradient(1000px 520px at -10% 0%, rgba(126, 217, 87, 0.12), transparent 60%),
-    var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-}
+  /* Safe-area helpers */
+  .pb-safe {
+    padding-bottom: max(env(safe-area-inset-bottom), 0px);
+  }
+  .pt-safe {
+    padding-top: max(env(safe-area-inset-top), 0px);
+  }
+  .h-safe-bottom {
+    height: env(safe-area-inset-bottom);
+  }
 
-#root {
-  min-height: 100vh;
-}
-
-a {
-  color: var(--primary);
-  text-decoration: none;
-}
-
-button {
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.icon {
-  display: inline-block;
-  width: 1em;
-  height: 1em;
-  vertical-align: -0.14em;
+  /* Subtle background gradient used on auth/dashboard surfaces */
+  .bg-app {
+    background:
+      radial-gradient(1200px 600px at 100% -10%, hsl(var(--primary-container) / 0.25), transparent 55%),
+      radial-gradient(1000px 520px at -10% 0%, hsl(var(--secondary-container) / 0.18), transparent 60%),
+      hsl(var(--background));
+  }
 }

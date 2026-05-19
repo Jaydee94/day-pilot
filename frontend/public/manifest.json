@@ -3,18 +3,54 @@
   "short_name": "DayPilot",
   "description": "Your AI-powered daily co-pilot — calendar, tasks, weather and briefings.",
   "start_url": "/today",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#F7F9FC",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "background_color": "#F5F8FB",
   "theme_color": "#4F8EF7",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "icons": [
     {
       "src": "/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Today",
+      "short_name": "Today",
+      "description": "Your daily briefing",
+      "url": "/today",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Calendar",
+      "short_name": "Calendar",
+      "url": "/calendar",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Tasks",
+      "short_name": "Tasks",
+      "url": "/tasks",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Shopping",
+      "short_name": "Shopping",
+      "url": "/shopping",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
     }
   ],
   "categories": ["productivity", "lifestyle"],
-  "lang": "en"
+  "lang": "en",
+  "prefer_related_applications": false
 }

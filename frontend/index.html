@@ -3,17 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#4F8EF7" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0"
+    />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F5F8FB" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0B1320" />
     <meta name="description" content="DayPilot — your AI-powered daily co-pilot for family life management." />
+    <meta name="color-scheme" content="light dark" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="DayPilot" />
+    <meta name="format-detection" content="telephone=no" />
     <link rel="manifest" href="/manifest.json" />
-    <title>DayPilot – Your Daily Co-Pilot</title>
+    <link rel="preconnect" href="https://cdn.weatherapi.com" crossorigin />
+    <title>DayPilot — Your Daily Co-Pilot</title>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
