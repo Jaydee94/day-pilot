@@ -525,13 +525,13 @@ def _build_prompt(summary: DailySummary) -> str:
 
     # Build family context from profiles
     family_context = _build_family_context()
-    location = settings.WEATHER_CITY or "unbekannter Ort"
-    weekday_de = local_date.strftime("%A")  # locale-independent fallback
+    location = settings.WEATHER_CITY or ("unbekannter Ort" if is_de else "an unknown location")
     _de_weekdays = {
         "Monday": "Montag", "Tuesday": "Dienstag", "Wednesday": "Mittwoch",
         "Thursday": "Donnerstag", "Friday": "Freitag", "Saturday": "Samstag", "Sunday": "Sonntag",
     }
     weekday_de = _de_weekdays.get(local_date.strftime("%A"), local_date.strftime("%A"))
+    weekday_en = local_date.strftime("%A")
     is_weekend = local_date.weekday() >= 5
 
     time_blocks_format = (
@@ -541,26 +541,70 @@ def _build_prompt(summary: DailySummary) -> str:
         "```"
     )
 
-    family_section = f"\n\nFAMILIE:\n{family_context}" if family_context else ""
-    day_type = "Wochenende" if is_weekend else "Werktag"
+    family_section = (
+        (f"\n\nFAMILIE:\n{family_context}" if is_de else f"\n\nFAMILY:\n{family_context}")
+        if family_context
+        else ""
+    )
+    day_type_de = "Wochenende" if is_weekend else "Werktag"
+    day_type_en = "Weekend" if is_weekend else "Weekday"
 
+    if is_de:
+        weekend_instruction_de = (
+            "Schlage Outdoor-Familienaktivitäten am Wochenende als Tagesideen vor "
+            "(on weekends as daytime ideas)."
+            if is_weekend
+            else "Schlage kürzere Aktivitäten an Werktagen als Feierabend-Ideen vor "
+                 "(on weekdays as after-work ideas)."
+        )
+        return (
+            f"Du bist ein herzlicher, persönlicher Familienassistent für den Ort {location}."
+            f"{family_section}\n\n"
+            "Schreibe ein sehr kurzes, warmes Tagesbriefing auf Deutsch (maximal 3 Sätze, beginne mit 'Guten Morgen' / 'Good morning'). "
+            "Verwende KEIN Markdown. Kein **, kein *, kein #. Nur normalen Text. "
+            "Höchstens 1 Emoji im gesamten SUMMARY. "
+            "Schreibe persönlich (du/ihr), motivierend und alltagsnah. "
+            f"Heute ist {weekday_de} ({day_type_de}). "
+            f"{weekend_instruction_de} "
+            "Gib mindestens eine konkrete Zeitfenster-Empfehlung (at least one concrete time-window recommendation) im Tagesplan an. "
+            "Passe die Vorschläge ans Wetter an: bei Regen oder Kälte Innenaktivitäten, bei Sonne Outdoor-Ideen. "
+            "Beziehe die Familienmitglieder ein: nenne konkrete, altersgerechte Aktivitäten, Routinen und Interessen wenn passend. "
+            "Falls heute Geburtstag ist, hebe ihn positiv hervor. "
+            "Extrahiere danach exakt 3 Prioritäten als nummerierte Liste (keine Erklärungen, nur den Kern). "
+            "Erstelle einen realistischen Tagesplan (maximal 5 Zeitblöcke). "
+            "Typen: 'focus' (Fokuszeit), 'buffer' (Puffer/Übergang), 'break' (Pause/Mahlzeit). "
+            "Halte das FORMAT exakt ein — keine zusätzlichen Abschnitte, keine Erklärungen außerhalb.\n\n"
+            f"FORMAT (exakt so ausgeben):\n"
+            f"SUMMARY:\n<maximal 3 Sätze>\n\n"
+            f"PRIORITIES:\n1. ...\n2. ...\n3. ...{time_blocks_format}\n\n"
+            f"DATA:\n{data_text}"
+        )
+
+    # English (default)
+    weekend_instruction_en = (
+        "Suggest outdoor family activities on weekends as daytime ideas."
+        if is_weekend
+        else "Suggest shorter activities on weekdays as after-work ideas."
+    )
     return (
-        f"Du bist ein herzlicher, persönlicher Familienassistent für den Ort {location}."
+        f"You are a friendly personal assistant for the family in {location}."
         f"{family_section}\n\n"
-        "Schreibe ein sehr kurzes, warmes Tagesbriefing auf Deutsch (maximal 3 Sätze, beginne mit 'Guten Morgen'). "
-        "Verwende KEIN Markdown. Kein **, kein *, kein #. Nur normalen Text. "
-        "Höchstens 1 Emoji im gesamten SUMMARY. "
-        "Schreibe persönlich (du/ihr), motivierend und alltagsnah. "
-        f"Heute ist {weekday_de} ({day_type}). "
-        "Passe die Vorschläge ans Wetter an: bei Regen oder Kälte Innenaktivitäten, bei Sonne Outdoor-Ideen. "
-        "Beziehe die Familienmitglieder ein: nenne konkrete, altersgerechte Aktivitäten, Routinen und Interessen wenn passend. "
-        "Falls heute Geburtstag ist, hebe ihn positiv hervor. "
-        "Extrahiere danach exakt 3 Prioritäten als nummerierte Liste (keine Erklärungen, nur den Kern). "
-        "Erstelle einen realistischen Tagesplan (maximal 5 Zeitblöcke). "
-        "Typen: 'focus' (Fokuszeit), 'buffer' (Puffer/Übergang), 'break' (Pause/Mahlzeit). "
-        "Halte das FORMAT exakt ein — keine zusätzlichen Abschnitte, keine Erklärungen außerhalb.\n\n"
-        f"FORMAT (exakt so ausgeben):\n"
-        f"SUMMARY:\n<maximal 3 Sätze>\n\n"
+        "Write a very short, warm daily briefing in English (max 3 sentences, start with 'Good morning'). "
+        "Do NOT use Markdown. No **, no *, no #. Plain text only. "
+        "Use at most 1 emoji in the whole SUMMARY. "
+        "Be personal (you/yours), motivating, and grounded in everyday life. "
+        f"Today is {weekday_en} ({day_type_en}). "
+        f"{weekend_instruction_en} "
+        "Include at least one concrete time-window recommendation in the day plan. "
+        "Adapt suggestions to the weather: prefer indoor activities on rainy or cold days, outdoor ideas on sunny days. "
+        "Involve the family members: mention concrete, age-appropriate activities, routines, and interests when relevant. "
+        "If today is someone's birthday, highlight it positively. "
+        "Then extract exactly 3 priorities as a numbered list (no explanations, just the gist). "
+        "Build a realistic time plan (max 5 time blocks). "
+        "Types: 'focus' (focus time), 'buffer' (transition), 'break' (rest/meal). "
+        "Keep the FORMAT exactly — no extra sections, no explanations outside.\n\n"
+        f"FORMAT (output exactly like this):\n"
+        f"SUMMARY:\n<at most 3 sentences>\n\n"
         f"PRIORITIES:\n1. ...\n2. ...\n3. ...{time_blocks_format}\n\n"
         f"DATA:\n{data_text}"
     )

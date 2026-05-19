@@ -56,7 +56,7 @@ DayPilot is composed of isolated, independently deployable services. All service
 - Responsible for: UI rendering, user interaction, offline support
 
 #### `backend`
-- NestJS REST API
+- FastAPI REST API
 - Acts as the orchestration layer for all other services
 - Responsible for: routing, authentication, data access, LLM orchestration, calendar sync coordination
 - Exposes OpenAPI documentation
@@ -100,10 +100,10 @@ The following stack is fixed. Do **not** introduce alternatives without an expli
 - No other component libraries (e.g., MUI, Ant Design, Chakra) are permitted
 
 ### Backend
-- **Node.js** with **NestJS** (preferred framework)
-- **TypeScript** strictly enforced
-- **TypeORM** for database access
-- **class-validator** + **class-transformer** for DTOs and validation
+- **Python** with **FastAPI** (preferred framework)
+- **Type hints** strictly enforced (validated with `mypy`/Pydantic)
+- **SQLAlchemy** (with Alembic for migrations) for database access
+- **Pydantic** for DTOs / request & response validation
 
 ### Infrastructure
 - **Docker** + **Docker Compose** — all services must be containerised
@@ -115,7 +115,7 @@ The following stack is fixed. Do **not** introduce alternatives without an expli
 - Integration must be **pluggable** — the AI provider must be swappable via configuration without code changes
 
 ### Documentation
-- **OpenAPI** (Swagger) — auto-generated from NestJS decorators
+- **OpenAPI** (Swagger) — auto-generated from FastAPI route signatures
 - Human-readable docs in `/docs`
 
 ---
@@ -305,6 +305,10 @@ These rules govern every screen, component, and interaction in DayPilot. They ar
 - No inline styles unless absolutely necessary (and must be documented)
 - All interactive elements must have accessible labels (`aria-label`, `aria-describedby`)
 
+> **NOTE:** The current frontend uses plain React without shadcn/ui or Tailwind.
+> Migrating to shadcn/ui is a planned improvement; until then, build new UI with
+> the existing CSS module convention.
+
 ---
 
 ## 8. BACKEND & API RULES
@@ -327,14 +331,14 @@ These rules govern every screen, component, and interaction in DayPilot. They ar
 
 - **Clean separation of concerns**: controllers handle routing only; services handle business logic; repositories handle data access
 - **DTOs** (Data Transfer Objects) required for all request and response bodies
-- **Validation** using `class-validator` on all incoming DTOs
-- **No raw SQL** — use TypeORM query builder or repository methods
+- **Validation** using **Pydantic** models on all incoming DTOs
+- **No raw SQL** — use SQLAlchemy ORM / query builder methods
 
 ### Error Handling
 
 - All errors must return structured JSON with `statusCode`, `message`, and `error` fields
 - Never expose internal stack traces to clients
-- Use NestJS exception filters for consistent error formatting
+- Use FastAPI exception handlers (`@app.exception_handler`) for consistent error formatting
 
 ### Security
 
