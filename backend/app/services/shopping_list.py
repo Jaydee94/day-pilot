@@ -99,30 +99,33 @@ def add_shopping_item(
 
 def check_shopping_item(item_id: str) -> bool:
     """Toggle checked state.  Returns True if found."""
-    all_items = _load_all_items()
-    for raw in all_items:
-        if raw.get("id") == item_id:
-            raw["checked"] = not raw.get("checked", False)
-            _save_all_items(all_items)
-            return True
+    with file_lock(_shopping_file()):
+        all_items = _load_all_items()
+        for raw in all_items:
+            if raw.get("id") == item_id:
+                raw["checked"] = not raw.get("checked", False)
+                _save_all_items(all_items)
+                return True
     return False
 
 
 def delete_shopping_item(item_id: str) -> bool:
     """Delete an item by ID.  Returns True if found."""
-    all_items = _load_all_items()
-    remaining = [i for i in all_items if i.get("id") != item_id]
-    if len(remaining) == len(all_items):
-        return False
-    _save_all_items(remaining)
+    with file_lock(_shopping_file()):
+        all_items = _load_all_items()
+        remaining = [i for i in all_items if i.get("id") != item_id]
+        if len(remaining) == len(all_items):
+            return False
+        _save_all_items(remaining)
     return True
 
 
 def clear_checked_items() -> int:
     """Remove all checked items.  Returns number of items removed."""
-    all_items = _load_all_items()
-    remaining = [i for i in all_items if not i.get("checked", False)]
-    removed = len(all_items) - len(remaining)
-    if removed:
-        _save_all_items(remaining)
+    with file_lock(_shopping_file()):
+        all_items = _load_all_items()
+        remaining = [i for i in all_items if not i.get("checked", False)]
+        removed = len(all_items) - len(remaining)
+        if removed:
+            _save_all_items(remaining)
     return removed

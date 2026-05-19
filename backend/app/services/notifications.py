@@ -13,6 +13,7 @@ import pytz
 
 from app.config import settings
 from app.models.schemas import DailySummary
+from app.services._storage import atomic_write_json, file_lock
 
 logger = logging.getLogger(__name__)
 
@@ -39,12 +40,9 @@ def _has_sent_today() -> bool:
 def _mark_sent_today() -> None:
     """Persist today's date as the last-sent marker."""
     path = settings.NOTIFICATIONS_DEDUP_FILE
-    dir_name = os.path.dirname(os.path.abspath(path))
-    if dir_name:
-        os.makedirs(dir_name, exist_ok=True)
     try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump({"date": _today_iso()}, f)
+        with file_lock(path):
+            atomic_write_json(path, {"date": _today_iso()})
     except Exception as exc:
         logger.warning("Could not write dedup file %s: %s", path, exc)
 

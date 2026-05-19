@@ -5,10 +5,15 @@ from typing import List, Optional
 
 from app.config import settings
 from app.models.schemas import FamilyMemberProfile
+from app.services._storage import atomic_write_json, file_lock
+
+
+def _members_file() -> str:
+    return settings.FAMILY_MEMBERS_FILE
 
 
 def _load() -> List[dict]:
-    path = Path(settings.FAMILY_MEMBERS_FILE)
+    path = Path(_members_file())
     if not path.exists():
         return []
     try:
@@ -18,9 +23,7 @@ def _load() -> List[dict]:
 
 
 def _save(members: List[dict]) -> None:
-    path = Path(settings.FAMILY_MEMBERS_FILE)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(members, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_write_json(_members_file(), members)
 
 
 def _to_profile(d: dict) -> FamilyMemberProfile:
@@ -51,10 +54,11 @@ def add_family_member(
     age: Optional[int] = None,
     notes: Optional[List[str]] = None,
 ) -> FamilyMemberProfile:
-    members = _load()
     new = {"id": str(uuid.uuid4()), "name": name, "age": age, "notes": notes or []}
-    members.append(new)
-    _save(members)
+    with file_lock(_members_file()):
+        members = _load()
+        members.append(new)
+        _save(members)
     return _to_profile(new)
 
 
@@ -64,21 +68,23 @@ def update_family_member(
     age: Optional[int],
     notes: List[str],
 ) -> Optional[FamilyMemberProfile]:
-    members = _load()
-    for m in members:
-        if m.get("id") == member_id:
-            m["name"] = name
-            m["age"] = age
-            m["notes"] = notes
-            _save(members)
-            return _to_profile(m)
+    with file_lock(_members_file()):
+        members = _load()
+        for m in members:
+            if m.get("id") == member_id:
+                m["name"] = name
+                m["age"] = age
+                m["notes"] = notes
+                _save(members)
+                return _to_profile(m)
     return None
 
 
 def delete_family_member(member_id: str) -> bool:
-    members = _load()
-    new_list = [m for m in members if m.get("id") != member_id]
-    if len(new_list) == len(members):
-        return False
-    _save(new_list)
+    with file_lock(_members_file()):
+        members = _load()
+        new_list = [m for m in members if m.get("id") != member_id]
+        if len(new_list) == len(members):
+            return False
+        _save(new_list)
     return True

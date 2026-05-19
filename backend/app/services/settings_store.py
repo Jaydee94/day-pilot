@@ -12,6 +12,8 @@ import logging
 import os
 from typing import Any, Dict
 
+from app.services._storage import atomic_write_json, file_lock
+
 logger = logging.getLogger(__name__)
 
 SETTINGS_FILE: str = os.environ.get("SETTINGS_FILE", "/app/data/settings.json")
@@ -75,18 +77,17 @@ def save_user_settings(updates: Dict[str, Any]) -> None:
     if not allowed:
         return
 
-    # Read existing data first so we do a merge, not a replace.
-    existing = load_user_settings()
-    existing.update(allowed)
+    with file_lock(SETTINGS_FILE):
+        # Read existing data first so we do a merge, not a replace.
+        existing = load_user_settings()
+        existing.update(allowed)
 
-    os.makedirs(os.path.dirname(os.path.abspath(SETTINGS_FILE)), exist_ok=True)
-    try:
-        with open(SETTINGS_FILE, "w", encoding="utf-8") as fh:
-            json.dump(existing, fh, indent=2, ensure_ascii=False)
-        logger.info("Settings saved to %s", SETTINGS_FILE)
-    except Exception as exc:
-        logger.error("Failed to write settings file %s: %s", SETTINGS_FILE, exc)
-        raise
+        try:
+            atomic_write_json(SETTINGS_FILE, existing, mode=0o600)
+            logger.info("Settings saved to %s", SETTINGS_FILE)
+        except Exception as exc:
+            logger.error("Failed to write settings file %s: %s", SETTINGS_FILE, exc)
+            raise
 
 
 def is_setup_complete() -> bool:

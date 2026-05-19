@@ -105,7 +105,7 @@ class Settings(BaseSettings):
     NTFY_TOKEN: str = ""
 
     # Voice Webhook secret (used by Siri Shortcuts / Google Assistant IFTTT)
-    VOICE_WEBHOOK_SECRET: str = "change-me-in-production"
+    VOICE_WEBHOOK_SECRET: str = ""
 
     # Custom AI prompt template (optional). When non-empty, replaces the built-in
     # briefing instruction. Available placeholders: {language}, {date}, {data}.
@@ -114,6 +114,9 @@ class Settings(BaseSettings):
 
     # How often the calendar sync job runs (in full hours, default: 1).
     CALENDAR_SYNC_INTERVAL_HOURS: int = 1
+
+    # Comma-separated list of allowed CORS origins. Empty = localhost dev defaults.
+    CORS_ALLOW_ORIGINS: str = ""
 
 
 def _apply_settings_overlay(s: Settings) -> None:

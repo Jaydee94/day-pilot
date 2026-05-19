@@ -9,6 +9,7 @@ and writing events.
 """
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from datetime import date as date_type
 from datetime import datetime, timedelta
 from typing import List, Optional
@@ -23,6 +24,8 @@ from app.config import settings
 from app.models.schemas import CalendarEvent, TodoItem, Birthday
 
 logger = logging.getLogger(__name__)
+
+CALDAV_TIMEOUT_SECONDS = 20
 
 # ---------------------------------------------------------------------------
 # Sync state
@@ -342,7 +345,17 @@ def fetch_apple_events_in_range(start: datetime, end: datetime) -> List[Calendar
                     except Exception:
                         cal_name = None
 
-                    raw_events = cal.date_search(start=start, end=end, expand=True)
+                    with ThreadPoolExecutor(max_workers=1) as executor:
+                        future = executor.submit(cal.date_search, start=start, end=end, expand=True)
+                        try:
+                            raw_events = future.result(timeout=CALDAV_TIMEOUT_SECONDS)
+                        except FuturesTimeoutError:
+                            logger.warning(
+                                "CalDAV date_search timed out after %ss for calendar %s",
+                                CALDAV_TIMEOUT_SECONDS,
+                                getattr(cal, "name", "?"),
+                            )
+                            continue
                     for ev in raw_events:
                         vevent = ev.vobject_instance.vevent
                         ev_start = vevent.dtstart.value
