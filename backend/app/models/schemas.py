@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Literal, Optional
 from datetime import datetime
 
@@ -37,7 +37,7 @@ class CalDAVAccount(BaseModel):
 class Birthday(BaseModel):
     name: str
     date: datetime
-    age: Optional[int] = None
+    age: Optional[int] = Field(default=None, ge=0, le=150)
 
 
 class HourlyForecastPoint(BaseModel):

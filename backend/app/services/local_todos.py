@@ -161,6 +161,11 @@ def complete_local_todo(todo_id: str) -> bool:
     if recurrence and completed_raw.get("due"):
         try:
             due = datetime.fromisoformat(completed_raw["due"])
+            # Persisted due strings written before the timezone-aware migration
+            # may be naive — re-attach the configured app timezone so the next
+            # recurrence calculation stays consistent across DST boundaries.
+            if due.tzinfo is None:
+                due = _local_tz().localize(due)
             add_local_todo(
                 title=completed_raw["title"],
                 due=_next_due(due, recurrence),
