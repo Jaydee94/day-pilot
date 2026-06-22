@@ -11,3 +11,7 @@ node_modules/
 dist/
 .DS_Store
 *.egg-info/
+
+# Local SQLite database (used as the default store in dev/test)
+*.db
+day_pilot.db

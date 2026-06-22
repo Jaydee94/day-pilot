@@ -14,8 +14,12 @@ RUN poetry config virtualenvs.create false \
     && poetry install --no-interaction --no-ansi --without dev
 
 COPY app/ ./app/
+COPY migrations/ ./migrations/
+COPY scripts/ ./scripts/
+COPY alembic.ini entrypoint.sh ./
+RUN chmod +x entrypoint.sh
 
-# Create data directory for tokens
+# Create data directory for tokens / legacy JSON state
 RUN mkdir -p /app/data
 
 # Run as an unprivileged user. Must come AFTER the install/COPY steps so that
@@ -30,4 +34,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=3).status == 200 else 1)" || exit 1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["./entrypoint.sh"]

@@ -1,42 +1,25 @@
-import json
+"""Family member profile store (database-backed)."""
 import uuid
-from pathlib import Path
 from typing import List, Optional
 
 from app.config import settings
+from app.db.engine import get_session
+from app.db.models import FamilyMember
 from app.models.schemas import FamilyMemberProfile
-from app.services._storage import atomic_write_json, file_lock
 
 
-def _members_file() -> str:
-    return settings.FAMILY_MEMBERS_FILE
-
-
-def _load() -> List[dict]:
-    path = Path(_members_file())
-    if not path.exists():
-        return []
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return []
-
-
-def _save(members: List[dict]) -> None:
-    atomic_write_json(_members_file(), members)
-
-
-def _to_profile(d: dict) -> FamilyMemberProfile:
+def _to_profile(row: FamilyMember) -> FamilyMemberProfile:
     return FamilyMemberProfile(
-        id=d.get("id", str(uuid.uuid4())),
-        name=d.get("name", ""),
-        age=d.get("age"),
-        notes=d.get("notes", []),
+        id=row.id,
+        name=row.name,
+        age=row.age,
+        notes=list(row.notes or []),
     )
 
 
 def fetch_family_members() -> List[FamilyMemberProfile]:
-    return [_to_profile(d) for d in _load()]
+    with get_session() as session:
+        return [_to_profile(row) for row in session.query(FamilyMember).all()]
 
 
 def fetch_family_member_names() -> List[str]:
@@ -54,12 +37,12 @@ def add_family_member(
     age: Optional[int] = None,
     notes: Optional[List[str]] = None,
 ) -> FamilyMemberProfile:
-    new = {"id": str(uuid.uuid4()), "name": name, "age": age, "notes": notes or []}
-    with file_lock(_members_file()):
-        members = _load()
-        members.append(new)
-        _save(members)
-    return _to_profile(new)
+    member_id = str(uuid.uuid4())
+    with get_session() as session:
+        session.add(
+            FamilyMember(id=member_id, name=name, age=age, notes=notes or [])
+        )
+    return FamilyMemberProfile(id=member_id, name=name, age=age, notes=notes or [])
 
 
 def update_family_member(
@@ -68,23 +51,21 @@ def update_family_member(
     age: Optional[int],
     notes: List[str],
 ) -> Optional[FamilyMemberProfile]:
-    with file_lock(_members_file()):
-        members = _load()
-        for m in members:
-            if m.get("id") == member_id:
-                m["name"] = name
-                m["age"] = age
-                m["notes"] = notes
-                _save(members)
-                return _to_profile(m)
-    return None
+    with get_session() as session:
+        row = session.get(FamilyMember, member_id)
+        if row is None:
+            return None
+        row.name = name
+        row.age = age
+        row.notes = notes
+        session.flush()
+        return _to_profile(row)
 
 
 def delete_family_member(member_id: str) -> bool:
-    with file_lock(_members_file()):
-        members = _load()
-        new_list = [m for m in members if m.get("id") != member_id]
-        if len(new_list) == len(members):
+    with get_session() as session:
+        row = session.get(FamilyMember, member_id)
+        if row is None:
             return False
-        _save(new_list)
+        session.delete(row)
     return True

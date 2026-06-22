@@ -10,18 +10,21 @@ from fastapi.testclient import TestClient
 
 
 @pytest.fixture()
-def client(tmp_path):
-    """TestClient with a temporary settings file and no real scheduler."""
-    settings_file = str(tmp_path / "settings.json")
+def client():
+    """TestClient with database-backed settings and no real scheduler.
+
+    Settings persistence is isolated per-test by the autouse ``reset_database``
+    fixture in conftest.py. The second tuple element is kept for backwards
+    compatibility with tests that unpack ``c, _ = client``.
+    """
     with (
-        patch("app.services.settings_store.SETTINGS_FILE", settings_file),
         patch("app.services.scheduler.start_scheduler"),
         patch("app.services.scheduler.stop_scheduler"),
     ):
         from app.main import app
 
         with TestClient(app) as c:
-            yield c, settings_file
+            yield c, None
 
 
 class TestGetSettings:
@@ -50,12 +53,11 @@ class TestUpdateSettings:
         assert resp.status_code == 200
         assert resp.json()["WEATHER_CITY"] == "Munich"
 
-    def test_persists_to_file(self, client):
-        c, settings_file = client
+    def test_persists_to_store(self, client):
+        c, _ = client
         c.put("/api/settings", json={"WEATHER_CITY": "Hamburg"})
-        with open(settings_file) as fh:
-            saved = json.load(fh)
-        assert saved["WEATHER_CITY"] == "Hamburg"
+        from app.services.settings_store import load_user_settings
+        assert load_user_settings()["WEATHER_CITY"] == "Hamburg"
 
     def test_mark_setup_complete(self, client):
         c, _ = client

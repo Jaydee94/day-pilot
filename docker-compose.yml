@@ -1,11 +1,41 @@
 services:
   # ---------------------------------------------------------------------------
+  # PostgreSQL – primary data store
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:17-alpine
+    container_name: day-pilot-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-daypilot}
+      POSTGRES_USER: ${POSTGRES_USER:-daypilot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-daypilot}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - daypilot-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-daypilot} -d ${POSTGRES_DB:-daypilot}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # ---------------------------------------------------------------------------
   # Backend – FastAPI application
   #
-  # Day Pilot persists all of its state (local events, todos, shopping list,
-  # family profiles, settings, Google OAuth token, notification dedup markers)
-  # as JSON files under /app/data. That directory is bind-mounted below, so a
-  # database/cache service is intentionally NOT part of this stack.
+  # Persistent state lives in PostgreSQL (events, todos, shopping list, family
+  # profiles, settings, notification dedup markers). The /app/data volume still
+  # holds the Google OAuth token and any legacy JSON files imported on first
+  # boot.
   # ---------------------------------------------------------------------------
   backend:
     build:
@@ -14,10 +44,15 @@ services:
     container_name: day-pilot-backend
     restart: unless-stopped
     env_file: .env
+    environment:
+      - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-daypilot}:${POSTGRES_PASSWORD:-daypilot}@db:5432/${POSTGRES_DB:-daypilot}
     ports:
       - "8000:8000"
     volumes:
-      - ./data:/app/data        # persistent state: JSON store + Google OAuth token
+      - ./data:/app/data        # Google OAuth token + legacy JSON import source
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
       - daypilot-net
     healthcheck:
@@ -68,3 +103,6 @@ services:
 networks:
   daypilot-net:
     driver: bridge
+
+volumes:
+  db-data:

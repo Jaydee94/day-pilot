@@ -2,6 +2,7 @@
 Shared pytest fixtures for Day Pilot backend tests.
 """
 import os
+import tempfile
 
 # Ensure the voice webhook router is mounted during tests.  The app conditionally
 # mounts /api/voice/* only when VOICE_WEBHOOK_SECRET is non-empty (security
@@ -10,10 +11,41 @@ import os
 # settings are first read.
 os.environ.setdefault("VOICE_WEBHOOK_SECRET", "test-secret")
 
+# Point the database engine at a throwaway on-disk SQLite file for the whole
+# test session.  This MUST happen before any ``app`` module is imported, because
+# app/db/engine.py builds the engine from DATABASE_URL at import time.
+_DB_FD, _DB_PATH = tempfile.mkstemp(suffix="-daypilot-test.db")
+os.close(_DB_FD)
+os.environ["DATABASE_URL"] = f"sqlite:///{_DB_PATH}"
+
 from unittest.mock import patch  # noqa: E402
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
+
+from app.db.base import Base  # noqa: E402
+from app.db import models  # noqa: E402,F401  (registers tables on Base.metadata)
+from app.db.engine import engine  # noqa: E402
+
+# Create the schema once for the session.
+Base.metadata.create_all(engine)
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Remove the temporary SQLite file when the test session ends."""
+    try:
+        os.unlink(_DB_PATH)
+    except OSError:
+        pass
+
+
+@pytest.fixture(autouse=True)
+def reset_database():
+    """Truncate every table before each test so cases stay isolated."""
+    with engine.begin() as conn:
+        for table in reversed(Base.metadata.sorted_tables):
+            conn.execute(table.delete())
+    yield
 
 
 @pytest.fixture()

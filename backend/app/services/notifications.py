@@ -2,9 +2,7 @@
 Push notification service using ntfy (https://ntfy.sh).
 Sends the daily summary as a formatted push message.
 """
-import json
 import logging
-import os
 from datetime import datetime
 from typing import Optional
 
@@ -12,10 +10,13 @@ import httpx
 import pytz
 
 from app.config import settings
+from app.db.engine import get_session
+from app.db.models import NotificationDedup
 from app.models.schemas import DailySummary
-from app.services._storage import atomic_write_json, file_lock
 
 logger = logging.getLogger(__name__)
+
+_DEDUP_ROW_ID = 1
 
 
 def _today_iso() -> str:
@@ -25,26 +26,26 @@ def _today_iso() -> str:
 
 def _has_sent_today() -> bool:
     """Return True if a push notification was already sent today."""
-    path = settings.NOTIFICATIONS_DEDUP_FILE
-    if not os.path.exists(path):
-        return False
     try:
-        with open(path, encoding="utf-8") as f:
-            data = json.load(f)
-        return data.get("date") == _today_iso()
+        with get_session() as session:
+            row = session.get(NotificationDedup, _DEDUP_ROW_ID)
+            return row is not None and row.date == _today_iso()
     except Exception as exc:
-        logger.warning("Could not read dedup file %s: %s", path, exc)
+        logger.warning("Could not read notification dedup marker: %s", exc)
         return False
 
 
 def _mark_sent_today() -> None:
     """Persist today's date as the last-sent marker."""
-    path = settings.NOTIFICATIONS_DEDUP_FILE
     try:
-        with file_lock(path):
-            atomic_write_json(path, {"date": _today_iso()})
+        with get_session() as session:
+            row = session.get(NotificationDedup, _DEDUP_ROW_ID)
+            if row is None:
+                session.add(NotificationDedup(id=_DEDUP_ROW_ID, date=_today_iso()))
+            else:
+                row.date = _today_iso()
     except Exception as exc:
-        logger.warning("Could not write dedup file %s: %s", path, exc)
+        logger.warning("Could not write notification dedup marker: %s", exc)
 
 
 def _build_message(summary: DailySummary) -> str:

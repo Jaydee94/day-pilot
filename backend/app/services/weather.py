@@ -1,4 +1,5 @@
 """Weather service using WeatherAPI."""
+import json
 import logging
 from datetime import datetime, timedelta, timezone
 from threading import Lock
@@ -8,6 +9,7 @@ import httpx
 
 from app.config import settings
 from app.models.schemas import DailyForecastPoint, HourlyForecastPoint, WeatherInfo
+from app.services._cache import cache_get, cache_set
 
 logger = logging.getLogger(__name__)
 
@@ -21,14 +23,32 @@ def _cache_key(city: str, units: str) -> tuple[str, str]:
     return (city.strip().lower(), units)
 
 
+def _redis_key(key: tuple[str, str]) -> str:
+    return f"daypilot:weather:{key[0]}:{key[1]}"
+
+
 def _read_cached_weather(key: tuple[str, str]) -> Optional[tuple[datetime, WeatherInfo]]:
+    # Prefer the shared Redis cache when configured.
+    raw = cache_get(_redis_key(key))
+    if raw:
+        try:
+            payload = json.loads(raw)
+            cached_at = datetime.fromisoformat(payload["cached_at"])
+            return cached_at, WeatherInfo.model_validate(payload["weather"])
+        except Exception as exc:
+            logger.warning("Ignoring malformed cached weather: %s", exc)
     with _cache_lock:
         return _weather_cache.get(key)
 
 
 def _write_cached_weather(key: tuple[str, str], weather: WeatherInfo) -> None:
+    cached_at = datetime.now(timezone.utc)
     with _cache_lock:
-        _weather_cache[key] = (datetime.now(timezone.utc), weather)
+        _weather_cache[key] = (cached_at, weather)
+    cache_set(
+        _redis_key(key),
+        json.dumps({"cached_at": cached_at.isoformat(), "weather": weather.model_dump(mode="json")}),
+    )
 
 
 def _normalize_icon(icon: str) -> str:

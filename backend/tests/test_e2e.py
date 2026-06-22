@@ -526,10 +526,8 @@ class TestPushNotificationJourney:
 class TestSettingsJourney:
     """A user reads and updates DayPilot settings through the frontend."""
 
-    def test_setup_status_reports_needs_setup_on_first_boot(self, client, tmp_path):
-        settings_file = str(tmp_path / "settings.json")
-        with patch("app.services.settings_store.SETTINGS_FILE", settings_file):
-            resp = client.get("/api/settings/status")
+    def test_setup_status_reports_needs_setup_on_first_boot(self, client):
+        resp = client.get("/api/settings/status")
 
         assert resp.status_code == 200
         data = resp.json()
@@ -546,43 +544,37 @@ class TestSettingsJourney:
         assert "NTFY_SERVER" in data
         assert "SETUP_COMPLETE" in data
 
-    def test_update_settings_persists_and_applies(self, client, tmp_path):
-        settings_file = str(tmp_path / "settings.json")
-        with patch("app.services.settings_store.SETTINGS_FILE", settings_file):
-            resp = client.put(
-                "/api/settings",
-                json={"WEATHER_CITY": "Munich", "WEATHER_UNITS": "imperial"},
-            )
+    def test_update_settings_persists_and_applies(self, client):
+        resp = client.put(
+            "/api/settings",
+            json={"WEATHER_CITY": "Munich", "WEATHER_UNITS": "imperial"},
+        )
 
         assert resp.status_code == 200
         data = resp.json()
         assert data["WEATHER_CITY"] == "Munich"
         assert data["WEATHER_UNITS"] == "imperial"
 
-    def test_wizard_completion_marks_setup_complete(self, client, tmp_path):
+    def test_wizard_completion_marks_setup_complete(self, client):
         """Completing the setup wizard sets SETUP_COMPLETE and ends the wizard flow."""
-        settings_file = str(tmp_path / "settings.json")
-        with patch("app.services.settings_store.SETTINGS_FILE", settings_file):
-            # Step: mark setup as complete (last step of wizard)
-            put_resp = client.put("/api/settings", json={"SETUP_COMPLETE": True})
-            assert put_resp.status_code == 200
-            assert put_resp.json()["SETUP_COMPLETE"] is True
+        # Step: mark setup as complete (last step of wizard)
+        put_resp = client.put("/api/settings", json={"SETUP_COMPLETE": True})
+        assert put_resp.status_code == 200
+        assert put_resp.json()["SETUP_COMPLETE"] is True
 
-            # Verify status endpoint reflects completion
-            status_resp = client.get("/api/settings/status")
+        # Verify status endpoint reflects completion
+        status_resp = client.get("/api/settings/status")
         assert status_resp.status_code == 200
         status_data = status_resp.json()
         assert status_data["setup_complete"] is True
         assert status_data["needs_setup"] is False
 
-    def test_partial_update_does_not_overwrite_other_fields(self, client, tmp_path):
+    def test_partial_update_does_not_overwrite_other_fields(self, client):
         """Sending only one field in PUT must not reset other saved settings."""
-        settings_file = str(tmp_path / "settings.json")
-        with patch("app.services.settings_store.SETTINGS_FILE", settings_file):
-            # First save two fields
-            client.put("/api/settings", json={"WEATHER_CITY": "Berlin", "NTFY_TOPIC": "alerts"})
-            # Then update only one
-            resp = client.put("/api/settings", json={"WEATHER_CITY": "Hamburg"})
+        # First save two fields
+        client.put("/api/settings", json={"WEATHER_CITY": "Berlin", "NTFY_TOPIC": "alerts"})
+        # Then update only one
+        resp = client.put("/api/settings", json={"WEATHER_CITY": "Hamburg"})
 
         assert resp.status_code == 200
         # NTFY_TOPIC must still be in the returned state (in-memory)
@@ -677,11 +669,9 @@ class TestICalURLManagementJourney:
         assert resp.status_code == 200
         assert resp.json() == []
 
-    def test_list_ical_urls_returns_configured_urls(self, client, tmp_path):
-        settings_file = str(tmp_path / "settings.json")
+    def test_list_ical_urls_returns_configured_urls(self, client):
         url = "https://calendar.google.com/calendar/ical/test/basic.ics"
-        with patch("app.api.settings_router.app_settings.ICAL_URLS", url), \
-             patch("app.services.settings_store.SETTINGS_FILE", settings_file):
+        with patch("app.api.settings_router.app_settings.ICAL_URLS", url):
             resp = client.get("/api/settings/ical-urls")
         assert resp.status_code == 200
         data = resp.json()
@@ -689,11 +679,9 @@ class TestICalURLManagementJourney:
         assert data[0]["url"] == url
         assert data[0]["index"] == 0
 
-    def test_add_ical_url(self, client, tmp_path):
-        settings_file = str(tmp_path / "settings.json")
+    def test_add_ical_url(self, client):
         url = "https://calendar.google.com/calendar/ical/test/basic.ics"
-        with patch("app.api.settings_router.app_settings.ICAL_URLS", ""), \
-             patch("app.services.settings_store.SETTINGS_FILE", settings_file):
+        with patch("app.api.settings_router.app_settings.ICAL_URLS", ""):
             resp = client.post(
                 "/api/settings/ical-urls",
                 json={"url": url},
@@ -712,11 +700,9 @@ class TestICalURLManagementJourney:
         resp = client.post("/api/settings/ical-urls", json={"url": "ftp://bad-url.com/cal.ics"})
         assert resp.status_code == 400
 
-    def test_delete_ical_url(self, client, tmp_path):
-        settings_file = str(tmp_path / "settings.json")
+    def test_delete_ical_url(self, client):
         url = "https://calendar.google.com/calendar/ical/test/basic.ics"
-        with patch("app.api.settings_router.app_settings.ICAL_URLS", url), \
-             patch("app.services.settings_store.SETTINGS_FILE", settings_file):
+        with patch("app.api.settings_router.app_settings.ICAL_URLS", url):
             resp = client.delete("/api/settings/ical-urls/0")
         assert resp.status_code == 200
         assert resp.json()["status"] == "removed"
@@ -741,13 +727,11 @@ class TestCalDAVAccountManagementJourney:
         assert resp.status_code == 200
         assert resp.json() == []
 
-    def test_add_caldav_account(self, client, tmp_path):
-        settings_file = str(tmp_path / "settings.json")
+    def test_add_caldav_account(self, client):
         with patch("app.api.settings_router.app_settings.CALDAV_CONFIGS", ""), \
              patch("app.api.settings_router.app_settings.CALDAV_URL", ""), \
              patch("app.api.settings_router.app_settings.CALDAV_USERNAME", ""), \
-             patch("app.api.settings_router.app_settings.CALDAV_PASSWORD", ""), \
-             patch("app.services.settings_store.SETTINGS_FILE", settings_file):
+             patch("app.api.settings_router.app_settings.CALDAV_PASSWORD", ""):
             resp = client.post(
                 "/api/settings/caldav-accounts",
                 json={"url": "https://caldav.icloud.com", "username": "test@icloud.com", "password": "xxxx"},
@@ -769,11 +753,9 @@ class TestCalDAVAccountManagementJourney:
         assert "password" not in data[0]  # password must not be returned
         assert data[0]["password_set"] is True  # but presence must be indicated
 
-    def test_delete_caldav_account(self, client, tmp_path):
+    def test_delete_caldav_account(self, client):
         configs_json = '[{"url":"https://caldav.icloud.com","username":"user@icloud.com","password":"pw"}]'
-        settings_file = str(tmp_path / "settings.json")
-        with patch("app.api.settings_router.app_settings.CALDAV_CONFIGS", configs_json), \
-             patch("app.services.settings_store.SETTINGS_FILE", settings_file):
+        with patch("app.api.settings_router.app_settings.CALDAV_CONFIGS", configs_json):
             resp = client.delete("/api/settings/caldav-accounts/0")
         assert resp.status_code == 200
         assert resp.json()["status"] == "removed"

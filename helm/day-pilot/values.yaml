@@ -158,12 +158,11 @@ secrets:
 
 # ---------------------------------------------------------------------------
 # PostgreSQL  (bundled, single-replica deployment)
-# Disabled by default: Day Pilot persists all state as JSON files under
-# /app/data (see the backend PVC), so no database is required. Enable this
-# only if you intend to wire up an external store yourself via extraEnv.
+# Primary data store. Set enabled: false only if you supply an external
+# DATABASE_URL (postgresql+psycopg://…) via extraEnv.
 # ---------------------------------------------------------------------------
 postgresql:
-  enabled: false
+  enabled: true
 
   image:
     repository: postgres
@@ -191,9 +190,9 @@ postgresql:
 
 # ---------------------------------------------------------------------------
 # Redis  (bundled, single-replica deployment)
-# Disabled by default: Day Pilot does not use Redis (no job queue / external
-# cache — caches are in-process). Enable only if you add an integration that
-# needs it and supply REDIS_URL via extraEnv.
+# Optional cache backend for the weather cache. Disabled by default — when
+# disabled, an in-process cache is used instead. Enable to share the cache
+# across replicas; the configmap then exposes REDIS_URL to the backend.
 # ---------------------------------------------------------------------------
 redis:
   enabled: false

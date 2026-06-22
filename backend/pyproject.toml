@@ -24,6 +24,10 @@ requests = "2.32.3"
 pytz = "2025.2"
 python-dateutil = "2.9.0.post0"
 python-multipart = "0.0.22"
+sqlalchemy = "2.0.36"
+alembic = "1.14.0"
+psycopg = {version = "3.2.3", extras = ["binary"]}
+redis = "5.2.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "8.3.5"

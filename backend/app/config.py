@@ -123,6 +123,17 @@ class Settings(BaseSettings):
     # Comma-separated list of allowed CORS origins. Empty = localhost dev defaults.
     CORS_ALLOW_ORIGINS: str = ""
 
+    # Database connection URL (SQLAlchemy). Defaults to a local SQLite file so
+    # development and tests run without a PostgreSQL server; docker-compose and
+    # the Helm chart set a postgresql+psycopg://… URL. The engine itself reads
+    # DATABASE_URL straight from the environment (see app/db/engine.py); this
+    # field exists for documentation and so the value is visible in settings.
+    DATABASE_URL: str = "sqlite:///./day_pilot.db"
+
+    # Redis URL (optional). When set, the weather cache is backed by Redis;
+    # otherwise an in-process cache is used.
+    REDIS_URL: str = ""
+
     @field_validator("DAILY_SUMMARY_TIME")
     @classmethod
     def _validate_daily_summary_time(cls, value: str) -> str:
