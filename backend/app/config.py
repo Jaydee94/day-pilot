@@ -1,9 +1,14 @@
 import logging
+import re
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Literal
 
 logger = logging.getLogger(__name__)
+
+# HH:MM in 24-hour notation (00:00 – 23:59).
+_TIME_RE = re.compile(r"^([01]?\d|2[0-3]):[0-5]\d$")
 
 
 class Settings(BaseSettings):
@@ -13,6 +18,10 @@ class Settings(BaseSettings):
         # Allow direct attribute assignment so the settings overlay can
         # update values in-place after the object is constructed.
         frozen=False,
+        # Re-run validators on assignment so invalid values injected by the
+        # persisted-settings overlay are rejected (the overlay catches the
+        # error and keeps the default) instead of silently breaking the app.
+        validate_assignment=True,
     )
 
     # General
@@ -113,6 +122,28 @@ class Settings(BaseSettings):
 
     # Comma-separated list of allowed CORS origins. Empty = localhost dev defaults.
     CORS_ALLOW_ORIGINS: str = ""
+
+    @field_validator("DAILY_SUMMARY_TIME")
+    @classmethod
+    def _validate_daily_summary_time(cls, value: str) -> str:
+        value = value.strip()
+        if not _TIME_RE.match(value):
+            raise ValueError(
+                f"DAILY_SUMMARY_TIME must be in 24-hour HH:MM format (00:00–23:59), got {value!r}"
+            )
+        return value
+
+    @field_validator("APP_TIMEZONE")
+    @classmethod
+    def _validate_timezone(cls, value: str) -> str:
+        value = value.strip()
+        try:
+            from zoneinfo import ZoneInfo
+
+            ZoneInfo(value)
+        except Exception as exc:  # ZoneInfoNotFoundError and friends
+            raise ValueError(f"APP_TIMEZONE is not a valid IANA timezone: {value!r}") from exc
+        return value
 
 
 def _apply_settings_overlay(s: Settings) -> None:

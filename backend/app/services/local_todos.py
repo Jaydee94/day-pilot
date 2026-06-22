@@ -19,6 +19,7 @@ import pytz
 from app.config import settings
 from app.models.schemas import TodoItem
 from app.services._storage import atomic_write_json, file_lock
+from app.services._time import to_aware
 
 logger = logging.getLogger(__name__)
 
@@ -165,7 +166,7 @@ def complete_local_todo(todo_id: str) -> bool:
             # may be naive — re-attach the configured app timezone so the next
             # recurrence calculation stays consistent across DST boundaries.
             if due.tzinfo is None:
-                due = _local_tz().localize(due)
+                due = to_aware(due, _local_tz())
             add_local_todo(
                 title=completed_raw["title"],
                 due=_next_due(due, recurrence),

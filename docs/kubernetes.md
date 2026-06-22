@@ -5,7 +5,11 @@
 </p>
 
 This guide explains how to deploy DayPilot on a Kubernetes cluster using the bundled Helm chart.
-The chart deploys all four components of the stack: **backend**, **frontend**, **PostgreSQL**, and **Redis**.
+By default the chart deploys two components: **backend** and **frontend**. DayPilot persists all
+of its state as JSON files on a PersistentVolume mounted at `/app/data`, so no database is
+required. Optional bundled **PostgreSQL** and **Redis** deployments are included but disabled by
+default (`postgresql.enabled=false`, `redis.enabled=false`); enable them only if you add an
+integration that needs them.
 
 ---
 
@@ -62,9 +66,8 @@ docker push $REGISTRY/day-pilot-frontend:latest
 
 ## Quick start (minimal install)
 
-> **Before installing,** generate strong secrets for the database password and voice webhook:
+> **Before installing,** generate a strong secret for the voice webhook:
 > ```bash
-> export DB_PASS=$(openssl rand -hex 16)
 > export WEBHOOK_SECRET=$(openssl rand -hex 32)
 > ```
 
@@ -80,7 +83,6 @@ helm install day-pilot ./helm/day-pilot \
   --set secrets.openaiApiKey=sk-proj-... \
   --set secrets.weatherapiApiKey=your-weather-key \
   --set secrets.ntfyTopic=your-ntfy-topic \
-  --set postgresql.auth.password="$DB_PASS" \
   --set secrets.voiceWebhookSecret="$WEBHOOK_SECRET"
 
 # 3. Port-forward to test locally
@@ -261,10 +263,10 @@ All configurable values are documented in [`helm/day-pilot/values.yaml`](../helm
 | Config | `config.timezone` | `Europe/Berlin` | IANA timezone |
 | Config | `config.dailySummaryTime` | `07:00` | Morning briefing time (HH:MM) |
 | Config | `config.weatherCity` | `Berlin` | City for weather data |
-| PostgreSQL | `postgresql.enabled` | `true` | Deploy bundled PostgreSQL |
-| PostgreSQL | `postgresql.auth.password` | `change-me` | Database password (change this!) |
+| PostgreSQL | `postgresql.enabled` | `false` | Deploy bundled PostgreSQL (optional, not used by default) |
+| PostgreSQL | `postgresql.auth.password` | `""` | Database password (only if enabled) |
 | PostgreSQL | `postgresql.persistence.size` | `5Gi` | PVC size |
-| Redis | `redis.enabled` | `true` | Deploy bundled Redis |
+| Redis | `redis.enabled` | `false` | Deploy bundled Redis (optional, not used by default) |
 | Redis | `redis.persistence.size` | `1Gi` | PVC size |
 | Secrets | `secrets.existingSecret` | `""` | Use an existing Secret instead of creating one |
 

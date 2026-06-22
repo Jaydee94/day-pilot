@@ -23,6 +23,7 @@ import recurring_ical_events
 from app.config import settings
 from app.models.schemas import CalendarEvent, TodoItem, Birthday
 from app.services._logging import redact
+from app.services._time import to_aware
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +98,7 @@ def _today_range():
     # Use tz.localize() so that pytz picks the correct DST offset for midnight
     # on the target date, rather than copying today's runtime offset via
     # replace().  The difference matters on DST-transition days.
-    start = tz.localize(datetime(today.year, today.month, today.day))
+    start = to_aware(datetime(today.year, today.month, today.day), tz)
     end = start + timedelta(days=1)
     return start, end
 
@@ -105,11 +106,9 @@ def _today_range():
 def _to_aware_datetime(dt, tz: pytz.BaseTzInfo) -> datetime:
     """Ensure *dt* (a date or datetime) is a timezone-aware datetime object."""
     if isinstance(dt, datetime):
-        if dt.tzinfo is None:
-            return tz.localize(dt)
-        return dt
+        return to_aware(dt, tz)
     # Plain date – treat as midnight in local timezone
-    return tz.localize(datetime(dt.year, dt.month, dt.day))
+    return to_aware(datetime(dt.year, dt.month, dt.day), tz)
 
 
 # ---------------------------------------------------------------------------
@@ -162,11 +161,11 @@ def fetch_ical_events_in_range(start: datetime, end: datetime) -> List[CalendarE
 
     tz = _local_tz()
     if start.tzinfo is None:
-        start = tz.localize(start)
+        start = to_aware(start, tz)
     else:
         start = start.astimezone(tz)
     if end.tzinfo is None:
-        end = tz.localize(end)
+        end = to_aware(end, tz)
     else:
         end = end.astimezone(tz)
 
@@ -252,7 +251,7 @@ def fetch_ical_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
     start, _ = _today_range()
     if date:
         local_date = date.astimezone(tz).date() if date.tzinfo is not None else date.date()
-        start = tz.localize(datetime(local_date.year, local_date.month, local_date.day))
+        start = to_aware(datetime(local_date.year, local_date.month, local_date.day), tz)
     end = start + timedelta(days=1)
     return fetch_ical_events_in_range(start=start, end=end)
 
@@ -320,11 +319,11 @@ def fetch_apple_events_in_range(start: datetime, end: datetime) -> List[Calendar
 
     tz = _local_tz()
     if start.tzinfo is None:
-        start = tz.localize(start)
+        start = to_aware(start, tz)
     else:
         start = start.astimezone(tz)
     if end.tzinfo is None:
-        end = tz.localize(end)
+        end = to_aware(end, tz)
     else:
         end = end.astimezone(tz)
 
@@ -371,20 +370,22 @@ def fetch_apple_events_in_range(start: datetime, end: datetime) -> List[Calendar
 
                         # normalise to timezone-aware
                         if not hasattr(ev_start, "tzinfo") or ev_start.tzinfo is None:
-                            ev_start = _local_tz().localize(
+                            ev_start = to_aware(
                                 datetime(
                                     ev_start.year,
                                     ev_start.month,
                                     ev_start.day,
-                                )
+                                ),
+                                _local_tz(),
                             )
                         if not hasattr(ev_end, "tzinfo") or ev_end.tzinfo is None:
-                            ev_end = _local_tz().localize(
+                            ev_end = to_aware(
                                 datetime(
                                     ev_end.year,
                                     ev_end.month,
                                     ev_end.day,
-                                )
+                                ),
+                                _local_tz(),
                             )
 
                         events.append(
@@ -422,7 +423,7 @@ def fetch_apple_events(date: Optional[datetime] = None) -> List[CalendarEvent]:
     start, _ = _today_range()
     if date:
         local_date = date.astimezone(tz).date() if date.tzinfo is not None else date.date()
-        start = tz.localize(datetime(local_date.year, local_date.month, local_date.day))
+        start = to_aware(datetime(local_date.year, local_date.month, local_date.day), tz)
     end = start + timedelta(days=1)
     return fetch_apple_events_in_range(start=start, end=end)
 

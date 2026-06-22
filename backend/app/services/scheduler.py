@@ -28,6 +28,33 @@ from app.services.birthday_detection import refresh_upcoming_birthdays_cache
 
 logger = logging.getLogger(__name__)
 
+# Fallback used if the configured daily summary time is somehow unparsable.
+_DEFAULT_SUMMARY_TIME = (7, 0)
+
+
+def _parse_summary_time() -> tuple[int, int]:
+    """Parse DAILY_SUMMARY_TIME into (hour, minute), falling back defensively.
+
+    Config validation normally rejects malformed values, but the persisted
+    settings overlay can still inject one. Rather than crash the scheduler at
+    startup we log and fall back to the default 07:00.
+    """
+    raw = settings.DAILY_SUMMARY_TIME
+    try:
+        hour_str, minute_str = raw.strip().split(":")
+        hour, minute = int(hour_str), int(minute_str)
+        if not (0 <= hour <= 23 and 0 <= minute <= 59):
+            raise ValueError("time out of range")
+        return hour, minute
+    except (ValueError, AttributeError) as exc:
+        logger.error(
+            "Invalid DAILY_SUMMARY_TIME %r (%s); falling back to %02d:%02d",
+            raw,
+            exc,
+            *_DEFAULT_SUMMARY_TIME,
+        )
+        return _DEFAULT_SUMMARY_TIME
+
 _scheduler: Optional[BackgroundScheduler] = None
 
 
@@ -103,13 +130,13 @@ def start_scheduler() -> None:
     if _scheduler and _scheduler.running:
         return
 
-    hour, minute = settings.DAILY_SUMMARY_TIME.split(":")
+    hour, minute = _parse_summary_time()
     tz = pytz.timezone(settings.APP_TIMEZONE)
 
     _scheduler = BackgroundScheduler(timezone=tz)
     _scheduler.add_job(
         run_daily_pipeline,
-        CronTrigger(hour=int(hour), minute=int(minute), timezone=tz),
+        CronTrigger(hour=hour, minute=minute, timezone=tz),
         id="daily_summary",
         replace_existing=True,
     )

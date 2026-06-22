@@ -18,6 +18,7 @@ import pytz
 from app.config import settings
 from app.models.schemas import CalendarEvent
 from app.services._storage import atomic_write_json, file_lock
+from app.services._time import to_aware
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +99,7 @@ def fetch_local_events(
             continue
         ev_start = ev.start
         if ev_start.tzinfo is None:
-            ev_start = tz.localize(ev_start)
+            ev_start = to_aware(ev_start, tz)
         else:
             ev_start = ev_start.astimezone(tz)
         if start <= ev_start < end:

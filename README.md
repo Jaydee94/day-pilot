@@ -52,10 +52,10 @@ DayPilot is a self-hosted, AI-powered family planning system that runs on your h
 │  │    voice.py    (webhook) │◄── Siri / Google Assistant        │
 │  └──────────────────────────┘                                    │
 │            │                                                     │
-│  ┌─────────┴──────────┐   ┌─────────────────────────────────┐   │
-│  │  PostgreSQL :5432  │   │  Redis :6379                    │   │
-│  │  (primary store)   │   │  (job queue & cache)            │   │
-│  └────────────────────┘   └─────────────────────────────────┘   │
+│  ┌─────────┴────────────────────────────────────────────────┐   │
+│  │  JSON file store  /app/data  (volume / PVC)              │   │
+│  │  events · todos · shopping · family · settings · token   │   │
+│  └──────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -96,7 +96,6 @@ helm install day-pilot ./helm/day-pilot \
   --set frontend.image.repository=ghcr.io/your-username/day-pilot-frontend \
   --set secrets.openaiApiKey=sk-proj-... \
   --set secrets.weatherapiApiKey=your-weather-key \
-  --set postgresql.auth.password="$(openssl rand -hex 16)" \
   --set secrets.voiceWebhookSecret="$(openssl rand -hex 32)"
 ```
 

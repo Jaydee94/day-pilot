@@ -89,12 +89,12 @@ class DailySummary(BaseModel):
 
 
 class CreateEventRequest(BaseModel):
-    title: str
+    title: str = Field(..., min_length=1, max_length=500)
     start: datetime
     end: Optional[datetime] = None
-    location: Optional[str] = None
-    description: Optional[str] = None
-    assigned_to: Optional[str] = None
+    location: Optional[str] = Field(default=None, max_length=500)
+    description: Optional[str] = Field(default=None, max_length=5000)
+    assigned_to: Optional[str] = Field(default=None, max_length=200)
 
     @model_validator(mode="after")
     def _end_after_start(self):
@@ -104,19 +104,19 @@ class CreateEventRequest(BaseModel):
 
 
 class CreateTodoRequest(BaseModel):
-    title: str
+    title: str = Field(..., min_length=1, max_length=500)
     due: Optional[datetime] = None
     recurrence: Optional[Literal["daily", "weekly", "monthly"]] = None
-    assigned_to: Optional[str] = None
+    assigned_to: Optional[str] = Field(default=None, max_length=200)
 
 
 class UpdateEventRequest(BaseModel):
-    title: Optional[str] = None
+    title: Optional[str] = Field(default=None, min_length=1, max_length=500)
     start: Optional[datetime] = None
     end: Optional[datetime] = None
-    location: Optional[str] = None
-    description: Optional[str] = None
-    assigned_to: Optional[str] = None
+    location: Optional[str] = Field(default=None, max_length=500)
+    description: Optional[str] = Field(default=None, max_length=5000)
+    assigned_to: Optional[str] = Field(default=None, max_length=200)
 
     @model_validator(mode="after")
     def _end_after_start(self):
@@ -128,11 +128,11 @@ class UpdateEventRequest(BaseModel):
 class VoiceCommand(BaseModel):
     secret: str
     command: str  # "add_event" | "add_todo"
-    title: str
+    title: str = Field(..., min_length=1, max_length=500)
     start: Optional[datetime] = None
     end: Optional[datetime] = None
     due: Optional[datetime] = None
-    location: Optional[str] = None
+    location: Optional[str] = Field(default=None, max_length=500)
 
 
 class SyncStatus(BaseModel):
@@ -218,9 +218,9 @@ class FamilyMemberProfile(BaseModel):
 
 
 class CreateFamilyMemberRequest(BaseModel):
-    name: str
-    age: Optional[int] = None
-    notes: List[str] = []
+    name: str = Field(..., min_length=1, max_length=200)
+    age: Optional[int] = Field(default=None, ge=0, le=150)
+    notes: List[str] = Field(default=[], max_length=100)
 
 
 class ShoppingItem(BaseModel):
@@ -232,9 +232,9 @@ class ShoppingItem(BaseModel):
 
 
 class CreateShoppingItemRequest(BaseModel):
-    name: str
-    category: str = "Sonstiges"
-    quantity: Optional[str] = None
+    name: str = Field(..., min_length=1, max_length=200)
+    category: str = Field(default="Sonstiges", max_length=100)
+    quantity: Optional[str] = Field(default=None, max_length=100)
 
 
 class SetupStatus(BaseModel):

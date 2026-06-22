@@ -18,6 +18,7 @@ import pytz
 
 from app.config import settings
 from app.models.schemas import Birthday, CalendarEvent
+from app.services._time import to_aware
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +121,7 @@ def _compute_upcoming_birthdays(days_ahead: int, limit: int) -> List[Birthday]:
 
     tz = pytz.timezone(settings.APP_TIMEZONE)
     today = datetime.now(tz)
-    start = tz.localize(datetime(today.year, today.month, today.day))
+    start = to_aware(datetime(today.year, today.month, today.day), tz)
     end = start + timedelta(days=days_ahead + 1)
 
     birthdays: List[Birthday] = []
