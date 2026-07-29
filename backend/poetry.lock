@@ -1379,17 +1379,20 @@ test = ["aiohttp (>=3.10.5)", "flake8 (>=6.1,<7.0)", "mypy (>=0.800)", "psutil",
 
 [[package]]
 name = "vobject"
-version = "0.9.6.1"
+version = "0.9.9"
 description = "A full-featured Python package for parsing and creating iCalendar and vCard files"
 optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "vobject-0.9.6.1.tar.gz", hash = "sha256:96512aec74b90abb71f6b53898dd7fe47300cc940104c4f79148f0671f790101"},
+    {file = "vobject-0.9.9-py2.py3-none-any.whl", hash = "sha256:0fbdb982065cf4d1843a5d5950c88510041c6de026bda49c3502721de1c6ac3d"},
+    {file = "vobject-0.9.9.tar.gz", hash = "sha256:ac44e5d7e2079d84c1d52c50a615b9bec4b1ba958608c4c7fe40cbf33247b38e"},
 ]
 
 [package.dependencies]
-python-dateutil = ">=2.4.0"
+python-dateutil = {version = ">=2.7.0", markers = "python_version >= \"3.10\""}
+pytz = "*"
+six = "*"
 
 [[package]]
 name = "watchfiles"
@@ -1603,4 +1606,4 @@ tzdata = "*"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4.0"
-content-hash = "ed5a1f09c4c69d58ad350af390233b620e1119db8030f5e58ed56b1127a58b39"
+content-hash = "4c1a1e23667c26a99f64a33de688b1f333721967eb88caebea9156ba8dc52f5b"
